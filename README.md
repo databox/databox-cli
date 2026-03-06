@@ -42,6 +42,37 @@ By default, commands output human-readable tables. Add `--json` to any command f
 databox account list --json
 ```
 
+## Agent Skills
+
+This package includes shareable skills for AI agents (like [Claude Code](https://claude.ai/claude-code)) to use the CLI autonomously.
+
+### Bundled Skills
+
+| Skill | Description |
+|-------|-------------|
+| `databox-auth` | Authentication setup and API key validation |
+| `databox-accounts` | Account discovery, timezones, resource listing |
+| `databox-data-sources` | Data source create, delete, and inspection |
+| `databox-datasets` | Dataset CRUD, schema definition, data ingestion, monitoring |
+
+### Setup for Claude Code
+
+Add the skills to your project's `.claude/settings.json`:
+
+```json
+{
+  "skills": ["node_modules/databox-cli/skills/*"]
+}
+```
+
+Or copy them globally:
+
+```bash
+cp -r $(npm root -g)/databox-cli/skills/* ~/.claude/skills/
+```
+
+Once installed, Claude Code can manage your Databox resources directly — creating data sources, defining schemas, pushing data, and monitoring ingestions.
+
 ## Commands
 
 <!-- commands -->
@@ -86,6 +117,8 @@ EXAMPLES
   $ databox account data-sources 12345 --json
 ```
 
+_See code: [src/commands/account/data-sources.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/account/data-sources.ts)_
+
 ## `databox account datasets ACCOUNTID`
 
 List datasets for a specific account
@@ -118,6 +151,8 @@ EXAMPLES
   $ databox account datasets 12345 --json
 ```
 
+_See code: [src/commands/account/datasets.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/account/datasets.ts)_
+
 ## `databox account list`
 
 List all accounts you have access to
@@ -137,6 +172,8 @@ EXAMPLES
 
   $ databox account list --json
 ```
+
+_See code: [src/commands/account/list.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/account/list.ts)_
 
 ## `databox account timezones`
 
@@ -158,6 +195,8 @@ EXAMPLES
   $ databox account timezones --json
 ```
 
+_See code: [src/commands/account/timezones.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/account/timezones.ts)_
+
 ## `databox auth login`
 
 Authenticate with Databox by providing your API key
@@ -178,6 +217,8 @@ EXAMPLES
   $ databox auth login --api-key YOUR_KEY
 ```
 
+_See code: [src/commands/auth/login.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/auth/login.ts)_
+
 ## `databox auth validate`
 
 Validate the currently stored API key
@@ -192,6 +233,8 @@ FLAGS
 DESCRIPTION
   Validate the currently stored API key
 ```
+
+_See code: [src/commands/auth/validate.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/auth/validate.ts)_
 
 ## `databox data-source create`
 
@@ -219,6 +262,8 @@ EXAMPLES
   $ databox data-source create --title "My Data Source" --account-id 12345 --key my_source --json
 ```
 
+_See code: [src/commands/data-source/create.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/data-source/create.ts)_
+
 ## `databox data-source datasets DATASOURCEID`
 
 List datasets for a data source
@@ -241,6 +286,8 @@ EXAMPLES
 
   $ databox data-source datasets 12345 --json
 ```
+
+_See code: [src/commands/data-source/datasets.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/data-source/datasets.ts)_
 
 ## `databox data-source delete DATASOURCEID`
 
@@ -265,6 +312,8 @@ EXAMPLES
 
   $ databox data-source delete 12345 --force
 ```
+
+_See code: [src/commands/data-source/delete.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/data-source/delete.ts)_
 
 ## `databox dataset create`
 
@@ -295,6 +344,8 @@ EXAMPLES
   $ databox dataset create --title "My Dataset" --data-source-id 123 --json
 ```
 
+_See code: [src/commands/dataset/create.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/dataset/create.ts)_
+
 ## `databox dataset delete DATASETID`
 
 Delete a dataset
@@ -319,6 +370,8 @@ EXAMPLES
   $ databox dataset delete abc-123 --force
 ```
 
+_See code: [src/commands/dataset/delete.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/dataset/delete.ts)_
+
 ## `databox dataset get DATASETID`
 
 Get details of a specific dataset
@@ -341,6 +394,8 @@ EXAMPLES
 
   $ databox dataset get abc-123 --json
 ```
+
+_See code: [src/commands/dataset/get.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/dataset/get.ts)_
 
 ## `databox dataset ingest DATASETID`
 
@@ -371,6 +426,8 @@ EXAMPLES
   $ databox dataset ingest abc-123 --records '[{"date":"2024-01-01","value":42}]' --json
 ```
 
+_See code: [src/commands/dataset/ingest.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/dataset/ingest.ts)_
+
 ## `databox dataset ingestion DATASETID INGESTIONID`
 
 Get details of a specific ingestion
@@ -394,6 +451,8 @@ EXAMPLES
 
   $ databox dataset ingestion abc-123 ing-456 --json
 ```
+
+_See code: [src/commands/dataset/ingestion.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/dataset/ingestion.ts)_
 
 ## `databox dataset ingestions DATASETID`
 
@@ -422,6 +481,8 @@ EXAMPLES
   $ databox dataset ingestions abc-123 --json
 ```
 
+_See code: [src/commands/dataset/ingestions.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/dataset/ingestions.ts)_
+
 ## `databox dataset purge DATASETID`
 
 Purge all data from a dataset
@@ -445,6 +506,8 @@ EXAMPLES
 
   $ databox dataset purge abc-123 --force
 ```
+
+_See code: [src/commands/dataset/purge.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/dataset/purge.ts)_
 
 ## `databox help [COMMAND]`
 
