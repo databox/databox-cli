@@ -1,0 +1,85 @@
+{
+  "name": "databox-cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CLI for the Databox public API",
+  "author": "Databox",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "bin": {
+    "databox": "./bin/run.js"
+  },
+  "files": [
+    "/bin",
+    "/lib",
+    "/oclif.manifest.json"
+  ],
+  "oclif": {
+    "bin": "databox",
+    "dirname": "databox",
+    "commands": "./lib/commands",
+    "plugins": [
+      "@oclif/plugin-help"
+    ],
+    "topicSeparator": " ",
+    "topics": {
+      "auth": {
+        "description": "Authenticate with the Databox API"
+      },
+      "account": {
+        "description": "Manage Databox accounts"
+      },
+      "data-source": {
+        "description": "Manage data sources"
+      },
+      "dataset": {
+        "description": "Manage datasets and ingest data"
+      }
+    },
+    "additionalHelpFlags": ["-h"],
+    "additionalVersionFlags": ["-v"]
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf lib && rm -f tsconfig.tsbuildinfo",
+    "dev": "bin/dev.js",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "postpack": "rm -f oclif.manifest.json",
+    "prepack": "npm run build && oclif manifest",
+    "test": "TS_NODE_PROJECT=tsconfig.test.json mocha --forbid-only \"test/**/*.test.ts\"",
+    "test:watch": "TS_NODE_PROJECT=tsconfig.test.json mocha --watch \"test/**/*.test.ts\"",
+    "test:coverage": "nyc npm test"
+  },
+  "dependencies": {
+    "@oclif/core": "^4.0.0",
+    "@oclif/plugin-help": "^6.0.0"
+  },
+  "devDependencies": {
+    "@oclif/test": "^4.0.0",
+    "@types/chai": "^4",
+    "@types/mocha": "^10",
+    "@types/node": "^20",
+    "chai": "^4",
+    "eslint": "^8",
+    "eslint-config-oclif": "^5",
+    "eslint-config-oclif-typescript": "^3",
+    "mocha": "^10",
+    "nyc": "^15",
+    "oclif": "^4.0.0",
+    "ts-node": "^10",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/databox/databox-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/databox/databox-cli/issues"
+  },
+  "homepage": "https://github.com/databox/databox-cli#readme"
+}

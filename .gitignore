@@ -1,0 +1,8 @@
+node_modules/
+/lib/
+*.tsbuildinfo
+oclif.manifest.json
+.DS_Store
+.agents/
+.claude/
+skills-lock.json
