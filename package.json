@@ -1,6 +1,6 @@
 {
   "name": "databox-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "CLI for the Databox public API",
   "author": "Databox",
@@ -13,7 +13,8 @@
   "files": [
     "/bin",
     "/lib",
-    "/oclif.manifest.json"
+    "/oclif.manifest.json",
+    "/skills"
   ],
   "oclif": {
     "bin": "databox",
