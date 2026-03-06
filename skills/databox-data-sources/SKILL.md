@@ -15,6 +15,8 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 
 | Task | Command |
 |------|---------|
+| List data sources | `databox account data-sources ACCOUNT_ID` |
+| List data sources (JSON) | `databox account data-sources ACCOUNT_ID --json` |
 | Create data source | `databox data-source create --title "Name"` |
 | Create with options | `databox data-source create --title "Name" --timezone "US/Eastern" --key my_key --account-id 123` |
 | Delete data source | `databox data-source delete ID --force` |
@@ -32,10 +34,16 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 ## Common Workflow: Set Up a New Data Source
 
 ```bash
-# 1. Create the data source
+# 1. Find your account ID
+databox account list
+
+# 2. List existing data sources for the account
+databox account data-sources ACCOUNT_ID
+
+# 3. Create a new data source
 databox data-source create --title "My API Data" --timezone "UTC"
 
-# 2. Note the returned ID, then create a dataset for it
+# 4. Note the returned ID, then create a dataset for it
 databox dataset create --title "Daily Metrics" --data-source-id ID
 ```
 

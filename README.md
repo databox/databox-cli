@@ -55,20 +55,21 @@ This package includes shareable skills for AI agents (like [Claude Code](https:/
 | `databox-data-sources` | Data source create, delete, and inspection |
 | `databox-datasets` | Dataset CRUD, schema definition, data ingestion, monitoring |
 
-### Setup for Claude Code
+### Install Skills
 
-Add the skills to your project's `.claude/settings.json`:
-
-```json
-{
-  "skills": ["node_modules/databox-cli/skills/*"]
-}
-```
-
-Or copy them globally:
+Install all skills at once using [npx skills](https://github.com/anthropics/skills):
 
 ```bash
-cp -r $(npm root -g)/databox-cli/skills/* ~/.claude/skills/
+npx skills add databox/databox-cli --skill '*'
+```
+
+Or install individual skills:
+
+```bash
+npx skills add databox/databox-cli --skill databox-auth
+npx skills add databox/databox-cli --skill databox-accounts
+npx skills add databox/databox-cli --skill databox-data-sources
+npx skills add databox/databox-cli --skill databox-datasets
 ```
 
 Once installed, Claude Code can manage your Databox resources directly — creating data sources, defining schemas, pushing data, and monitoring ingestions.
