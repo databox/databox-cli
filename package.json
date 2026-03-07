@@ -1,6 +1,6 @@
 {
   "name": "databox-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "CLI for the Databox public API",
   "author": "Databox",
@@ -41,8 +41,12 @@
         "description": "Manage datasets and ingest data"
       }
     },
-    "additionalHelpFlags": ["-h"],
-    "additionalVersionFlags": ["-v"]
+    "additionalHelpFlags": [
+      "-h"
+    ],
+    "additionalVersionFlags": [
+      "-v"
+    ]
   },
   "scripts": {
     "build": "tsc -b",
