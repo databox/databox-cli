@@ -1,6 +1,6 @@
 # databox-cli
 
-CLI for the [Databox](https://databox.com) public API. Manage accounts, data sources, datasets, and push data — all from the terminal.
+CLI for the [Databox](https://databox.com) public API. Manage accounts, data sources, datasets, push data, and analyze datasets with Genie AI — all from the terminal.
 
 ## Installation
 
@@ -54,6 +54,7 @@ This package includes shareable skills for AI agents (like [Claude Code](https:/
 | `databox-accounts` | Account discovery, timezones, resource listing |
 | `databox-data-sources` | Data source create, delete, and inspection |
 | `databox-datasets` | Dataset CRUD, schema definition, data ingestion, monitoring |
+| `databox-analyze` | Dataset analysis with Genie AI, conversational data Q&A |
 
 ### Install Skills
 
@@ -70,9 +71,10 @@ npx skills add databox/databox-cli --skill databox-auth
 npx skills add databox/databox-cli --skill databox-accounts
 npx skills add databox/databox-cli --skill databox-data-sources
 npx skills add databox/databox-cli --skill databox-datasets
+npx skills add databox/databox-cli --skill databox-analyze
 ```
 
-Once installed, Claude Code can manage your Databox resources directly — creating data sources, defining schemas, pushing data, and monitoring ingestions.
+Once installed, Claude Code can manage your Databox resources directly — creating data sources, defining schemas, pushing data, monitoring ingestions, and analyzing datasets with Genie AI.
 
 ## Commands
 
@@ -81,6 +83,7 @@ Once installed, Claude Code can manage your Databox resources directly — creat
 * [`databox account datasets ACCOUNTID`](#databox-account-datasets-accountid)
 * [`databox account list`](#databox-account-list)
 * [`databox account timezones`](#databox-account-timezones)
+* [`databox analyze ask-genie DATASETID QUESTION`](#databox-analyze-ask-genie-datasetid-question)
 * [`databox auth login`](#databox-auth-login)
 * [`databox auth validate`](#databox-auth-validate)
 * [`databox data-source create`](#databox-data-source-create)
@@ -197,6 +200,37 @@ EXAMPLES
 ```
 
 _See code: [src/commands/account/timezones.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/account/timezones.ts)_
+
+## `databox analyze ask-genie DATASETID QUESTION`
+
+Ask Genie AI a question about a dataset
+
+```
+USAGE
+  $ databox analyze ask-genie DATASETID QUESTION [--json] [--service-url <value>] [--thread-id <value>]
+
+ARGUMENTS
+  DATASETID  The dataset ID to query
+  QUESTION   The question to ask Genie
+
+FLAGS
+  --json                 Output as JSON
+  --service-url=<value>  [default: https://agentic-service.databox.com, env: DATABOX_AGENTIC_SERVICE_URL] Override the
+                         agentic service base URL
+  --thread-id=<value>    Continue an existing conversation thread
+
+DESCRIPTION
+  Ask Genie AI a question about a dataset
+
+EXAMPLES
+  $ databox analyze ask-genie abc-123 "What are the top metrics?"
+
+  $ databox analyze ask-genie abc-123 "Show trends" --thread-id tid-456
+
+  $ databox analyze ask-genie abc-123 "Summarize data" --json
+```
+
+_See code: [src/commands/analyze/ask-genie.ts](https://github.com/databox/databox-cli/blob/v0.2.0/src/commands/analyze/ask-genie.ts)_
 
 ## `databox auth login`
 

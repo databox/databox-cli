@@ -30,7 +30,7 @@ export class ApiRequestError extends Error {
 }
 
 export class ApiClient {
-  private apiKey: string
+  readonly apiKey: string
   private baseUrl: string
 
   constructor(options: ApiClientOptions) {

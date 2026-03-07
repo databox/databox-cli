@@ -34,6 +34,9 @@
       "data-source": {
         "description": "Manage data sources"
       },
+      "analyze": {
+        "description": "Analyze datasets with Genie AI"
+      },
       "dataset": {
         "description": "Manage datasets and ingest data"
       }
