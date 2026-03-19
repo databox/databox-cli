@@ -16,12 +16,18 @@ export default class Login extends Command {
     'api-key': Flags.string({
       description: 'API key (if not provided, you will be prompted)',
     }),
+    'api-url': Flags.string({
+      description: 'Override the API base URL',
+      env: 'DATABOX_API_URL',
+      hidden: true,
+    }),
   }
 
   async run(): Promise<void> {
     const {flags} = await this.parse(Login)
 
     let apiKey = flags['api-key']
+    const apiUrl = flags['api-url']
 
     if (!apiKey) {
       apiKey = await prompt('Enter your API key', {mask: true})
@@ -32,10 +38,11 @@ export default class Login extends Command {
     }
 
     const existingConfig = loadConfig()
-    saveConfig({...existingConfig, apiKey})
+    const baseUrl = apiUrl ?? existingConfig.apiUrl
+    saveConfig({...existingConfig, apiKey, apiUrl: baseUrl})
 
     try {
-      const client = new ApiClient({apiKey, baseUrl: existingConfig.apiUrl})
+      const client = new ApiClient({apiKey, baseUrl})
       await client.get('/v1/auth/validate-key')
       this.log('Authenticated successfully.')
     } catch {
