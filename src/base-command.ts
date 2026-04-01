@@ -31,7 +31,7 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
       const config = loadConfig()
       const apiKey = this.flags['api-key'] ?? config.apiKey
       if (!apiKey) {
-        this.error('Not authenticated. Run "databox auth login" first or set DATABOX_API_KEY.', {exit: 1})
+        this.error('Not authenticated. Run "databox auth login" first.', {exit: 1})
       }
 
       this._apiClient = new ApiClient({
