@@ -7,6 +7,11 @@ export type Flags<T extends typeof Command> = Interfaces.InferredFlags<typeof Ba
 
 export abstract class BaseCommand<T extends typeof Command = typeof Command> extends Command {
   static baseFlags = {
+    'api-key': Flags.string({
+      description: 'Override the API key',
+      env: 'DATABOX_API_KEY',
+      hidden: true,
+    }),
     'api-url': Flags.string({
       description: 'Override the API base URL',
       env: 'DATABOX_API_URL',
@@ -24,7 +29,7 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
   protected get apiClient(): ApiClient {
     if (!this._apiClient) {
       const config = loadConfig()
-      const apiKey = config.apiKey
+      const apiKey = this.flags['api-key'] ?? config.apiKey
       if (!apiKey) {
         this.error('Not authenticated. Run "databox auth login" first.', {exit: 1})
       }
