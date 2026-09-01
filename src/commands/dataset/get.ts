@@ -4,12 +4,13 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface DatasetGetResponse {
-  created: string
+  createdAt: string
   dataSourceId: number
-  id: string | null
-  primaryKeys: string[] | null
-  schema: Array<{dataType: string; name: string}> | null
+  id: number
+  primaryKey: string[] | null
+  schema: Array<{columnId: string; dataType: string}> | null
   timezone: string | null
+  title: string
 }
 
 export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
@@ -20,14 +21,18 @@ export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
   static description = 'Get details of a specific dataset'
 
   static examples = [
-    '<%= config.bin %> dataset get abc-123',
-    '<%= config.bin %> dataset get abc-123 --json',
+    '<%= config.bin %> dataset get 12345',
+    '<%= config.bin %> dataset get 12345 --json',
   ]
 
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetGet)
 
-    const response = await this.apiClient.get<DatasetGetResponse>(`/v1/datasets/${args.datasetId}`)
+    if (!/^\d+$/.test(args.datasetId)) {
+      this.error('Dataset ID must be a numeric value.', {exit: 2})
+    }
+
+    const response = await this.apiClient.get<DatasetGetResponse>(`/v2/datasets/${args.datasetId}`)
 
     formatSingle(response, this.flags.json)
   }

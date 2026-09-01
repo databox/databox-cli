@@ -3,10 +3,6 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../base-command.js'
 import {confirm} from '../../lib/prompt.js'
 
-interface DatasetDeleteResponse {
-  message: string
-}
-
 export default class DatasetDelete extends BaseCommand<typeof DatasetDelete> {
   static args = {
     datasetId: Args.string({description: 'The dataset ID to delete', required: true}),
@@ -15,8 +11,8 @@ export default class DatasetDelete extends BaseCommand<typeof DatasetDelete> {
   static description = 'Delete a dataset'
 
   static examples = [
-    '<%= config.bin %> dataset delete abc-123',
-    '<%= config.bin %> dataset delete abc-123 --force',
+    '<%= config.bin %> dataset delete 12345',
+    '<%= config.bin %> dataset delete 12345 --force',
   ]
 
   static flags = {
@@ -29,6 +25,10 @@ export default class DatasetDelete extends BaseCommand<typeof DatasetDelete> {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetDelete)
 
+    if (!/^\d+$/.test(args.datasetId)) {
+      this.error('Dataset ID must be a numeric value.', {exit: 2})
+    }
+
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to delete dataset ${args.datasetId}?`)
       if (!confirmed) {
@@ -37,8 +37,8 @@ export default class DatasetDelete extends BaseCommand<typeof DatasetDelete> {
       }
     }
 
-    const response = await this.apiClient.delete<DatasetDeleteResponse>(`/v1/datasets/${args.datasetId}`)
+    await this.apiClient.delete(`/v2/datasets/${args.datasetId}`)
 
-    this.log(response.message)
+    this.log(`Dataset ${args.datasetId} deleted.`)
   }
 }

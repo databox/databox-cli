@@ -36,7 +36,7 @@ export default class DataSourceDelete extends BaseCommand<typeof DataSourceDelet
       }
     }
 
-    await this.apiClient.delete(`/v1/data-sources/${args.dataSourceId}`)
+    await this.apiClient.delete(`/v2/data-sources/${args.dataSourceId}`, this.accountHeaders)
 
     this.log(`Data source ${args.dataSourceId} deleted.`)
   }

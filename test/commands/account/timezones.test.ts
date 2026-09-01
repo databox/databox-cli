@@ -9,8 +9,15 @@ describe('account timezones', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/accounts/timezones',
-        response: {timezones: [{offset: 'UTC+1', timezone: 'Europe/Berlin'}]},
+        path: '/v2/account/timezones',
+        response: {
+          status: 'success',
+          requestId: 'test',
+          data: {
+            items: [{offset: 'UTC+1', timezone: 'Europe/Berlin'}],
+            pagination: {page: 0, pageSize: 25, totalItems: 1},
+          },
+        },
       },
     ])
   })

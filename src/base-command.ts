@@ -7,6 +7,11 @@ export type Flags<T extends typeof Command> = Interfaces.InferredFlags<typeof Ba
 
 export abstract class BaseCommand<T extends typeof Command = typeof Command> extends Command {
   static baseFlags = {
+    'account-id': Flags.string({
+      description: 'Target account ID (for multi-account access)',
+      env: 'DATABOX_ACCOUNT_ID',
+      hidden: true,
+    }),
     'api-key': Flags.string({
       description: 'Override the API key',
       env: 'DATABOX_API_KEY',
@@ -41,6 +46,11 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     }
 
     return this._apiClient
+  }
+
+  protected get accountHeaders(): Record<string, string> {
+    const accountId = this.flags['account-id']
+    return accountId ? {'x-account-id': accountId} : {}
   }
 
   public async init(): Promise<void> {

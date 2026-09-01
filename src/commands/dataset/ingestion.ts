@@ -20,15 +20,19 @@ export default class DatasetIngestion extends BaseCommand<typeof DatasetIngestio
   static description = 'Get details of a specific ingestion'
 
   static examples = [
-    '<%= config.bin %> dataset ingestion abc-123 ing-456',
-    '<%= config.bin %> dataset ingestion abc-123 ing-456 --json',
+    '<%= config.bin %> dataset ingestion 12345 ing-456',
+    '<%= config.bin %> dataset ingestion 12345 ing-456 --json',
   ]
 
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetIngestion)
 
+    if (!/^\d+$/.test(args.datasetId)) {
+      this.error('Dataset ID must be a numeric value.', {exit: 2})
+    }
+
     const response = await this.apiClient.get<IngestionResponse>(
-      `/v1/datasets/${args.datasetId}/ingestions/${args.ingestionId}`,
+      `/v2/datasets/${args.datasetId}/ingestions/${args.ingestionId}`,
     )
 
     const output: Record<string, unknown> = {

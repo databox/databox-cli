@@ -3,10 +3,6 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../base-command.js'
 import {confirm} from '../../lib/prompt.js'
 
-interface DatasetPurgeResponse {
-  message: string
-}
-
 export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
   static args = {
     datasetId: Args.string({description: 'The dataset ID to purge data from', required: true}),
@@ -15,8 +11,8 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
   static description = 'Purge all data from a dataset'
 
   static examples = [
-    '<%= config.bin %> dataset purge abc-123',
-    '<%= config.bin %> dataset purge abc-123 --force',
+    '<%= config.bin %> dataset purge 12345',
+    '<%= config.bin %> dataset purge 12345 --force',
   ]
 
   static flags = {
@@ -29,6 +25,10 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetPurge)
 
+    if (!/^\d+$/.test(args.datasetId)) {
+      this.error('Dataset ID must be a numeric value.', {exit: 2})
+    }
+
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to purge all data from dataset ${args.datasetId}?`)
       if (!confirmed) {
@@ -37,8 +37,8 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
       }
     }
 
-    const response = await this.apiClient.post<DatasetPurgeResponse>(`/v1/datasets/${args.datasetId}/purge`)
+    await this.apiClient.post(`/v2/datasets/${args.datasetId}/purge`)
 
-    this.log(response.message)
+    this.log(`Dataset ${args.datasetId} purged.`)
   }
 }

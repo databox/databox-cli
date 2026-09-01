@@ -14,8 +14,8 @@ describe('auth validate', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/auth/validate-key',
-        response: {status: 'ok'},
+        path: '/v2/auth/validate-key',
+        response: {status: 'success', requestId: 'test', data: {}},
       },
     ])
 
@@ -29,15 +29,15 @@ describe('auth validate', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/auth/validate-key',
-        response: {status: 'ok'},
+        path: '/v2/auth/validate-key',
+        response: {status: 'success', requestId: 'test', data: {}},
       },
     ])
 
     const result = await runCommand(['auth', 'validate', '--json'], {root: process.cwd()})
 
     const parsed = JSON.parse(result.stdout)
-    expect(parsed).to.deep.equal({status: 'ok'})
+    expect(parsed).to.deep.equal({})
   })
 
   it('errors when not authenticated', async () => {

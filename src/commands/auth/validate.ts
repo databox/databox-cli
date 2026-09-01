@@ -5,7 +5,7 @@ export default class Validate extends BaseCommand<typeof Validate> {
 
   async run(): Promise<void> {
     try {
-      const response = await this.apiClient.get('/v1/auth/validate-key')
+      const response = await this.apiClient.get('/v2/auth/validate-key')
 
       if (this.flags.json) {
         this.log(JSON.stringify(response, null, 2))

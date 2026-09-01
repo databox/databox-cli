@@ -19,10 +19,10 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
   static description = 'Ingest data into a dataset'
 
   static examples = [
-    '<%= config.bin %> dataset ingest abc-123 --records \'[{"date":"2024-01-01","value":42}]\'',
-    '<%= config.bin %> dataset ingest abc-123 --file ./data.json',
-    'cat data.json | <%= config.bin %> dataset ingest abc-123',
-    '<%= config.bin %> dataset ingest abc-123 --records \'[{"date":"2024-01-01","value":42}]\' --json',
+    '<%= config.bin %> dataset ingest 12345 --records \'[{"date":"2024-01-01","value":42}]\'',
+    '<%= config.bin %> dataset ingest 12345 --file ./data.json',
+    'cat data.json | <%= config.bin %> dataset ingest 12345',
+    '<%= config.bin %> dataset ingest 12345 --records \'[{"date":"2024-01-01","value":42}]\' --json',
   ]
 
   static flags = {
@@ -38,6 +38,10 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetIngest)
+
+    if (!/^\d+$/.test(args.datasetId)) {
+      this.error('Dataset ID must be a numeric value.', {exit: 2})
+    }
 
     let records: unknown[]
 
@@ -58,7 +62,7 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
       this.error('Provide data via --records, --file, or stdin pipe.', {exit: 1})
     }
 
-    const response = await this.apiClient.post<IngestResponse>(`/v1/datasets/${args.datasetId}/data`, {records})
+    const response = await this.apiClient.post<IngestResponse>(`/v2/datasets/${args.datasetId}/data`, {records})
 
     formatSingle(response, this.flags.json)
   }
