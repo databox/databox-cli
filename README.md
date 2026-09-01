@@ -172,10 +172,14 @@ Once installed, Claude Code can manage your Databox resources directly — manag
 * [`databox dataset ingestion DATASETID INGESTIONID`](#databox-dataset-ingestion-datasetid-ingestionid)
 * [`databox dataset ingestion-statistics DATASETID`](#databox-dataset-ingestion-statistics-datasetid)
 * [`databox dataset ingestions DATASETID`](#databox-dataset-ingestions-datasetid)
+* [`databox dataset lineage DATASETID`](#databox-dataset-lineage-datasetid)
 * [`databox dataset list`](#databox-dataset-list)
 * [`databox dataset metadata DATASETID`](#databox-dataset-metadata-datasetid)
+* [`databox dataset modification-formulas`](#databox-dataset-modification-formulas)
+* [`databox dataset modification-rules`](#databox-dataset-modification-rules)
 * [`databox dataset modifications DATASETID`](#databox-dataset-modifications-datasetid)
 * [`databox dataset permissions DATASETID`](#databox-dataset-permissions-datasetid)
+* [`databox dataset preview-modification DATASETID`](#databox-dataset-preview-modification-datasetid)
 * [`databox dataset purge DATASETID`](#databox-dataset-purge-datasetid)
 * [`databox dataset schema DATASETID`](#databox-dataset-schema-datasetid)
 * [`databox dataset set-column-metadata DATASETID`](#databox-dataset-set-column-metadata-datasetid)
@@ -186,7 +190,9 @@ Once installed, Claude Code can manage your Databox resources directly — manag
 * [`databox dataset set-verification DATASETID`](#databox-dataset-set-verification-datasetid)
 * [`databox dataset sync-frequencies DATASETID`](#databox-dataset-sync-frequencies-datasetid)
 * [`databox dataset sync-history DATASETID`](#databox-dataset-sync-history-datasetid)
+* [`databox dataset sync-statistics DATASETID`](#databox-dataset-sync-statistics-datasetid)
 * [`databox dataset update DATASETID`](#databox-dataset-update-datasetid)
+* [`databox dataset update-modification DATASETID`](#databox-dataset-update-modification-datasetid)
 * [`databox dataset verification DATASETID`](#databox-dataset-verification-datasetid)
 * [`databox help [COMMAND]`](#databox-help-command)
 * [`databox integration get INTEGRATIONID`](#databox-integration-get-integrationid)
@@ -1462,6 +1468,31 @@ EXAMPLES
 
 _See code: [src/commands/dataset/ingestions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/ingestions.ts)_
 
+## `databox dataset lineage DATASETID`
+
+Show dataset lineage (parents and children)
+
+```
+USAGE
+  $ databox dataset lineage DATASETID [--json]
+
+ARGUMENTS
+  DATASETID  The dataset ID
+
+FLAGS
+  --json  Output as JSON
+
+DESCRIPTION
+  Show dataset lineage (parents and children)
+
+EXAMPLES
+  $ databox dataset lineage 12345
+
+  $ databox dataset lineage 12345 --json
+```
+
+_See code: [src/commands/dataset/lineage.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/lineage.ts)_
+
 ## `databox dataset list`
 
 List datasets
@@ -1518,6 +1549,50 @@ EXAMPLES
 
 _See code: [src/commands/dataset/metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/metadata.ts)_
 
+## `databox dataset modification-formulas`
+
+List available modification formulas
+
+```
+USAGE
+  $ databox dataset modification-formulas [--json]
+
+FLAGS
+  --json  Output as JSON
+
+DESCRIPTION
+  List available modification formulas
+
+EXAMPLES
+  $ databox dataset modification-formulas
+
+  $ databox dataset modification-formulas --json
+```
+
+_See code: [src/commands/dataset/modification-formulas.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/modification-formulas.ts)_
+
+## `databox dataset modification-rules`
+
+List available modification rules
+
+```
+USAGE
+  $ databox dataset modification-rules [--json]
+
+FLAGS
+  --json  Output as JSON
+
+DESCRIPTION
+  List available modification rules
+
+EXAMPLES
+  $ databox dataset modification-rules
+
+  $ databox dataset modification-rules --json
+```
+
+_See code: [src/commands/dataset/modification-rules.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/modification-rules.ts)_
+
 ## `databox dataset modifications DATASETID`
 
 List modifications for a dataset
@@ -1567,6 +1642,34 @@ EXAMPLES
 ```
 
 _See code: [src/commands/dataset/permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/permissions.ts)_
+
+## `databox dataset preview-modification DATASETID`
+
+Preview a dataset modification before applying
+
+```
+USAGE
+  $ databox dataset preview-modification DATASETID --data <value> [--json] [--page <value>] [--page-size <value>]
+
+ARGUMENTS
+  DATASETID  The dataset ID
+
+FLAGS
+  --data=<value>       (required) JSON string with modification rules to preview
+  --json               Output as JSON
+  --page=<value>       Page number
+  --page-size=<value>  [default: 25] Items per page
+
+DESCRIPTION
+  Preview a dataset modification before applying
+
+EXAMPLES
+  $ databox dataset preview-modification 12345 --data '{"rules":{...}}'
+
+  $ databox dataset preview-modification 12345 --data '{"rules":{...}}' --json
+```
+
+_See code: [src/commands/dataset/preview-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/preview-modification.ts)_
 
 ## `databox dataset purge DATASETID`
 
@@ -1819,6 +1922,31 @@ EXAMPLES
 
 _See code: [src/commands/dataset/sync-history.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/sync-history.ts)_
 
+## `databox dataset sync-statistics DATASETID`
+
+Show sync history statistics for a dataset
+
+```
+USAGE
+  $ databox dataset sync-statistics DATASETID [--json]
+
+ARGUMENTS
+  DATASETID  The dataset ID
+
+FLAGS
+  --json  Output as JSON
+
+DESCRIPTION
+  Show sync history statistics for a dataset
+
+EXAMPLES
+  $ databox dataset sync-statistics 12345
+
+  $ databox dataset sync-statistics 12345 --json
+```
+
+_See code: [src/commands/dataset/sync-statistics.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/sync-statistics.ts)_
+
 ## `databox dataset update DATASETID`
 
 Update a dataset
@@ -1842,6 +1970,32 @@ EXAMPLES
 ```
 
 _See code: [src/commands/dataset/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/update.ts)_
+
+## `databox dataset update-modification DATASETID`
+
+Update a dataset modification
+
+```
+USAGE
+  $ databox dataset update-modification DATASETID --data <value> [--json]
+
+ARGUMENTS
+  DATASETID  The dataset ID
+
+FLAGS
+  --data=<value>  (required) JSON string with modification data (rules, displayNames)
+  --json          Output as JSON
+
+DESCRIPTION
+  Update a dataset modification
+
+EXAMPLES
+  $ databox dataset update-modification 12345 --data '{"rules":{...},"displayNames":{...}}'
+
+  $ databox dataset update-modification 12345 --data '{"rules":{...}}' --json
+```
+
+_See code: [src/commands/dataset/update-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/update-modification.ts)_
 
 ## `databox dataset verification DATASETID`
 

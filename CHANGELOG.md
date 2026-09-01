@@ -147,8 +147,14 @@ databox dataset list
 - `dataset set-verification` — Toggle verification
 - `dataset modifications` — List modifications
 - `dataset add-modification` — Add a modification
+- `dataset update-modification` — Update a modification
 - `dataset clear-modifications` — Clear all modifications
+- `dataset preview-modification` — Preview a modification before applying
+- `dataset modification-rules` — List available modification rules
+- `dataset modification-formulas` — List available modification formulas
 - `dataset ingestion-statistics` — View ingestion statistics
+- `dataset sync-statistics` — View sync history statistics
+- `dataset lineage` — Show dataset parents and children
 
 #### Metrics
 - `metric list` — List metrics

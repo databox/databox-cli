@@ -32,6 +32,12 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | View/set permissions | `databox dataset permissions ID` |
 | View/set metadata | `databox dataset metadata ID` |
 | View verification | `databox dataset verification ID` |
+| View lineage | `databox dataset lineage ID` |
+| Sync statistics | `databox dataset sync-statistics ID` |
+| Modification rules | `databox dataset modification-rules` |
+| Modification formulas | `databox dataset modification-formulas` |
+| Preview modification | `databox dataset preview-modification ID --data '{...}'` |
+| Update modification | `databox dataset update-modification ID --data '{...}'` |
 | Purge data | `databox dataset purge ID --force` |
 | Delete dataset | `databox dataset delete ID --force` |
 
