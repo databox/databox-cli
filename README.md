@@ -120,6 +120,10 @@ npx skills add databox/databox-cli --skill databox-analyze
 
 Once installed, Claude Code can manage your Databox resources directly — managing accounts, data sources, datasets, metrics, users, connections, billing, and analyzing data with Genie AI.
 
+## Changelog
+
+See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.md) for migration guides and version history.
+
 ## Commands
 
 <!-- commands -->
