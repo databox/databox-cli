@@ -26,12 +26,11 @@ export default class DatasetSyncFrequencies extends BaseCommand<typeof DatasetSy
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetSyncFrequencies)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const response = await this.apiClient.get<SyncFrequenciesResponse>(
       `/v2/datasets/${args.datasetId}/available-sync-frequencies`,
+      this.accountHeaders,
     )
 
     formatOutput(

@@ -20,7 +20,7 @@ export default class AccountTimezones extends BaseCommand<typeof AccountTimezone
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<TimezoneListResponse>('/v2/account/timezones')
+    const response = await this.apiClient.get<TimezoneListResponse>('/v2/account/timezones', undefined, this.accountHeaders)
 
     formatOutput(
       response.items,

@@ -25,9 +25,7 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetPurge)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to purge all data from dataset ${args.datasetId}?`)
@@ -37,7 +35,7 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
       }
     }
 
-    await this.apiClient.post(`/v2/datasets/${args.datasetId}/purge`)
+    await this.apiClient.post(`/v2/datasets/${args.datasetId}/purge`, undefined, this.accountHeaders)
 
     this.log(`Dataset ${args.datasetId} purged.`)
   }

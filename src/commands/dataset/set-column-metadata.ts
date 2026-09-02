@@ -24,13 +24,11 @@ export default class DatasetSetColumnMetadata extends BaseCommand<typeof Dataset
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetSetColumnMetadata)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const columns = JSON.parse(flags.columns) as Array<{columnId: string; description?: string; displayName?: string}>
 
-    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/column-metadata`, {columns})
+    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/column-metadata`, {columns}, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

@@ -1,7 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Ingestion {
   ingestionId: string
@@ -39,17 +39,16 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetIngestions)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const query: Record<string, string> = {}
-    if (this.flags.page !== undefined) query.page = String(this.flags.page)
-    if (this.flags['page-size'] !== undefined) query.pageSize = String(this.flags['page-size'])
+    const query: Record<string, string | number | undefined> = {}
+    if (this.flags.page !== undefined) query.page = this.flags.page
+    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
     const response = await this.apiClient.get<IngestionsResponse>(
       `/v2/datasets/${args.datasetId}/ingestions`,
       Object.keys(query).length > 0 ? query : undefined,
+      this.accountHeaders,
     )
 
     formatOutput(
@@ -62,10 +61,6 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
       this.flags.json,
     )
 
-    if (response.pagination && !this.flags.json) {
-      const {page, pageSize, totalItems} = response.pagination
-      const totalPages = Math.ceil(totalItems / pageSize)
-      this.log(`Page ${page + 1} of ${totalPages} (${totalItems} total items)`)
-    }
+    showPagination(response.pagination, this.flags.json)
   }
 }

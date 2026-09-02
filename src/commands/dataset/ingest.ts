@@ -39,9 +39,7 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetIngest)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     let records: unknown[]
 
@@ -62,7 +60,7 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
       this.error('Provide data via --records, --file, or stdin pipe.', {exit: 1})
     }
 
-    const response = await this.apiClient.post<IngestResponse>(`/v2/datasets/${args.datasetId}/data`, {records})
+    const response = await this.apiClient.post<IngestResponse>(`/v2/datasets/${args.datasetId}/data`, {records}, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

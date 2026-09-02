@@ -3,6 +3,14 @@ import {Flags} from '@oclif/core'
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
+interface DataSourceDetail {
+  connectionId: number | null
+  id: number
+  integrationKey: string
+  timezone: string
+  title: string
+}
+
 export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreate> {
   static description = 'Create a new data source'
 
@@ -37,7 +45,7 @@ export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreat
       body.key = this.flags.key
     }
 
-    const response = await this.apiClient.post<Record<string, unknown>>('/v2/data-sources', body, this.accountHeaders)
+    const response = await this.apiClient.post<DataSourceDetail>('/v2/data-sources', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

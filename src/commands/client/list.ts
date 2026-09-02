@@ -1,7 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Client {
   accountType: string
@@ -32,9 +32,9 @@ export default class ClientList extends BaseCommand<typeof ClientList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string> = {}
-    if (this.flags.page !== undefined) query.page = String(this.flags.page)
-    if (this.flags['page-size'] !== undefined) query.pageSize = String(this.flags['page-size'])
+    const query: Record<string, string | number | undefined> = {}
+    if (this.flags.page !== undefined) query.page = this.flags.page
+    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
     const response = await this.apiClient.get<ClientsResponse>(
       '/v2/clients',
@@ -52,10 +52,6 @@ export default class ClientList extends BaseCommand<typeof ClientList> {
       this.flags.json,
     )
 
-    if (response.pagination && !this.flags.json) {
-      const {page, pageSize, totalItems} = response.pagination
-      const totalPages = Math.ceil(totalItems / pageSize)
-      this.log(`Page ${page + 1} of ${totalPages} (${totalItems} total items)`)
-    }
+    showPagination(response.pagination, this.flags.json)
   }
 }

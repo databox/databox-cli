@@ -1,5 +1,5 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
 import {cleanupTestConfig, mockApi, restoreApi} from '../../helpers.js'
 

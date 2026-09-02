@@ -28,11 +28,9 @@ export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetGet)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<DatasetGetResponse>(`/v2/datasets/${args.datasetId}`)
+    const response = await this.apiClient.get<DatasetGetResponse>(`/v2/datasets/${args.datasetId}`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

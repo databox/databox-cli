@@ -48,6 +48,12 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     return this._apiClient
   }
 
+  protected requireNumericId(value: string, name: string): void {
+    if (!/^\d+$/.test(value)) {
+      this.error(`${name} must be a numeric value.`, {exit: 2})
+    }
+  }
+
   protected get accountHeaders(): Record<string, string> {
     const accountId = this.flags['account-id']
     return accountId ? {'x-account-id': accountId} : {}

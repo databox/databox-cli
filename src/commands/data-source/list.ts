@@ -1,7 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface DataSource {
   connectionId: number | null
@@ -55,10 +55,6 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
       this.flags.json,
     )
 
-    if (response.pagination && !this.flags.json) {
-      const {page, pageSize, totalItems} = response.pagination
-      const totalPages = Math.ceil(totalItems / pageSize)
-      this.log(`Page ${page + 1} of ${totalPages} (${totalItems} total items)`)
-    }
+    showPagination(response.pagination, this.flags.json)
   }
 }

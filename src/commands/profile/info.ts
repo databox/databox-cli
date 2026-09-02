@@ -21,7 +21,7 @@ export default class ProfileInfo extends BaseCommand<typeof ProfileInfo> {
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<ProfileResponse>('/v2/profile')
+    const response = await this.apiClient.get<ProfileResponse>('/v2/profile', undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

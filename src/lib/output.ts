@@ -43,6 +43,15 @@ export function formatOutput<T>(
   }
 }
 
+export function showPagination(
+  pagination: {page: number; pageSize: number; totalItems: number} | undefined,
+  json: boolean,
+): void {
+  if (!pagination || json) return
+  const totalPages = Math.ceil(pagination.totalItems / pagination.pageSize)
+  console.log(`Page ${pagination.page + 1} of ${totalPages} (${pagination.totalItems} total items)`)
+}
+
 export function formatSingle<T>(
   data: T,
   json: boolean,

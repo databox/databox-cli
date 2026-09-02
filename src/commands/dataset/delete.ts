@@ -25,9 +25,7 @@ export default class DatasetDelete extends BaseCommand<typeof DatasetDelete> {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetDelete)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to delete dataset ${args.datasetId}?`)
@@ -37,7 +35,7 @@ export default class DatasetDelete extends BaseCommand<typeof DatasetDelete> {
       }
     }
 
-    await this.apiClient.delete(`/v2/datasets/${args.datasetId}`)
+    await this.apiClient.delete(`/v2/datasets/${args.datasetId}`, this.accountHeaders)
 
     this.log(`Dataset ${args.datasetId} deleted.`)
   }

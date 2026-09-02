@@ -10,7 +10,7 @@ export default class DatasetModificationRules extends BaseCommand<typeof Dataset
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<Record<string, unknown>>('/v2/datasets/modifications/rules')
+    const response = await this.apiClient.get<Record<string, unknown>>('/v2/datasets/modifications/rules', undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

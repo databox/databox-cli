@@ -26,15 +26,14 @@ export default class DatasetPreviewModification extends BaseCommand<typeof Datas
 
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetPreviewModification)
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const body = JSON.parse(this.flags.data) as Record<string, unknown>
 
     const response = await this.apiClient.post<Record<string, unknown>>(
       `/v2/datasets/${args.datasetId}/modifications/preview`,
       body,
+      this.accountHeaders,
     )
 
     formatSingle(response, this.flags.json)

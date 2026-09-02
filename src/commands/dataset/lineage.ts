@@ -3,6 +3,12 @@ import {Args} from '@oclif/core'
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
+interface LineageResponse {
+  children: Array<{datasetType: string | null; id: number; title: string; type: string}>
+  id: number
+  parents: Array<{datasetType: string | null; id: number; title: string; type: string}>
+}
+
 export default class DatasetLineage extends BaseCommand<typeof DatasetLineage> {
   static args = {
     datasetId: Args.string({description: 'The dataset ID', required: true}),
@@ -17,11 +23,9 @@ export default class DatasetLineage extends BaseCommand<typeof DatasetLineage> {
 
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetLineage)
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/lineage`)
+    const response = await this.apiClient.get<LineageResponse>(`/v2/datasets/${args.datasetId}/lineage`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

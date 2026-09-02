@@ -17,11 +17,9 @@ export default class DatasetSyncStatistics extends BaseCommand<typeof DatasetSyn
 
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetSyncStatistics)
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/sync-history/statistics`)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/sync-history/statistics`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

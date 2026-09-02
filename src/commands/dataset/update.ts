@@ -21,14 +21,12 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetUpdate)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const body: Record<string, unknown> = {}
     if (flags.title) body.title = flags.title
 
-    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}`, body)
+    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

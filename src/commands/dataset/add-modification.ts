@@ -24,13 +24,11 @@ export default class DatasetAddModification extends BaseCommand<typeof DatasetAd
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetAddModification)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const body = JSON.parse(flags.data) as Record<string, unknown>
 
-    const response = await this.apiClient.post(`/v2/datasets/${args.datasetId}/modifications`, body)
+    const response = await this.apiClient.post(`/v2/datasets/${args.datasetId}/modifications`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

@@ -20,11 +20,9 @@ export default class DatasetSetSyncFrequency extends BaseCommand<typeof DatasetS
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetSetSyncFrequency)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    await this.apiClient.put(`/v2/datasets/${args.datasetId}/sync-frequency`, {interval: flags.interval})
+    await this.apiClient.put(`/v2/datasets/${args.datasetId}/sync-frequency`, {interval: flags.interval}, this.accountHeaders)
 
     this.log(`Sync frequency set to ${flags.interval} minutes for dataset ${args.datasetId}.`)
   }

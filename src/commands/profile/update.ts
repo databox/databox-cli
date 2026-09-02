@@ -26,7 +26,7 @@ export default class ProfileUpdate extends BaseCommand<typeof ProfileUpdate> {
       this.error('Provide at least one field to update (--name or --timezone).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch('/v2/profile', body)
+    const response = await this.apiClient.patch('/v2/profile', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

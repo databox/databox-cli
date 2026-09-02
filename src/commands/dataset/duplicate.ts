@@ -18,11 +18,9 @@ export default class DatasetDuplicate extends BaseCommand<typeof DatasetDuplicat
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetDuplicate)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.post(`/v2/datasets/${args.datasetId}/duplicate`)
+    const response = await this.apiClient.post(`/v2/datasets/${args.datasetId}/duplicate`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

@@ -1,7 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface DataResponse {
   items: Record<string, unknown>[]
@@ -33,17 +33,16 @@ export default class DatasetData extends BaseCommand<typeof DatasetData> {
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetData)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const query: Record<string, string> = {}
-    if (this.flags.page !== undefined) query.page = String(this.flags.page)
-    if (this.flags['page-size'] !== undefined) query.pageSize = String(this.flags['page-size'])
+    const query: Record<string, string | number | undefined> = {}
+    if (this.flags.page !== undefined) query.page = this.flags.page
+    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
     const response = await this.apiClient.get<DataResponse>(
       `/v2/datasets/${args.datasetId}/data`,
       Object.keys(query).length > 0 ? query : undefined,
+      this.accountHeaders,
     )
 
     if (this.flags.json) {
@@ -58,11 +57,7 @@ export default class DatasetData extends BaseCommand<typeof DatasetData> {
         false,
       )
 
-      if (response.pagination) {
-        const {page, pageSize, totalItems} = response.pagination
-        const totalPages = Math.ceil(totalItems / pageSize)
-        this.log(`Page ${page + 1} of ${totalPages} (${totalItems} total items)`)
-      }
+      showPagination(response.pagination, this.flags.json)
     }
   }
 }

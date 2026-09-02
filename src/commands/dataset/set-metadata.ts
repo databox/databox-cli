@@ -23,15 +23,13 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetSetMetadata)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const body: Record<string, unknown> = {}
     if (flags.description !== undefined) body.description = flags.description
     if (flags.tags) body.tags = JSON.parse(flags.tags) as string[]
 
-    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/metadata`, body)
+    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/metadata`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

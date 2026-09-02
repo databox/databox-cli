@@ -18,11 +18,9 @@ export default class DatasetIngestionStatistics extends BaseCommand<typeof Datas
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetIngestionStatistics)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get(`/v2/datasets/${args.datasetId}/ingestion-statistics`)
+    const response = await this.apiClient.get(`/v2/datasets/${args.datasetId}/ingestion-statistics`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

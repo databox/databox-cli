@@ -27,12 +27,11 @@ export default class DatasetIngestion extends BaseCommand<typeof DatasetIngestio
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetIngestion)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const response = await this.apiClient.get<IngestionResponse>(
       `/v2/datasets/${args.datasetId}/ingestions/${args.ingestionId}`,
+      this.accountHeaders,
     )
 
     const output: Record<string, unknown> = {

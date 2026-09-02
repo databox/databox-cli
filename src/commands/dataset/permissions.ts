@@ -18,11 +18,9 @@ export default class DatasetPermissions extends BaseCommand<typeof DatasetPermis
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetPermissions)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get(`/v2/datasets/${args.datasetId}/permissions`)
+    const response = await this.apiClient.get(`/v2/datasets/${args.datasetId}/permissions`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

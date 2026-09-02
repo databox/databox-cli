@@ -27,11 +27,9 @@ export default class DatasetSchema extends BaseCommand<typeof DatasetSchema> {
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetSchema)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<SchemaResponse>(`/v2/datasets/${args.datasetId}/schema`)
+    const response = await this.apiClient.get<SchemaResponse>(`/v2/datasets/${args.datasetId}/schema`, undefined, this.accountHeaders)
 
     formatOutput(
       response.items,

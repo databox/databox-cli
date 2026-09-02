@@ -10,7 +10,7 @@ export default class DatasetModificationFormulas extends BaseCommand<typeof Data
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<Record<string, unknown>>('/v2/datasets/modifications/formulas')
+    const response = await this.apiClient.get<Record<string, unknown>>('/v2/datasets/modifications/formulas', undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

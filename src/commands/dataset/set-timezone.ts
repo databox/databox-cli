@@ -20,11 +20,9 @@ export default class DatasetSetTimezone extends BaseCommand<typeof DatasetSetTim
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetSetTimezone)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    await this.apiClient.put(`/v2/datasets/${args.datasetId}/timezone`, {timezone: flags.timezone})
+    await this.apiClient.put(`/v2/datasets/${args.datasetId}/timezone`, {timezone: flags.timezone}, this.accountHeaders)
 
     this.log(`Timezone set to ${flags.timezone} for dataset ${args.datasetId}.`)
   }

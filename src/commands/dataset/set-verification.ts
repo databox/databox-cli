@@ -25,11 +25,9 @@ export default class DatasetSetVerification extends BaseCommand<typeof DatasetSe
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetSetVerification)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    await this.apiClient.put(`/v2/datasets/${args.datasetId}/verification`, {status: flags.status})
+    await this.apiClient.put(`/v2/datasets/${args.datasetId}/verification`, {status: flags.status}, this.accountHeaders)
 
     this.log(`Verification set to ${flags.status} for dataset ${args.datasetId}.`)
   }

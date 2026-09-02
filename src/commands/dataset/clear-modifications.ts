@@ -25,9 +25,7 @@ export default class DatasetClearModifications extends BaseCommand<typeof Datase
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetClearModifications)
 
-    if (!/^\d+$/.test(args.datasetId)) {
-      this.error('Dataset ID must be a numeric value.', {exit: 2})
-    }
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to clear all modifications from dataset ${args.datasetId}?`)
@@ -37,7 +35,7 @@ export default class DatasetClearModifications extends BaseCommand<typeof Datase
       }
     }
 
-    await this.apiClient.delete(`/v2/datasets/${args.datasetId}/modifications`)
+    await this.apiClient.delete(`/v2/datasets/${args.datasetId}/modifications`, this.accountHeaders)
 
     this.log(`Modifications cleared for dataset ${args.datasetId}.`)
   }

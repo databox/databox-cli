@@ -1,7 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Integration {
   id: number
@@ -35,14 +35,15 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string> = {}
+    const query: Record<string, string | number | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
-    if (this.flags.page !== undefined) query.page = String(this.flags.page)
-    if (this.flags['page-size'] !== undefined) query.pageSize = String(this.flags['page-size'])
+    if (this.flags.page !== undefined) query.page = this.flags.page
+    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
     const response = await this.apiClient.get<IntegrationsResponse>(
       '/v2/integrations',
       Object.keys(query).length > 0 ? query : undefined,
+      this.accountHeaders,
     )
 
     formatOutput(
@@ -56,10 +57,6 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
       this.flags.json,
     )
 
-    if (response.pagination && !this.flags.json) {
-      const {page, pageSize, totalItems} = response.pagination
-      const totalPages = Math.ceil(totalItems / pageSize)
-      this.log(`Page ${page + 1} of ${totalPages} (${totalItems} total items)`)
-    }
+    showPagination(response.pagination, this.flags.json)
   }
 }
