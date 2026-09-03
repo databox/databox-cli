@@ -213,6 +213,7 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox metric usages METRICID`](#databox-metric-usages-metricid)
 * [`databox metric verification METRICID`](#databox-metric-verification-metricid)
 * [`databox profile info`](#databox-profile-info)
+* [`databox profile metadata-options`](#databox-profile-metadata-options)
 * [`databox profile update`](#databox-profile-update)
 * [`databox user delete USERID`](#databox-user-delete-userid)
 * [`databox user get USERID`](#databox-user-get-userid)
@@ -2407,6 +2408,28 @@ EXAMPLES
 ```
 
 _See code: [src/commands/profile/info.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/profile/info.ts)_
+
+## `databox profile metadata-options`
+
+List available departments and roles for profile metadata
+
+```
+USAGE
+  $ databox profile metadata-options [--json]
+
+FLAGS
+  --json  Output as JSON
+
+DESCRIPTION
+  List available departments and roles for profile metadata
+
+EXAMPLES
+  $ databox profile metadata-options
+
+  $ databox profile metadata-options --json
+```
+
+_See code: [src/commands/profile/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/profile/metadata-options.ts)_
 
 ## `databox profile update`
 

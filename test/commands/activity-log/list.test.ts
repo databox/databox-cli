@@ -9,7 +9,7 @@ describe('activity-log list', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v2/activity-log',
+        path: '/v2/account/activity-log',
         response: {
           status: 'success',
           requestId: 'test',

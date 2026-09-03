@@ -4,6 +4,9 @@
 
 **Breaking change**: The CLI now exclusively uses the Databox V2 API. All V1 API calls have been removed. This requires a Databox account with V2 API access.
 
+- **Activity log** nested under account — `activity-log list` now calls `/v2/account/activity-log` (was `/v2/activity-log`). The command name is unchanged.
+- **New command** — `profile metadata-options` returns available departments and roles for profile metadata updates.
+
 ### Migration Guide
 
 #### Authentication

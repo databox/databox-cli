@@ -46,7 +46,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
     if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
     const response = await this.apiClient.get<ActivityLogResponse>(
-      '/v2/activity-log',
+      '/v2/account/activity-log',
       Object.keys(query).length > 0 ? query : undefined,
       this.accountHeaders,
     )
