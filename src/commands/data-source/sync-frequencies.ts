@@ -29,6 +29,7 @@ export default class DataSourceSyncFrequencies extends BaseCommand<typeof DataSo
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceSyncFrequencies)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     const response = await this.apiClient.get<SyncFrequenciesResponse>(
       `/v2/data-sources/${args.dataSourceId}/available-sync-frequencies`,

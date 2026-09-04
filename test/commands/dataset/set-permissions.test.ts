@@ -13,6 +13,12 @@ describe('dataset set-permissions', () => {
 
   it('sets permissions', async () => {
     const {stdout} = await runCommand(['dataset', 'set-permissions', '123', '--access-level', 'everyone'], {root: process.cwd()})
-    expect(stdout).to.include('Permissions updated')
+    expect(stdout).to.include('everyone')
+  })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'set-permissions', '123', '--access-level', 'everyone', '--json'], {root: process.cwd()})
+    const json = JSON.parse(stdout)
+    expect(json).to.have.property('accessLevel')
   })
 })

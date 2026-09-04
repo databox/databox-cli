@@ -25,4 +25,10 @@ describe('data-source sync-frequencies', () => {
     const {stdout} = await runCommand(['data-source', 'sync-frequencies', '42'], {root: process.cwd()})
     expect(stdout).to.include('Hourly')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['data-source', 'sync-frequencies', '42', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('array')
+  })
 })

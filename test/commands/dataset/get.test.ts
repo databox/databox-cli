@@ -46,4 +46,9 @@ describe('dataset get', () => {
     expect(parsed.schema).to.be.an('array')
     expect(parsed.schema).to.have.lengthOf(2)
   })
+
+  it('rejects non-numeric dataset ID', async () => {
+    const {error} = await runCommand(['dataset', 'get', 'abc'], {root: process.cwd()})
+    expect(error?.message).to.include('must be a numeric value')
+  })
 })

@@ -34,4 +34,9 @@ describe('connection get', () => {
     const parsed = JSON.parse(stdout)
     expect(parsed.id).to.equal(1)
   })
+
+  it('rejects non-numeric connection ID', async () => {
+    const {error} = await runCommand(['connection', 'get', 'abc'], {root: process.cwd()})
+    expect(error?.message).to.include('must be a numeric value')
+  })
 })

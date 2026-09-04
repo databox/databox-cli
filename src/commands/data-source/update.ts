@@ -24,6 +24,7 @@ export default class DataSourceUpdate extends BaseCommand<typeof DataSourceUpdat
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceUpdate)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     const body: Record<string, unknown> = {title: this.flags.title}
 

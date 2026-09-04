@@ -17,6 +17,7 @@ export default class IntegrationGet extends BaseCommand<typeof IntegrationGet> {
 
   async run(): Promise<void> {
     const {args} = await this.parse(IntegrationGet)
+    this.requireNumericId(args.integrationId, 'Integration ID')
 
     const response = await this.apiClient.get(`/v2/integrations/${args.integrationId}`, undefined, this.accountHeaders)
 

@@ -15,6 +15,7 @@ export default class DataSourceSetPermissions extends BaseCommand<typeof DataSou
 
   static examples = [
     '<%= config.bin %> data-source set-permissions 12345 --access-level everyone',
+    '<%= config.bin %> data-source set-permissions 12345 --access-level specific_users',
   ]
 
   static flags = {
@@ -23,6 +24,7 @@ export default class DataSourceSetPermissions extends BaseCommand<typeof DataSou
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceSetPermissions)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     const response = await this.apiClient.put<Record<string, unknown>>(
       `/v2/data-sources/${args.dataSourceId}/permissions`,

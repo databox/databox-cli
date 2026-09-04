@@ -21,10 +21,24 @@ export default class MetricCreate extends BaseCommand<typeof MetricCreate> {
   async run(): Promise<void> {
     const {flags} = await this.parse(MetricCreate)
 
+    let date: unknown
+    try {
+      date = JSON.parse(flags.date) as unknown
+    } catch {
+      this.error('Invalid JSON for --date. Expected format: {"id":"...","name":"..."}', {exit: 2})
+    }
+
+    let measure: unknown
+    try {
+      measure = JSON.parse(flags.measure) as unknown
+    } catch {
+      this.error('Invalid JSON for --measure. Expected format: {"id":"...","name":"..."}', {exit: 2})
+    }
+
     const response = await this.apiClient.post('/v2/metrics', {
       datasetId: flags['dataset-id'],
-      date: JSON.parse(flags.date) as unknown,
-      measure: JSON.parse(flags.measure) as unknown,
+      date,
+      measure,
       name: flags.name,
     }, this.accountHeaders)
 

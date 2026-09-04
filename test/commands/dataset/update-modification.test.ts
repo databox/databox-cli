@@ -13,4 +13,10 @@ describe('dataset update-modification', () => {
     const {stdout} = await runCommand(['dataset', 'update-modification', '123', '--data', '{"rules":{}}'])
     expect(stdout).to.include('1')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'update-modification', '123', '--data', '{"rules":{}}', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal(1)
+  })
 })

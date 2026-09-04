@@ -16,6 +16,7 @@ export default class MetricDimensionValues extends BaseCommand<typeof MetricDime
 
   static examples = [
     '<%= config.bin %> metric dimension-values --metric-id "500|custom_query_100" --dimension country --dataset-id 123',
+    '<%= config.bin %> metric dimension-values --metric-id "500|custom_query_100" --dimension country --dataset-id 123 --json',
   ]
 
   static flags = {

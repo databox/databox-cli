@@ -20,4 +20,10 @@ describe('dataset schema', () => {
     expect(stdout).to.include('date')
     expect(stdout).to.include('datetime')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'schema', '123', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('array')
+  })
 })

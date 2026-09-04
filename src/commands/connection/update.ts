@@ -21,6 +21,7 @@ export default class ConnectionUpdate extends BaseCommand<typeof ConnectionUpdat
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(ConnectionUpdate)
+    this.requireNumericId(args.connectionId, 'Connection ID')
 
     const body: Record<string, unknown> = {}
     if (flags.name) body.name = flags.name

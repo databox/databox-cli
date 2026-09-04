@@ -12,6 +12,7 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
 
   static examples = [
     '<%= config.bin %> dataset update 12345 --title "New Title"',
+    '<%= config.bin %> dataset update 12345 --title "New Title" --json',
   ]
 
   static flags = {
@@ -25,6 +26,10 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
 
     const body: Record<string, unknown> = {}
     if (flags.title) body.title = flags.title
+
+    if (Object.keys(body).length === 0) {
+      this.error('Provide at least one field to update (--title).', {exit: 1})
+    }
 
     const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}`, body, this.accountHeaders)
 

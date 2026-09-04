@@ -15,4 +15,10 @@ describe('dataset set-column-metadata', () => {
     const {stdout} = await runCommand(['dataset', 'set-column-metadata', '123', '--columns', '[{"columnId":"date","description":"Updated"}]'], {root: process.cwd()})
     expect(stdout).to.exist
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'set-column-metadata', '123', '--columns', '[{"columnId":"date","description":"Updated"}]', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('object')
+  })
 })

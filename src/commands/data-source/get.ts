@@ -29,6 +29,7 @@ export default class DataSourceGet extends BaseCommand<typeof DataSourceGet> {
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceGet)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     const response = await this.apiClient.get<DataSourceDetail>(`/v2/data-sources/${args.dataSourceId}`, undefined, this.accountHeaders)
 

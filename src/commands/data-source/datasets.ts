@@ -37,6 +37,7 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceDatasets)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     const query: Record<string, string | number | undefined> = {
       dataSourceId: args.dataSourceId,

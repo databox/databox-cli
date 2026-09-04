@@ -22,4 +22,10 @@ describe('data-source get', () => {
     expect(stdout).to.include('My Source')
     expect(stdout).to.include('42')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['data-source', 'get', '42', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal(42)
+  })
 })

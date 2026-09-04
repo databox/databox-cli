@@ -12,6 +12,7 @@ export default class MetricUpdate extends BaseCommand<typeof MetricUpdate> {
 
   static examples = [
     '<%= config.bin %> metric update "500|custom_query_100" --name "New Name"',
+    '<%= config.bin %> metric update "500|custom_query_100" --name "New Name" --json',
   ]
 
   static flags = {

@@ -8,6 +8,7 @@ export default class MetricDrilldown extends BaseCommand<typeof MetricDrilldown>
 
   static examples = [
     '<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --dataset-id 123 --start-timestamp 1704067200 --end-timestamp 1706745600',
+    '<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --dataset-id 123 --start-timestamp 1704067200 --end-timestamp 1706745600 --json',
   ]
 
   static flags = {

@@ -24,4 +24,16 @@ describe('metric dimension-values', () => {
     ], {root: process.cwd()})
     expect(stdout).to.include('US')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand([
+      'metric', 'dimension-values',
+      '--metric-id', 'test',
+      '--dimension', 'country',
+      '--dataset-id', '123',
+      '--json',
+    ], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('array')
+  })
 })

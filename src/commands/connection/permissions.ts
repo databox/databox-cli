@@ -17,6 +17,7 @@ export default class ConnectionPermissions extends BaseCommand<typeof Connection
 
   async run(): Promise<void> {
     const {args} = await this.parse(ConnectionPermissions)
+    this.requireNumericId(args.connectionId, 'Connection ID')
 
     const response = await this.apiClient.get(`/v2/connections/${args.connectionId}/permissions`, undefined, this.accountHeaders)
 

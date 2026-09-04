@@ -31,4 +31,10 @@ describe('connection list', () => {
     const {stdout} = await runCommand(['connection', 'list'], {root: process.cwd()})
     expect(stdout).to.include('GA4 Connection')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['connection', 'list', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('array')
+  })
 })

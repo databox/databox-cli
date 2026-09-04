@@ -21,6 +21,7 @@ export default class ClientDelete extends BaseCommand<typeof ClientDelete> {
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(ClientDelete)
+    this.requireNumericId(args.clientId, 'Client ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to delete client account ${args.clientId}?`)

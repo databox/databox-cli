@@ -19,4 +19,10 @@ describe('dataset ingestion-statistics', () => {
     const {stdout} = await runCommand(['dataset', 'ingestion-statistics', '123'], {root: process.cwd()})
     expect(stdout).to.include('10')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'ingestion-statistics', '123', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.totalIngestions).to.equal(10)
+  })
 })

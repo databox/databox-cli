@@ -17,6 +17,7 @@ export default class ClientGet extends BaseCommand<typeof ClientGet> {
 
   async run(): Promise<void> {
     const {args} = await this.parse(ClientGet)
+    this.requireNumericId(args.clientId, 'Client ID')
 
     const response = await this.apiClient.get(`/v2/clients/${args.clientId}`, undefined, this.accountHeaders)
 

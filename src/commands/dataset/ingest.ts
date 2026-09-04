@@ -44,10 +44,22 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
     let records: unknown[]
 
     if (flags.records) {
-      records = JSON.parse(flags.records) as unknown[]
+      try {
+        records = JSON.parse(flags.records) as unknown[]
+      } catch {
+        this.error('Invalid JSON in --records. Expected a JSON array of records.', {exit: 2})
+      }
     } else if (flags.file) {
+      if (!fs.existsSync(flags.file)) {
+        this.error(`File not found: ${flags.file}`, {exit: 2})
+      }
+
       const fileContent = fs.readFileSync(flags.file, 'utf-8')
-      records = JSON.parse(fileContent) as unknown[]
+      try {
+        records = JSON.parse(fileContent) as unknown[]
+      } catch {
+        this.error(`Invalid JSON in file "${flags.file}". Expected a JSON array of records.`, {exit: 2})
+      }
     } else if (!process.stdin.isTTY) {
       const chunks: Buffer[] = []
       for await (const chunk of process.stdin) {
@@ -55,7 +67,11 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
       }
 
       const input = Buffer.concat(chunks).toString('utf-8')
-      records = JSON.parse(input) as unknown[]
+      try {
+        records = JSON.parse(input) as unknown[]
+      } catch {
+        this.error('Invalid JSON from stdin. Expected a JSON array of records.', {exit: 2})
+      }
     } else {
       this.error('Provide data via --records, --file, or stdin pipe.', {exit: 1})
     }

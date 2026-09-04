@@ -17,6 +17,7 @@ export default class UserGet extends BaseCommand<typeof UserGet> {
 
   async run(): Promise<void> {
     const {args} = await this.parse(UserGet)
+    this.requireNumericId(args.userId, 'User ID')
 
     const response = await this.apiClient.get(`/v2/users/${args.userId}`, undefined, this.accountHeaders)
 

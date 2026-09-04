@@ -29,4 +29,10 @@ describe('dataset list', () => {
     expect(stdout).to.include('My Dataset')
     expect(stdout).to.include('123')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'list', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('array')
+  })
 })

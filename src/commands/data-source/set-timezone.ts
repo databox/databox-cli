@@ -14,6 +14,7 @@ export default class DataSourceSetTimezone extends BaseCommand<typeof DataSource
 
   static examples = [
     '<%= config.bin %> data-source set-timezone 12345 --timezone "US/Eastern"',
+    '<%= config.bin %> data-source set-timezone 12345 --timezone "Europe/London"',
   ]
 
   static flags = {
@@ -22,6 +23,7 @@ export default class DataSourceSetTimezone extends BaseCommand<typeof DataSource
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceSetTimezone)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     await this.apiClient.put(`/v2/data-sources/${args.dataSourceId}/timezone`, {timezone: this.flags.timezone}, this.accountHeaders)
 

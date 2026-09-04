@@ -31,4 +31,10 @@ describe('integration list', () => {
     const {stdout} = await runCommand(['integration', 'list'], {root: process.cwd()})
     expect(stdout).to.include('Google Analytics 4')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['integration', 'list', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('array')
+  })
 })

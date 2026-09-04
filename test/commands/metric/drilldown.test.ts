@@ -29,4 +29,17 @@ describe('metric drilldown', () => {
     ], {root: process.cwd()})
     expect(stdout).to.not.be.empty
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand([
+      'metric', 'drilldown',
+      '--metric-id', 'test',
+      '--dataset-id', '123',
+      '--start-timestamp', '1704067200',
+      '--end-timestamp', '1706745600',
+      '--json',
+    ], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.have.property('items')
+  })
 })

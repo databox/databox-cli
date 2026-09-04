@@ -28,4 +28,10 @@ describe('connection set-permissions', () => {
     const {stdout} = await runCommand(['connection', 'set-permissions', '1', '--access-level', 'everyone'], {root: process.cwd()})
     expect(stdout).to.include('everyone')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['connection', 'set-permissions', '1', '--access-level', 'everyone', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.accessLevel).to.equal('everyone')
+  })
 })

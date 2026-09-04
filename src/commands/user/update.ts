@@ -21,6 +21,7 @@ export default class UserUpdate extends BaseCommand<typeof UserUpdate> {
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(UserUpdate)
+    this.requireNumericId(args.userId, 'User ID')
 
     const response = await this.apiClient.patch(`/v2/users/${args.userId}`, {
       role: flags.role,

@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {formatSingle} from '../../lib/output.js'
 
 export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSetPermissions> {
   static args = {
@@ -11,6 +12,7 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
 
   static examples = [
     '<%= config.bin %> dataset set-permissions 12345 --access-level everyone',
+    '<%= config.bin %> dataset set-permissions 12345 --access-level specific_users',
   ]
 
   static flags = {
@@ -25,8 +27,12 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    await this.apiClient.put(`/v2/datasets/${args.datasetId}/permissions`, {accessLevel: flags['access-level']}, this.accountHeaders)
+    const response = await this.apiClient.put<Record<string, unknown>>(
+      `/v2/datasets/${args.datasetId}/permissions`,
+      {accessLevel: flags['access-level']},
+      this.accountHeaders,
+    )
 
-    this.log(`Permissions updated for dataset ${args.datasetId}.`)
+    formatSingle(response, this.flags.json)
   }
 }

@@ -45,19 +45,18 @@ export default class DatasetData extends BaseCommand<typeof DatasetData> {
       this.accountHeaders,
     )
 
-    if (this.flags.json) {
-      console.log(JSON.stringify(response, null, 2))
-    } else if (response.items.length === 0) {
-      console.log('No data found.')
-    } else {
-      const keys = Object.keys(response.items[0])
-      formatOutput(
-        response.items,
-        keys.map((k) => ({header: k, get: (row: Record<string, unknown>) => String(row[k] ?? '')})),
-        false,
-      )
-
-      showPagination(response.pagination, this.flags.json)
+    if (response.items.length === 0 && !this.flags.json) {
+      this.log('No results found.')
+      return
     }
+
+    const keys = response.items.length > 0 ? Object.keys(response.items[0]) : []
+    formatOutput(
+      response.items,
+      keys.map((k) => ({header: k, get: (row: Record<string, unknown>) => String(row[k] ?? '')})),
+      this.flags.json,
+    )
+
+    showPagination(response.pagination, this.flags.json)
   }
 }

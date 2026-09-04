@@ -19,4 +19,10 @@ describe('metric usages', () => {
     const {stdout} = await runCommand(['metric', 'usages', '42|custom_query_1'], {root: process.cwd()})
     expect(stdout).to.include('Dashboard')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['metric', 'usages', '42|custom_query_1', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.have.property('items')
+  })
 })

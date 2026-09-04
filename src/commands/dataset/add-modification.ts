@@ -12,6 +12,7 @@ export default class DatasetAddModification extends BaseCommand<typeof DatasetAd
 
   static examples = [
     '<%= config.bin %> dataset add-modification 12345 --data \'{"columnId":"revenue","type":"sum"}\'',
+    '<%= config.bin %> dataset add-modification 12345 --data \'{"columnId":"revenue","type":"sum"}\' --json',
   ]
 
   static flags = {
@@ -26,7 +27,12 @@ export default class DatasetAddModification extends BaseCommand<typeof DatasetAd
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const body = JSON.parse(flags.data) as Record<string, unknown>
+    let body: Record<string, unknown>
+    try {
+      body = JSON.parse(flags.data) as Record<string, unknown>
+    } catch {
+      this.error('Invalid JSON for --data. Expected a JSON object.', {exit: 2})
+    }
 
     const response = await this.apiClient.post(`/v2/datasets/${args.datasetId}/modifications`, body, this.accountHeaders)
 

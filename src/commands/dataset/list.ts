@@ -31,21 +31,23 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
 
   static flags = {
     'data-source-id': Flags.string({description: 'Filter by data source ID'}),
-    page: Flags.integer({description: 'Page number (0-indexed)', default: 0}),
-    'page-size': Flags.integer({description: 'Number of items per page', default: 25}),
+    page: Flags.integer({description: 'Page number (0-indexed)'}),
+    'page-size': Flags.integer({description: 'Number of items per page'}),
     search: Flags.string({description: 'Search by name'}),
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number> = {
-      page: this.flags.page ?? 0,
-      pageSize: this.flags['page-size'] ?? 25,
-    }
-
+    const query: Record<string, string | number | undefined> = {}
+    if (this.flags.page !== undefined) query.page = this.flags.page
+    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
     if (this.flags.search) query.search = this.flags.search
     if (this.flags['data-source-id']) query.dataSourceId = this.flags['data-source-id']
 
-    const response = await this.apiClient.get<DatasetListResponse>('/v2/datasets', query, this.accountHeaders)
+    const response = await this.apiClient.get<DatasetListResponse>(
+      '/v2/datasets',
+      Object.keys(query).length > 0 ? query : undefined,
+      this.accountHeaders,
+    )
 
     formatOutput(
       response.items,

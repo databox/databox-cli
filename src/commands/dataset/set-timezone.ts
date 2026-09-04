@@ -11,6 +11,7 @@ export default class DatasetSetTimezone extends BaseCommand<typeof DatasetSetTim
 
   static examples = [
     '<%= config.bin %> dataset set-timezone 12345 --timezone "US/Eastern"',
+    '<%= config.bin %> dataset set-timezone 12345 --timezone "Europe/London"',
   ]
 
   static flags = {

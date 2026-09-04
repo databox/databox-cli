@@ -32,4 +32,10 @@ describe('activity-log list', () => {
     expect(stdout).to.include('created')
     expect(stdout).to.include('dataset')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['activity-log', 'list', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.be.an('array')
+  })
 })

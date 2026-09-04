@@ -21,4 +21,10 @@ describe('data-source update', () => {
     const {stdout} = await runCommand(['data-source', 'update', '42', '--title', 'Updated'], {root: process.cwd()})
     expect(stdout).to.include('Updated')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['data-source', 'update', '42', '--title', 'Updated', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal(42)
+  })
 })

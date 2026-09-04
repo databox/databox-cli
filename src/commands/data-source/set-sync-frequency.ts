@@ -14,6 +14,7 @@ export default class DataSourceSetSyncFrequency extends BaseCommand<typeof DataS
 
   static examples = [
     '<%= config.bin %> data-source set-sync-frequency 12345 --interval 60',
+    '<%= config.bin %> data-source set-sync-frequency 12345 --interval 1440',
   ]
 
   static flags = {
@@ -22,6 +23,7 @@ export default class DataSourceSetSyncFrequency extends BaseCommand<typeof DataS
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceSetSyncFrequency)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     await this.apiClient.put(`/v2/data-sources/${args.dataSourceId}/sync-frequency`, {interval: this.flags.interval}, this.accountHeaders)
 

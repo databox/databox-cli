@@ -31,6 +31,7 @@ export default class DatasetIngestion extends BaseCommand<typeof DatasetIngestio
 
     const response = await this.apiClient.get<IngestionResponse>(
       `/v2/datasets/${args.datasetId}/ingestions/${args.ingestionId}`,
+      undefined,
       this.accountHeaders,
     )
 

@@ -17,6 +17,7 @@ export default class DataboardMetrics extends BaseCommand<typeof DataboardMetric
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataboardMetrics)
+    this.requireNumericId(args.databoardId, 'Databoard ID')
 
     const response = await this.apiClient.get(`/v2/databoards/${args.databoardId}/metrics`, undefined, this.accountHeaders)
 

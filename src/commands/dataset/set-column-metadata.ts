@@ -12,6 +12,7 @@ export default class DatasetSetColumnMetadata extends BaseCommand<typeof Dataset
 
   static examples = [
     '<%= config.bin %> dataset set-column-metadata 12345 --columns \'[{"columnId":"revenue","displayName":"Revenue ($)"}]\'',
+    '<%= config.bin %> dataset set-column-metadata 12345 --columns \'[{"columnId":"revenue","displayName":"Revenue ($)"}]\' --json',
   ]
 
   static flags = {
@@ -26,7 +27,12 @@ export default class DatasetSetColumnMetadata extends BaseCommand<typeof Dataset
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const columns = JSON.parse(flags.columns) as Array<{columnId: string; description?: string; displayName?: string}>
+    let columns: Array<{columnId: string; description?: string; displayName?: string}>
+    try {
+      columns = JSON.parse(flags.columns) as Array<{columnId: string; description?: string; displayName?: string}>
+    } catch {
+      this.error('Invalid JSON for --columns. Expected format: [{"columnId":"...","label":"..."}]', {exit: 2})
+    }
 
     const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/column-metadata`, {columns}, this.accountHeaders)
 

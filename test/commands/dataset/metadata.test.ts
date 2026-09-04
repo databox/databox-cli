@@ -15,4 +15,10 @@ describe('dataset metadata', () => {
     const {stdout} = await runCommand(['dataset', 'metadata', '123'], {root: process.cwd()})
     expect(stdout).to.include('Test dataset')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'metadata', '123', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.description).to.equal('Test dataset')
+  })
 })

@@ -27,6 +27,7 @@ export default class DataSourceDelete extends BaseCommand<typeof DataSourceDelet
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DataSourceDelete)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to delete data source ${args.dataSourceId}?`)

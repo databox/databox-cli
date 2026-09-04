@@ -27,7 +27,17 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
 
     const body: Record<string, unknown> = {}
     if (flags.description !== undefined) body.description = flags.description
-    if (flags.tags) body.tags = JSON.parse(flags.tags) as string[]
+    if (flags.tags) {
+      try {
+        body.tags = JSON.parse(flags.tags) as string[]
+      } catch {
+        this.error('Invalid JSON for --tags. Expected format: \'["tag1","tag2"]\'', {exit: 2})
+      }
+    }
+
+    if (Object.keys(body).length === 0) {
+      this.error('Provide at least one field to update (--description or --tags).', {exit: 1})
+    }
 
     const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/metadata`, body, this.accountHeaders)
 

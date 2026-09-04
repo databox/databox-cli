@@ -16,4 +16,10 @@ describe('dataset duplicate', () => {
     expect(stdout).to.include('456')
     expect(stdout).to.include('My Dataset (copy)')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'duplicate', '123', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal(456)
+  })
 })

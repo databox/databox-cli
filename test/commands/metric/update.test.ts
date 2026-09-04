@@ -19,4 +19,10 @@ describe('metric update', () => {
     const {stdout} = await runCommand(['metric', 'update', '42|custom_query_1', '--name', 'Updated'], {root: process.cwd()})
     expect(stdout).to.include('Updated')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['metric', 'update', '42|custom_query_1', '--name', 'Updated', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal('42|custom_query_1')
+  })
 })

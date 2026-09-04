@@ -21,6 +21,7 @@ export default class ConnectionDelete extends BaseCommand<typeof ConnectionDelet
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(ConnectionDelete)
+    this.requireNumericId(args.connectionId, 'Connection ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to delete connection ${args.connectionId}?`)

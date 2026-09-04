@@ -27,6 +27,7 @@ export default class DataSourcePurge extends BaseCommand<typeof DataSourcePurge>
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DataSourcePurge)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to purge all data from data source ${args.dataSourceId}?`)

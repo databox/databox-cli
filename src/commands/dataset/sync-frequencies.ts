@@ -21,6 +21,7 @@ export default class DatasetSyncFrequencies extends BaseCommand<typeof DatasetSy
 
   static examples = [
     '<%= config.bin %> dataset sync-frequencies 12345',
+    '<%= config.bin %> dataset sync-frequencies 12345 --json',
   ]
 
   async run(): Promise<void> {
@@ -30,6 +31,7 @@ export default class DatasetSyncFrequencies extends BaseCommand<typeof DatasetSy
 
     const response = await this.apiClient.get<SyncFrequenciesResponse>(
       `/v2/datasets/${args.datasetId}/available-sync-frequencies`,
+      undefined,
       this.accountHeaders,
     )
 

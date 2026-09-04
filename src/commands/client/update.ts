@@ -23,6 +23,7 @@ export default class ClientUpdate extends BaseCommand<typeof ClientUpdate> {
 
   async run(): Promise<void> {
     const {args} = await this.parse(ClientUpdate)
+    this.requireNumericId(args.clientId, 'Client ID')
 
     const body: Record<string, unknown> = {}
     if (this.flags.name) body.name = this.flags.name

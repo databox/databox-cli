@@ -13,4 +13,10 @@ describe('dataset preview-modification', () => {
     const {stdout} = await runCommand(['dataset', 'preview-modification', '123', '--data', '{"rules":{}}'])
     expect(stdout).to.include('Items')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'preview-modification', '123', '--data', '{"rules":{}}', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.have.property('items')
+  })
 })

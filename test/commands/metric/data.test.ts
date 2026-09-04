@@ -30,4 +30,18 @@ describe('metric data', () => {
     ], {root: process.cwd()})
     expect(stdout).to.include('Revenue')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand([
+      'metric', 'data',
+      '--metric-id', 'test',
+      '--date-from', '2024-01-01',
+      '--date-to', '2024-12-31',
+      '--granularity', 'daily',
+      '--dataset-id', '123',
+      '--json',
+    ], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.have.property('metric')
+  })
 })

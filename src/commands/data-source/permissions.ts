@@ -20,6 +20,7 @@ export default class DataSourcePermissions extends BaseCommand<typeof DataSource
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourcePermissions)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     const response = await this.apiClient.get<Record<string, unknown>>(
       `/v2/data-sources/${args.dataSourceId}/permissions`,

@@ -21,6 +21,7 @@ export default class UserDelete extends BaseCommand<typeof UserDelete> {
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(UserDelete)
+    this.requireNumericId(args.userId, 'User ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to remove user ${args.userId}?`)

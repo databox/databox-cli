@@ -15,4 +15,10 @@ describe('dataset add-modification', () => {
     const {stdout} = await runCommand(['dataset', 'add-modification', '123', '--data', '{"type":"rename","from":"old","to":"new"}'], {root: process.cwd()})
     expect(stdout).to.not.be.empty
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'add-modification', '123', '--data', '{"type":"rename","from":"old","to":"new"}', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal(2)
+  })
 })

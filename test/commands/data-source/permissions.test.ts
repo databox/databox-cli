@@ -21,4 +21,10 @@ describe('data-source permissions', () => {
     const {stdout} = await runCommand(['data-source', 'permissions', '42'], {root: process.cwd()})
     expect(stdout).to.include('everyone')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['data-source', 'permissions', '42', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.accessLevel).to.equal('everyone')
+  })
 })

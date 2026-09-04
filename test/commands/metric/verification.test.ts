@@ -19,4 +19,10 @@ describe('metric verification', () => {
     const {stdout} = await runCommand(['metric', 'verification', '42|custom_query_1'], {root: process.cwd()})
     expect(stdout).to.include('verified')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['metric', 'verification', '42|custom_query_1', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.status).to.equal('verified')
+  })
 })

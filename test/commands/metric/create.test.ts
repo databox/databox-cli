@@ -25,4 +25,17 @@ describe('metric create', () => {
     ], {root: process.cwd()})
     expect(stdout).to.include('Revenue')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand([
+      'metric', 'create',
+      '--name', 'Revenue',
+      '--dataset-id', '123',
+      '--measure', '{"id":"amount","name":"Amount"}',
+      '--date', '{"id":"date","name":"Date"}',
+      '--json',
+    ], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal('42|custom_query_2')
+  })
 })

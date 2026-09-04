@@ -17,6 +17,7 @@ export default class ConnectionGet extends BaseCommand<typeof ConnectionGet> {
 
   async run(): Promise<void> {
     const {args} = await this.parse(ConnectionGet)
+    this.requireNumericId(args.connectionId, 'Connection ID')
 
     const response = await this.apiClient.get(`/v2/connections/${args.connectionId}`, undefined, this.accountHeaders)
 

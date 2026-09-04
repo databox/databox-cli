@@ -11,6 +11,7 @@ export default class DatasetSetSyncFrequency extends BaseCommand<typeof DatasetS
 
   static examples = [
     '<%= config.bin %> dataset set-sync-frequency 12345 --interval 60',
+    '<%= config.bin %> dataset set-sync-frequency 12345 --interval 1440',
   ]
 
   static flags = {

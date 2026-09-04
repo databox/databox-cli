@@ -21,6 +21,7 @@ export default class ConnectionSetPermissions extends BaseCommand<typeof Connect
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(ConnectionSetPermissions)
+    this.requireNumericId(args.connectionId, 'Connection ID')
 
     const response = await this.apiClient.put(`/v2/connections/${args.connectionId}/permissions`, {
       accessLevel: flags['access-level'],

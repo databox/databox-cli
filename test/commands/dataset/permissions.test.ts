@@ -15,4 +15,10 @@ describe('dataset permissions', () => {
     const {stdout} = await runCommand(['dataset', 'permissions', '123'], {root: process.cwd()})
     expect(stdout).to.include('everyone')
   })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'permissions', '123', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.accessLevel).to.equal('everyone')
+  })
 })
