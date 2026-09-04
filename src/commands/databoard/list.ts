@@ -6,7 +6,7 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 interface Databoard {
   id: number
   name: string
-  sourceTypes: string[]
+  integrationKeys: string[]
   tags: string[]
 }
 
@@ -52,7 +52,7 @@ export default class DataboardList extends BaseCommand<typeof DataboardList> {
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
         {get: (row) => row.tags.join(', '), header: 'Tags'},
-        {get: (row) => row.sourceTypes.join(', '), header: 'Source Types'},
+        {get: (row) => row.integrationKeys.join(', '), header: 'Integrations'},
       ],
       this.flags.json,
     )

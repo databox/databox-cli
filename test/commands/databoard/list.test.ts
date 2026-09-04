@@ -14,7 +14,7 @@ describe('databoard list', () => {
           status: 'success',
           requestId: 'test',
           data: {
-            items: [{id: 1, name: 'Marketing Dashboard', tags: ['marketing'], sourceTypes: ['GoogleAnalytics4']}],
+            items: [{id: 1, name: 'Marketing Dashboard', tags: ['marketing'], integrationKeys: ['GoogleAnalytics4']}],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
         },
