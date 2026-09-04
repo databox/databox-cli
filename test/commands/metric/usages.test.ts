@@ -1,0 +1,28 @@
+import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
+
+import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+
+describe('metric usages', () => {
+  beforeEach(() => {
+    setupTestConfig()
+    mockApi([{
+      method: 'GET',
+      path: '/v2/metrics/42%7Ccustom_query_1/usages',
+      response: {status: 'success', requestId: 'test', data: {items: [{type: 'databoard', id: 1, name: 'Dashboard'}]}},
+    }])
+  })
+
+  afterEach(() => { restoreApi(); cleanupTestConfig() })
+
+  it('shows metric usages', async () => {
+    const {stdout} = await runCommand(['metric', 'usages', '42|custom_query_1'], {root: process.cwd()})
+    expect(stdout).to.include('Dashboard')
+  })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand(['metric', 'usages', '42|custom_query_1', '--json'], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed).to.have.property('items')
+  })
+})

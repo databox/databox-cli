@@ -1,5 +1,5 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
 import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
 
@@ -9,14 +9,16 @@ describe('data-source create', () => {
     mockApi([
       {
         method: 'POST',
-        path: '/v1/data-sources',
+        path: '/v2/data-sources',
         response: {
-          id: 42,
-          title: 'NewSource',
-          created: '2024-01-01T00:00:00Z',
-          timezone: 'UTC',
-          key: 'ns_1',
-          ingestionSupported: true,
+          status: 'success',
+          requestId: 'test',
+          data: {
+            id: 42,
+            title: 'NewSource',
+            integrationKey: 'DataboxAPI',
+            timezone: 'UTC',
+          },
         },
       },
     ])

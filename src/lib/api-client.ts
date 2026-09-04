@@ -18,6 +18,12 @@ export interface ApiErrorResponse {
   errors?: ApiError[]
 }
 
+interface ApiEnvelope<T> {
+  data: T
+  requestId: string
+  status: string
+}
+
 export class ApiRequestError extends Error {
   constructor(
     message: string,
@@ -38,22 +44,38 @@ export class ApiClient {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
   }
 
-  async get<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
+  async get<T>(path: string, query?: Record<string, string | number | undefined>, headers?: Record<string, string>): Promise<T> {
     const url = this.buildUrl(path, query)
-    return this.request<T>(url, {method: 'GET'})
+    return this.request<T>(url, {method: 'GET'}, headers)
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
+  async post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const url = this.buildUrl(path)
     return this.request<T>(url, {
       body: body ? JSON.stringify(body) : undefined,
       method: 'POST',
-    })
+    }, headers)
   }
 
-  async delete<T>(path: string): Promise<T> {
+  async patch<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const url = this.buildUrl(path)
-    return this.request<T>(url, {method: 'DELETE'})
+    return this.request<T>(url, {
+      body: body ? JSON.stringify(body) : undefined,
+      method: 'PATCH',
+    }, headers)
+  }
+
+  async put<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+    const url = this.buildUrl(path)
+    return this.request<T>(url, {
+      body: body ? JSON.stringify(body) : undefined,
+      method: 'PUT',
+    }, headers)
+  }
+
+  async delete<T>(path: string, headers?: Record<string, string>): Promise<T> {
+    const url = this.buildUrl(path)
+    return this.request<T>(url, {method: 'DELETE'}, headers)
   }
 
   private buildUrl(path: string, query?: Record<string, string | number | undefined>): string {
@@ -69,10 +91,11 @@ export class ApiClient {
     return url.toString()
   }
 
-  private async request<T>(url: string, init: RequestInit): Promise<T> {
+  private async request<T>(url: string, init: RequestInit, extraHeaders?: Record<string, string>): Promise<T> {
     const headers: Record<string, string> = {
       'Accept': 'application/json',
       'x-api-key': this.apiKey,
+      ...extraHeaders,
     }
 
     if (init.body) {
@@ -102,6 +125,7 @@ export class ApiClient {
       throw new ApiRequestError(message, response.status, errors)
     }
 
-    return (await response.json()) as T
+    const json = (await response.json()) as ApiEnvelope<T>
+    return json.data
   }
 }

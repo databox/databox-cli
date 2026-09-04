@@ -43,7 +43,7 @@ export default class Login extends Command {
 
     try {
       const client = new ApiClient({apiKey, baseUrl})
-      await client.get('/v1/auth/validate-key')
+      await client.get('/v2/auth/validate-key')
       this.log('Authenticated successfully.')
     } catch {
       this.warn('Warning: API key could not be validated.')

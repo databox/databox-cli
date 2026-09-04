@@ -9,16 +9,21 @@ describe('account datasets', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/accounts/123/datasets',
+        path: '/v2/datasets',
         response: {
-          datasets: [
-            {
-              id: 'ds-1',
-              dataSourceId: 10,
-              title: 'Dataset One',
-              created: '2024-01-01T00:00:00Z',
-            },
-          ],
+          status: 'success',
+          requestId: 'test',
+          data: {
+            items: [
+              {
+                id: 100,
+                dataSourceId: 10,
+                title: 'Dataset One',
+                createdAt: '2024-01-01T00:00:00Z',
+              },
+            ],
+            pagination: {page: 0, pageSize: 25, totalItems: 1},
+          },
         },
       },
     ])
@@ -29,16 +34,16 @@ describe('account datasets', () => {
     cleanupTestConfig()
   })
 
-  it('lists datasets for account', async () => {
-    const {stdout} = await runCommand(['account', 'datasets', '123'], {root: process.cwd()})
+  it('lists datasets', async () => {
+    const {stdout} = await runCommand(['account', 'datasets'], {root: process.cwd()})
     expect(stdout).to.contain('Dataset One')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['account', 'datasets', '123', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['account', 'datasets', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
     expect(parsed).to.have.lengthOf(1)
-    expect(parsed[0]).to.deep.include({id: 'ds-1', dataSourceId: 10, title: 'Dataset One'})
+    expect(parsed[0]).to.deep.include({id: 100, dataSourceId: 10, title: 'Dataset One'})
   })
 })

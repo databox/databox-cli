@@ -16,7 +16,7 @@ describe('env var concurrency', () => {
       const apiKey = headers?.['x-api-key'] ?? 'unknown'
       capturedKeys.push(apiKey)
 
-      return new Response(JSON.stringify({status: 'ok'}), {
+      return new Response(JSON.stringify({status: 'success', requestId: 'test', data: {}}), {
         headers: {'Content-Type': 'application/json'},
         status: 200,
       })
@@ -69,7 +69,6 @@ describe('env var concurrency', () => {
   it('different api keys do not leak between commands', async () => {
     cleanupTestConfig()
 
-    // Each command gets its own api key — verify no cross-contamination
     const r1 = await runCommand(['auth', 'validate', '--api-key', 'process-a-key'], {root: process.cwd()})
     expect(r1.error).to.be.undefined
     expect(capturedKeys).to.deep.equal(['process-a-key'])

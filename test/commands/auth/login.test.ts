@@ -1,5 +1,5 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
 import {cleanupTestConfig, mockApi, restoreApi} from '../../helpers.js'
 
@@ -13,8 +13,8 @@ describe('auth login', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/auth/validate-key',
-        response: {status: 'ok'},
+        path: '/v2/auth/validate-key',
+        response: {status: 'success', requestId: 'test', data: {}},
       },
     ])
 
@@ -27,8 +27,8 @@ describe('auth login', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/auth/validate-key',
-        response: {errors: [{message: 'Invalid API key'}]},
+        path: '/v2/auth/validate-key',
+        response: {status: 'error', requestId: 'test', errors: [{message: 'Invalid API key'}]},
         status: 401,
       },
     ])

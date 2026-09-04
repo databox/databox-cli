@@ -4,5 +4,5 @@ node_modules/
 oclif.manifest.json
 .DS_Store
 .agents/
-.claude/
+.claude/settings.json
 skills-lock.json

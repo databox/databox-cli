@@ -9,18 +9,22 @@ describe('account data-sources', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/accounts/123/data-sources',
+        path: '/v2/data-sources',
         response: {
-          dataSources: [
-            {
-              id: 10,
-              title: 'My Source',
-              created: '2024-01-01T00:00:00Z',
-              timezone: 'UTC',
-              key: 'src_1',
-              ingestionSupported: true,
-            },
-          ],
+          status: 'success',
+          requestId: 'test',
+          data: {
+            items: [
+              {
+                id: 10,
+                title: 'My Source',
+                integrationKey: 'DataboxAPI',
+                timezone: 'UTC',
+                connectionId: null,
+              },
+            ],
+            pagination: {page: 0, pageSize: 25, totalItems: 1},
+          },
         },
       },
     ])
@@ -31,13 +35,13 @@ describe('account data-sources', () => {
     cleanupTestConfig()
   })
 
-  it('lists data sources for account', async () => {
-    const {stdout} = await runCommand(['account', 'data-sources', '123'], {root: process.cwd()})
+  it('lists data sources', async () => {
+    const {stdout} = await runCommand(['account', 'data-sources'], {root: process.cwd()})
     expect(stdout).to.contain('My Source')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['account', 'data-sources', '123', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['account', 'data-sources', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
     expect(parsed).to.have.lengthOf(1)

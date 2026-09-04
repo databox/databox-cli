@@ -1,11 +1,11 @@
 ---
 name: databox-data-sources
-description: Use when the user wants to create, delete, or manage Databox data sources, or list datasets linked to a data source. Triggers on mentions of data source creation, deletion, or data source management in Databox.
+description: Use when the user wants to create, manage, or inspect Databox data sources — including timezone, sync frequency, permissions, and purging. Triggers on mentions of data source creation, deletion, configuration, or management in Databox.
 ---
 
 # Databox Data Source Management
 
-Create, delete, and inspect data sources via the `databox` CLI.
+Full data source lifecycle — list, create, configure, and delete — via the `databox` CLI.
 
 ## Prerequisites
 
@@ -15,44 +15,43 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 
 | Task | Command |
 |------|---------|
-| List data sources | `databox account data-sources ACCOUNT_ID` |
-| List data sources (JSON) | `databox account data-sources ACCOUNT_ID --json` |
+| List data sources | `databox data-source list` |
+| Search data sources | `databox data-source list --search "analytics"` |
+| Get data source details | `databox data-source get ID` |
 | Create data source | `databox data-source create --title "Name"` |
-| Create with options | `databox data-source create --title "Name" --timezone "US/Eastern" --key my_key --account-id 123` |
-| Delete data source | `databox data-source delete ID --force` |
+| Create with key | `databox data-source create --title "Name" --key Datadoo` |
+| Update title | `databox data-source update ID --title "New Name"` |
+| Set timezone | `databox data-source set-timezone ID --timezone "US/Eastern"` |
+| View sync frequencies | `databox data-source sync-frequencies ID` |
+| Set sync frequency | `databox data-source set-sync-frequency ID --interval 60` |
+| View permissions | `databox data-source permissions ID` |
+| Set permissions | `databox data-source set-permissions ID --access-level everyone` |
 | List linked datasets | `databox data-source datasets ID` |
-
-## Create Flags
-
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--title` | Yes | Name of the data source |
-| `--account-id` | No | Account to create in |
-| `--timezone` | No | Timezone (run `databox account timezones` for options) |
-| `--key` | No | Unique identifier key |
+| Purge all data | `databox data-source purge ID --force` |
+| Delete data source | `databox data-source delete ID --force` |
 
 ## Common Workflow: Set Up a New Data Source
 
 ```bash
-# 1. Find your account ID
-databox account list
+# 1. Create a data source
+databox data-source create --title "My API Data" --timezone "UTC" --json
+# Returns: {"id": 42, ...}
 
-# 2. List existing data sources for the account
-databox account data-sources ACCOUNT_ID
+# 2. Create a dataset under it
+databox dataset create --title "Daily Metrics" --data-source-id 42
 
-# 3. Create a new data source
-databox data-source create --title "My API Data" --timezone "UTC"
-
-# 4. Note the returned ID, then create a dataset for it
-databox dataset create --title "Daily Metrics" --data-source-id ID
+# 3. Push data
+databox dataset ingest 67890 --file data.json
 ```
 
 ## Destructive Operations
 
-`data-source delete` prompts for confirmation. Use `--force` to skip when scripting.
+These commands prompt for confirmation. Use `--force` to skip when scripting:
+- `data-source delete` — removes the data source entirely
+- `data-source purge` — removes all data but keeps the data source
 
 ## Notes
 
 - All commands support `--json` for machine-readable output
-- Data source IDs are numeric (e.g. `42`)
-- Deleting a data source may affect linked datasets
+- Data source IDs are numeric (e.g., `42`)
+- The `--key` flag on create sets the integration key for third-party integrations (e.g., Datadoo)

@@ -1,61 +1,56 @@
-import {Args, Flags} from '@oclif/core'
+import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Dataset {
-  created: string
+  createdAt: string
   dataSourceId: number
-  id: string
+  id: number
   title: string
 }
 
 interface DatasetListResponse {
-  datasets: Dataset[]
+  items: Dataset[]
+  pagination?: {page: number; pageSize: number; totalItems: number}
 }
 
 export default class AccountDatasets extends BaseCommand<typeof AccountDatasets> {
-  static args = {
-    accountId: Args.string({description: 'The account ID to list datasets for', required: true}),
-  }
-
-  static description = 'List datasets for a specific account'
+  static description = 'List datasets for the current account'
 
   static examples = [
-    '<%= config.bin %> account datasets 12345',
-    '<%= config.bin %> account datasets 12345 --type datasets',
-    '<%= config.bin %> account datasets 12345 --page 1 --page-size 20',
-    '<%= config.bin %> account datasets 12345 --json',
+    '<%= config.bin %> account datasets',
+    '<%= config.bin %> account datasets --page 0 --page-size 20',
+    '<%= config.bin %> account datasets --json',
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number'}),
+    page: Flags.integer({description: 'Page number (0-indexed)'}),
     'page-size': Flags.integer({description: 'Number of items per page'}),
-    type: Flags.string({description: 'Filter by dataset type', options: ['datasets', 'merged_datasets']}),
   }
 
   async run(): Promise<void> {
-    const {args} = await this.parse(AccountDatasets)
-
-    const query: Record<string, string> = {}
-    if (this.flags.type) query.type = this.flags.type
-    if (this.flags.page !== undefined) query.page = String(this.flags.page)
-    if (this.flags['page-size'] !== undefined) query.pageSize = String(this.flags['page-size'])
+    const query: Record<string, string | number | undefined> = {}
+    if (this.flags.page !== undefined) query.page = this.flags.page
+    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
     const response = await this.apiClient.get<DatasetListResponse>(
-      `/v1/accounts/${args.accountId}/datasets`,
+      '/v2/datasets',
       Object.keys(query).length > 0 ? query : undefined,
+      this.accountHeaders,
     )
 
     formatOutput(
-      response.datasets,
+      response.items,
       [
         {header: 'ID', key: 'id'},
         {header: 'Data Source ID', key: 'dataSourceId'},
         {header: 'Title', key: 'title'},
-        {header: 'Created', key: 'created'},
+        {header: 'Created', key: 'createdAt'},
       ],
       this.flags.json,
     )
+
+    showPagination(response.pagination, this.flags.json)
   }
 }

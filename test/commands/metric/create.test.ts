@@ -1,0 +1,41 @@
+import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
+
+import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+
+describe('metric create', () => {
+  beforeEach(() => {
+    setupTestConfig()
+    mockApi([{
+      method: 'POST',
+      path: '/v2/metrics',
+      response: {status: 'success', requestId: 'test', data: {id: '42|custom_query_2', name: 'Revenue', dataSourceId: 42}},
+    }])
+  })
+
+  afterEach(() => { restoreApi(); cleanupTestConfig() })
+
+  it('creates a metric', async () => {
+    const {stdout} = await runCommand([
+      'metric', 'create',
+      '--name', 'Revenue',
+      '--dataset-id', '123',
+      '--measure', '{"id":"amount","name":"Amount"}',
+      '--date', '{"id":"date","name":"Date"}',
+    ], {root: process.cwd()})
+    expect(stdout).to.include('Revenue')
+  })
+
+  it('outputs JSON with --json', async () => {
+    const {stdout} = await runCommand([
+      'metric', 'create',
+      '--name', 'Revenue',
+      '--dataset-id', '123',
+      '--measure', '{"id":"amount","name":"Amount"}',
+      '--date', '{"id":"date","name":"Date"}',
+      '--json',
+    ], {root: process.cwd()})
+    const parsed = JSON.parse(stdout)
+    expect(parsed.id).to.equal('42|custom_query_2')
+  })
+})

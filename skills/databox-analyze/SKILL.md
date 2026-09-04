@@ -45,14 +45,14 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 
 ```bash
 # 1. Find the dataset ID
-databox account datasets ACCOUNT_ID
+databox dataset list
 
 # 2. Ask an initial question
-databox analyze ask-genie ds-abc-123 "What are the top performing metrics this month?"
+databox analyze ask-genie 67890 "What are the top performing metrics this month?"
 # Streams answer... then prints: thread_id: tid-xyz-789
 
 # 3. Ask a follow-up using the thread
-databox analyze ask-genie ds-abc-123 "Break that down by week" --thread-id tid-xyz-789
+databox analyze ask-genie 67890 "Break that down by week" --thread-id tid-xyz-789
 ```
 
 ## Programmatic Usage
@@ -60,12 +60,12 @@ databox analyze ask-genie ds-abc-123 "Break that down by week" --thread-id tid-x
 Use `--json` to capture structured output for scripts or agent workflows:
 
 ```bash
-databox analyze ask-genie ds-abc-123 "Summarize trends" --json
+databox analyze ask-genie 67890 "Summarize trends" --json
 ```
 
 ## Notes
 
-- Dataset IDs are UUIDs (e.g. `a1b2c3d4-...`)
+- Dataset IDs are numeric (e.g., `67890`)
 - Thread IDs enable multi-turn conversations about the same dataset
 - The `thread_id` is returned in the final SSE chunk and printed to stderr (or in JSON output)
 - More `analyze` commands will be added in the future

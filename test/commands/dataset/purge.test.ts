@@ -1,5 +1,5 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
 import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
 
@@ -9,10 +9,8 @@ describe('dataset purge', () => {
     mockApi([
       {
         method: 'POST',
-        path: '/v1/datasets/ds-abc/purge',
-        response: {
-          message: 'Dataset purged successfully',
-        },
+        path: '/v2/datasets/123/purge',
+        response: {status: 'success', requestId: 'test', data: {}},
       },
     ])
   })
@@ -23,7 +21,7 @@ describe('dataset purge', () => {
   })
 
   it('purges with --force', async () => {
-    const {stdout} = await runCommand(['dataset', 'purge', 'ds-abc', '--force'], {root: process.cwd()})
-    expect(stdout).to.contain('Dataset purged successfully')
+    const {stdout} = await runCommand(['dataset', 'purge', '123', '--force'], {root: process.cwd()})
+    expect(stdout).to.contain('Dataset 123 purged')
   })
 })

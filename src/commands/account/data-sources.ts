@@ -1,51 +1,58 @@
-import {Args} from '@oclif/core'
+import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface DataSource {
-  created: string
+  connectionId: number | null
   id: number
-  ingestionSupported: boolean
-  key: string | null
+  integrationKey: string | null
+  statusInfo: Record<string, unknown> | null
   timezone: string | null
   title: string | null
 }
 
 interface DataSourceListResponse {
-  dataSources: DataSource[]
+  items: DataSource[]
+  pagination?: {page: number; pageSize: number; totalItems: number}
 }
 
 export default class AccountDataSources extends BaseCommand<typeof AccountDataSources> {
-  static args = {
-    accountId: Args.string({description: 'The account ID to list data sources for', required: true}),
-  }
-
-  static description = 'List data sources for a specific account'
+  static description = 'List data sources for the current account'
 
   static examples = [
-    '<%= config.bin %> account data-sources 12345',
-    '<%= config.bin %> account data-sources 12345 --json',
+    '<%= config.bin %> account data-sources',
+    '<%= config.bin %> account data-sources --page 0 --page-size 10',
+    '<%= config.bin %> account data-sources --json',
   ]
 
+  static flags = {
+    page: Flags.integer({description: 'Page number (0-indexed)'}),
+    'page-size': Flags.integer({description: 'Number of items per page'}),
+  }
+
   async run(): Promise<void> {
-    const {args} = await this.parse(AccountDataSources)
+    const query: Record<string, string | number | undefined> = {}
+    if (this.flags.page !== undefined) query.page = this.flags.page
+    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
     const response = await this.apiClient.get<DataSourceListResponse>(
-      `/v1/accounts/${args.accountId}/data-sources`,
+      '/v2/data-sources',
+      Object.keys(query).length > 0 ? query : undefined,
+      this.accountHeaders,
     )
 
     formatOutput(
-      response.dataSources,
+      response.items,
       [
         {header: 'ID', key: 'id'},
         {header: 'Title', key: 'title'},
-        {header: 'Created', key: 'created'},
+        {header: 'Integration', key: 'integrationKey'},
         {header: 'Timezone', key: 'timezone'},
-        {header: 'Key', key: 'key'},
-        {get: (row) => String(row.ingestionSupported), header: 'Ingestion Supported'},
       ],
       this.flags.json,
     )
+
+    showPagination(response.pagination, this.flags.json)
   }
 }
