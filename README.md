@@ -24,8 +24,8 @@ databox account info
 databox data-source list
 
 # Create a data source and dataset
-databox data-source create --title "My Data Source"
-databox dataset create --title "My Dataset" --data-source-id 12345
+databox data-source create --name "My Data Source"
+databox dataset create --name "My Dataset" --data-source-id 12345
 
 # Push data into a dataset
 databox dataset ingest 67890 --file data.json
@@ -127,9 +127,9 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 ## Commands
 
 <!-- commands -->
-* [`databox account data-sources`](#databox-account-data-sources)
-* [`databox account datasets`](#databox-account-datasets)
+* [`databox account countries`](#databox-account-countries)
 * [`databox account info`](#databox-account-info)
+* [`databox account metadata-options`](#databox-account-metadata-options)
 * [`databox account timezones`](#databox-account-timezones)
 * [`databox account update`](#databox-account-update)
 * [`databox account usage`](#databox-account-usage)
@@ -221,57 +221,27 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox user list`](#databox-user-list)
 * [`databox user update USERID`](#databox-user-update-userid)
 
-## `databox account data-sources`
+## `databox account countries`
 
-List data sources for the current account
-
-```
-USAGE
-  $ databox account data-sources [--json] [--page <value>] [--page-size <value>]
-
-FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
-
-DESCRIPTION
-  List data sources for the current account
-
-EXAMPLES
-  $ databox account data-sources
-
-  $ databox account data-sources --page 0 --page-size 10
-
-  $ databox account data-sources --json
-```
-
-_See code: [src/commands/account/data-sources.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/data-sources.ts)_
-
-## `databox account datasets`
-
-List datasets for the current account
+List available countries
 
 ```
 USAGE
-  $ databox account datasets [--json] [--page <value>] [--page-size <value>]
+  $ databox account countries [--json]
 
 FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --json  Output as JSON
 
 DESCRIPTION
-  List datasets for the current account
+  List available countries
 
 EXAMPLES
-  $ databox account datasets
+  $ databox account countries
 
-  $ databox account datasets --page 0 --page-size 20
-
-  $ databox account datasets --json
+  $ databox account countries --json
 ```
 
-_See code: [src/commands/account/datasets.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/datasets.ts)_
+_See code: [src/commands/account/countries.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/countries.ts)_
 
 ## `databox account info`
 
@@ -294,6 +264,28 @@ EXAMPLES
 ```
 
 _See code: [src/commands/account/info.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/info.ts)_
+
+## `databox account metadata-options`
+
+List available metadata options for account settings
+
+```
+USAGE
+  $ databox account metadata-options [--json]
+
+FLAGS
+  --json  Output as JSON
+
+DESCRIPTION
+  List available metadata options for account settings
+
+EXAMPLES
+  $ databox account metadata-options
+
+  $ databox account metadata-options --json
+```
+
+_See code: [src/commands/account/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/metadata-options.ts)_
 
 ## `databox account timezones`
 
@@ -323,12 +315,19 @@ Update account details
 
 ```
 USAGE
-  $ databox account update [--json] [--company-name <value>] [--name <value>]
+  $ databox account update [--json] [--address <value>] [--billing-name <value>] [--company-name <value>]
+    [--metadata <value>] [--name <value>] [--settings <value>] [--tax-number <value>] [--website-url <value>]
 
 FLAGS
+  --address=<value>       JSON object: {street, zip, city, state, country}
+  --billing-name=<value>  Billing name
   --company-name=<value>  Company name
   --json                  Output as JSON
+  --metadata=<value>      JSON object: {industry, businessType, companySize, annualRevenue}
   --name=<value>          Account name
+  --settings=<value>      JSON object: {dateFormat, numberFormat, firstDayOfWeek, calendar}
+  --tax-number=<value>    Tax number
+  --website-url=<value>   Website URL
 
 DESCRIPTION
   Update account details
@@ -369,14 +368,17 @@ List activity log entries
 
 ```
 USAGE
-  $ databox activity-log list [--json] [--page <value>] [--page-size <value>] [--resource-type <value>] [--user-id
-    <value>]
+  $ databox activity-log list [--json] [--page <value>] [--page-size <value>] [--date-from <value>] [--date-to <value>]
+    [--resource-type <value>] [--search <value>] [--user-id <value>]
 
 FLAGS
+  --date-from=<value>      Only entries on or after this date (ISO 8601)
+  --date-to=<value>        Only entries on or before this date (ISO 8601)
   --json                   Output as JSON
   --page=<value>           Page number
   --page-size=<value>      Number of items per page
   --resource-type=<value>  Filter by resource type
+  --search=<value>         Search the log text
   --user-id=<value>        Filter by user ID
 
 DESCRIPTION
@@ -516,17 +518,21 @@ Create a client account
 
 ```
 USAGE
-  $ databox client create --name <value> [--json]
+  $ databox client create --name <value> [--json] [--managed-by-id <value>] [--website-url <value>]
 
 FLAGS
-  --json          Output as JSON
-  --name=<value>  (required) Name of the client account
+  --json                   Output as JSON
+  --managed-by-id=<value>  User ID of the account manager
+  --name=<value>           (required) Name of the client account
+  --website-url=<value>    Website URL for the client account
 
 DESCRIPTION
   Create a client account
 
 EXAMPLES
   $ databox client create --name "Client Company"
+
+  $ databox client create --name "Client Company" --managed-by-id 12345
 
   $ databox client create --name "Client Company" --json
 ```
@@ -590,12 +596,17 @@ List client accounts
 
 ```
 USAGE
-  $ databox client list [--json] [--page <value>] [--page-size <value>]
+  $ databox client list [--json] [--page <value>] [--page-size <value>] [--search <value>] [--sort-by <value>]
+    [--sort-order asc|desc]
 
 FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number
-  --page-size=<value>  Number of items per page
+  --json                 Output as JSON
+  --page=<value>         Page number
+  --page-size=<value>    Number of items per page
+  --search=<value>       Search by name
+  --sort-by=<value>      Field to sort by
+  --sort-order=<option>  Sort direction
+                         <options: asc|desc>
 
 DESCRIPTION
   List client accounts
@@ -614,20 +625,24 @@ Update a client account
 
 ```
 USAGE
-  $ databox client update CLIENTID [--json] [--name <value>]
+  $ databox client update CLIENTID [--json] [--managed-by-id <value>] [--name <value>] [--website-url <value>]
 
 ARGUMENTS
   CLIENTID  The client account ID to update
 
 FLAGS
-  --json          Output as JSON
-  --name=<value>  New name for the client account
+  --json                   Output as JSON
+  --managed-by-id=<value>  User ID of the account manager
+  --name=<value>           New name for the client account
+  --website-url=<value>    New website URL
 
 DESCRIPTION
   Update a client account
 
 EXAMPLES
   $ databox client update 12345 --name "New Name"
+
+  $ databox client update 12345 --managed-by-id 67890
 
   $ databox client update 12345 --name "New Name" --json
 ```
@@ -743,14 +758,18 @@ Update connection permissions
 
 ```
 USAGE
-  $ databox connection set-permissions CONNECTIONID --access-level <value> [--json]
+  $ databox connection set-permissions CONNECTIONID --access-level everyone|selectedUsers|private [--json] [--access-list
+    <value>...] [--shared-with-clients]
 
 ARGUMENTS
   CONNECTIONID  The connection ID
 
 FLAGS
-  --access-level=<value>  (required) Access level for the connection
-  --json                  Output as JSON
+  --access-level=<option>   (required) Access level for the connection
+                            <options: everyone|selectedUsers|private>
+  --access-list=<value>...  User ID granted access (repeat for several)
+  --json                    Output as JSON
+  --shared-with-clients     Share this connection with client accounts
 
 DESCRIPTION
   Update connection permissions
@@ -759,6 +778,8 @@ EXAMPLES
   $ databox connection set-permissions 12345 --access-level everyone
 
   $ databox connection set-permissions 12345 --access-level private --json
+
+  $ databox connection set-permissions 12345 --access-level selectedUsers --access-list 31
 ```
 
 _See code: [src/commands/connection/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/connection/set-permissions.ts)_
@@ -795,25 +816,25 @@ Create a new data source
 
 ```
 USAGE
-  $ databox data-source create --title <value> [--json] [--key <value>] [--timezone <value>]
+  $ databox data-source create --name <value> [--json] [--integration-key <value>] [--timezone <value>]
 
 FLAGS
-  --json              Output as JSON
-  --key=<value>       Integration key for the data source (e.g., Datadoo)
-  --timezone=<value>  Timezone for the data source
-  --title=<value>     (required) Title of the data source
+  --integration-key=<value>  Integration key for the data source (e.g., Datadoo)
+  --json                     Output as JSON
+  --name=<value>             (required) Name of the data source
+  --timezone=<value>         Timezone for the data source
 
 DESCRIPTION
   Create a new data source
 
 EXAMPLES
-  $ databox data-source create --title "My Data Source"
+  $ databox data-source create --name "My Data Source"
 
-  $ databox data-source create --title "My Data Source" --timezone "US/Eastern"
+  $ databox data-source create --name "My Data Source" --timezone "US/Eastern"
 
-  $ databox data-source create --title "My Data Source" --key Datadoo
+  $ databox data-source create --name "My Data Source" --integration-key Datadoo
 
-  $ databox data-source create --title "My Data Source" --json
+  $ databox data-source create --name "My Data Source" --json
 ```
 
 _See code: [src/commands/data-source/create.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/create.ts)_
@@ -904,13 +925,18 @@ List all data sources
 
 ```
 USAGE
-  $ databox data-source list [--json] [--page <value>] [--page-size <value>] [--search <value>]
+  $ databox data-source list [--json] [--connection-id <value>] [--page <value>] [--page-size <value>] [--search
+    <value>] [--sort-by <value>] [--sort-order asc|desc]
 
 FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
-  --search=<value>     Search by title
+  --connection-id=<value>  Filter by connection ID
+  --json                   Output as JSON
+  --page=<value>           Page number (0-indexed)
+  --page-size=<value>      Number of items per page
+  --search=<value>         Search by name
+  --sort-by=<value>        Field to sort by
+  --sort-order=<option>    Sort direction
+                           <options: asc|desc>
 
 DESCRIPTION
   List all data sources
@@ -982,20 +1008,25 @@ Set permissions for a data source
 
 ```
 USAGE
-  $ databox data-source set-permissions DATASOURCEID --access-level <value> [--json]
+  $ databox data-source set-permissions DATASOURCEID --access-level everyone|selectedUsers [--json] [--access-list
+  <value>...]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
-  --access-level=<value>  (required) Access level (e.g. everyone, specific_users)
-  --json                  Output as JSON
+  --access-level=<option>   (required) Access level
+                            <options: everyone|selectedUsers>
+  --access-list=<value>...  User ID granted access (repeat for several)
+  --json                    Output as JSON
 
 DESCRIPTION
   Set permissions for a data source
 
 EXAMPLES
   $ databox data-source set-permissions 12345 --access-level everyone
+
+  $ databox data-source set-permissions 12345 --access-level selectedUsers --access-list 31 --access-list 42
 ```
 
 _See code: [src/commands/data-source/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/set-permissions.ts)_
@@ -1020,6 +1051,8 @@ DESCRIPTION
 
 EXAMPLES
   $ databox data-source set-sync-frequency 12345 --interval 60
+
+  $ databox data-source set-sync-frequency 12345 --interval 1440
 ```
 
 _See code: [src/commands/data-source/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/set-sync-frequency.ts)_
@@ -1030,20 +1063,24 @@ Set the timezone for a data source
 
 ```
 USAGE
-  $ databox data-source set-timezone DATASOURCEID --timezone <value> [--json]
+  $ databox data-source set-timezone DATASOURCEID --timezone <value> [--json] [--apply-to-datasets] [--purge-data]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
-  --json              Output as JSON
-  --timezone=<value>  (required) Timezone value
+  --apply-to-datasets  Apply the timezone to the datasets too
+  --json               Output as JSON
+  --purge-data         Purge existing data when changing the timezone
+  --timezone=<value>   (required) Timezone value
 
 DESCRIPTION
   Set the timezone for a data source
 
 EXAMPLES
   $ databox data-source set-timezone 12345 --timezone "US/Eastern"
+
+  $ databox data-source set-timezone 12345 --timezone "Europe/London"
 ```
 
 _See code: [src/commands/data-source/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/set-timezone.ts)_
@@ -1079,22 +1116,22 @@ Update a data source
 
 ```
 USAGE
-  $ databox data-source update DATASOURCEID --title <value> [--json]
+  $ databox data-source update DATASOURCEID --name <value> [--json]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source to update
 
 FLAGS
-  --json           Output as JSON
-  --title=<value>  (required) New title for the data source
+  --json          Output as JSON
+  --name=<value>  (required) New name for the data source
 
 DESCRIPTION
   Update a data source
 
 EXAMPLES
-  $ databox data-source update 12345 --title "New Title"
+  $ databox data-source update 12345 --name "New Name"
 
-  $ databox data-source update 12345 --title "New Title" --json
+  $ databox data-source update 12345 --name "New Name" --json
 ```
 
 _See code: [src/commands/data-source/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/update.ts)_
@@ -1171,6 +1208,8 @@ DESCRIPTION
 
 EXAMPLES
   $ databox dataset add-modification 12345 --data '{"columnId":"revenue","type":"sum"}'
+
+  $ databox dataset add-modification 12345 --data '{"columnId":"revenue","type":"sum"}' --json
 ```
 
 _See code: [src/commands/dataset/add-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/add-modification.ts)_
@@ -1232,27 +1271,27 @@ Create a new dataset
 
 ```
 USAGE
-  $ databox dataset create --data-source-id <value> --title <value> [--json] [--primary-key <value>...] [--schema
+  $ databox dataset create --data-source-id <value> --name <value> [--json] [--primary-key <value>...] [--schema
     <value>]
 
 FLAGS
   --data-source-id=<value>  (required) ID of the data source to associate with
   --json                    Output as JSON
+  --name=<value>            (required) Name of the dataset
   --primary-key=<value>...  Primary key column names
   --schema=<value>          JSON string of schema columns (array of {columnId, dataType})
-  --title=<value>           (required) Title of the dataset
 
 DESCRIPTION
   Create a new dataset
 
 EXAMPLES
-  $ databox dataset create --title "My Dataset" --data-source-id 123
+  $ databox dataset create --name "My Dataset" --data-source-id 123
 
-  $ databox dataset create --title "My Dataset" --data-source-id 123 --primary-key date --primary-key campaign
+  $ databox dataset create --name "My Dataset" --data-source-id 123 --primary-key date --primary-key campaign
 
-  $ databox dataset create --title "My Dataset" --data-source-id 123 --schema '[{"columnId":"date","dataType":"datetime"},{"columnId":"value","dataType":"number"}]'
+  $ databox dataset create --name "My Dataset" --data-source-id 123 --schema '[{"columnId":"date","dataType":"datetime"},{"columnId":"value","dataType":"number"}]'
 
-  $ databox dataset create --title "My Dataset" --data-source-id 123 --json
+  $ databox dataset create --name "My Dataset" --data-source-id 123 --json
 ```
 
 _See code: [src/commands/dataset/create.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/create.ts)_
@@ -1314,20 +1353,21 @@ _See code: [src/commands/dataset/delete.ts](https://github.com/databox/databox-c
 
 ## `databox dataset duplicate DATASETID`
 
-Duplicate a dataset
+Duplicate a dataset (not supported for datasets created through the API)
 
 ```
 USAGE
-  $ databox dataset duplicate DATASETID [--json]
+  $ databox dataset duplicate DATASETID [--json] [--name <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to duplicate
 
 FLAGS
-  --json  Output as JSON
+  --json          Output as JSON
+  --name=<value>  Name for the duplicate (defaults to a server-generated name)
 
 DESCRIPTION
-  Duplicate a dataset
+  Duplicate a dataset (not supported for datasets created through the API)
 
 EXAMPLES
   $ databox dataset duplicate 12345
@@ -1412,9 +1452,9 @@ DESCRIPTION
   Get details of a specific ingestion
 
 EXAMPLES
-  $ databox dataset ingestion 12345 ing-456
+  $ databox dataset ingestion 12345 3c63e510-276f-4541-9c66-8c00161fda82
 
-  $ databox dataset ingestion 12345 ing-456 --json
+  $ databox dataset ingestion 12345 3c63e510-276f-4541-9c66-8c00161fda82 --json
 ```
 
 _See code: [src/commands/dataset/ingestion.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/ingestion.ts)_
@@ -1505,14 +1545,17 @@ List datasets
 ```
 USAGE
   $ databox dataset list [--json] [--data-source-id <value>] [--page <value>] [--page-size <value>] [--search
-    <value>]
+    <value>] [--sort-by <value>] [--sort-order asc|desc]
 
 FLAGS
   --data-source-id=<value>  Filter by data source ID
   --json                    Output as JSON
   --page=<value>            Page number (0-indexed)
-  --page-size=<value>       [default: 25] Number of items per page
+  --page-size=<value>       Number of items per page
   --search=<value>          Search by name
+  --sort-by=<value>         Field to sort by
+  --sort-order=<option>     Sort direction
+                            <options: asc|desc>
 
 DESCRIPTION
   List datasets
@@ -1747,6 +1790,8 @@ DESCRIPTION
 
 EXAMPLES
   $ databox dataset set-column-metadata 12345 --columns '[{"columnId":"revenue","displayName":"Revenue ($)"}]'
+
+  $ databox dataset set-column-metadata 12345 --columns '[{"columnId":"revenue","displayName":"Revenue ($)"}]' --json
 ```
 
 _See code: [src/commands/dataset/set-column-metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-column-metadata.ts)_
@@ -1757,15 +1802,17 @@ Update metadata for a dataset
 
 ```
 USAGE
-  $ databox dataset set-metadata DATASETID [--json] [--description <value>] [--tags <value>]
+  $ databox dataset set-metadata DATASETID [--json] [--description <value>] [--default-time-dimension <value>] [--synonyms
+    <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --description=<value>  Dataset description
-  --json                 Output as JSON
-  --tags=<value>         JSON array of tags
+  --default-time-dimension=<value>  Column ID to use as the default time dimension
+  --description=<value>             Dataset description
+  --json                            Output as JSON
+  --synonyms=<value>                JSON array of synonyms
 
 DESCRIPTION
   Update metadata for a dataset
@@ -1773,7 +1820,7 @@ DESCRIPTION
 EXAMPLES
   $ databox dataset set-metadata 12345 --description "Revenue tracking"
 
-  $ databox dataset set-metadata 12345 --tags '["finance","quarterly"]'
+  $ databox dataset set-metadata 12345 --synonyms '["finance","quarterly"]'
 ```
 
 _See code: [src/commands/dataset/set-metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-metadata.ts)_
@@ -1784,20 +1831,24 @@ Set permissions for a dataset
 
 ```
 USAGE
-  $ databox dataset set-permissions DATASETID --access-level <value> [--json]
+  $ databox dataset set-permissions DATASETID --access-level everyone|selectedUsers [--json] [--access-list <value>...]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --access-level=<value>  (required) Access level (e.g., everyone, specific_users)
-  --json                  Output as JSON
+  --access-level=<option>   (required) Access level
+                            <options: everyone|selectedUsers>
+  --access-list=<value>...  User ID granted access (repeat for several)
+  --json                    Output as JSON
 
 DESCRIPTION
   Set permissions for a dataset
 
 EXAMPLES
   $ databox dataset set-permissions 12345 --access-level everyone
+
+  $ databox dataset set-permissions 12345 --access-level selectedUsers --access-list 31 --access-list 42
 ```
 
 _See code: [src/commands/dataset/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-permissions.ts)_
@@ -1822,6 +1873,8 @@ DESCRIPTION
 
 EXAMPLES
   $ databox dataset set-sync-frequency 12345 --interval 60
+
+  $ databox dataset set-sync-frequency 12345 --interval 1440
 ```
 
 _See code: [src/commands/dataset/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-sync-frequency.ts)_
@@ -1832,13 +1885,14 @@ Set the timezone for a dataset
 
 ```
 USAGE
-  $ databox dataset set-timezone DATASETID --timezone <value> [--json]
+  $ databox dataset set-timezone DATASETID --timezone <value> [--json] [--purge-data]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
   --json              Output as JSON
+  --purge-data        Purge existing data when changing the timezone
   --timezone=<value>  (required) Timezone to set
 
 DESCRIPTION
@@ -1846,6 +1900,8 @@ DESCRIPTION
 
 EXAMPLES
   $ databox dataset set-timezone 12345 --timezone "US/Eastern"
+
+  $ databox dataset set-timezone 12345 --timezone "Europe/London"
 ```
 
 _See code: [src/commands/dataset/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-timezone.ts)_
@@ -1896,6 +1952,8 @@ DESCRIPTION
 
 EXAMPLES
   $ databox dataset sync-frequencies 12345
+
+  $ databox dataset sync-frequencies 12345 --json
 ```
 
 _See code: [src/commands/dataset/sync-frequencies.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/sync-frequencies.ts)_
@@ -1958,20 +2016,22 @@ Update a dataset
 
 ```
 USAGE
-  $ databox dataset update DATASETID [--json] [--title <value>]
+  $ databox dataset update DATASETID [--json] [--name <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to update
 
 FLAGS
-  --json           Output as JSON
-  --title=<value>  New title for the dataset
+  --json          Output as JSON
+  --name=<value>  New name for the dataset
 
 DESCRIPTION
   Update a dataset
 
 EXAMPLES
-  $ databox dataset update 12345 --title "New Title"
+  $ databox dataset update 12345 --name "New Name"
+
+  $ databox dataset update 12345 --name "New Name" --json
 ```
 
 _See code: [src/commands/dataset/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/update.ts)_
@@ -2078,13 +2138,17 @@ List available integrations
 
 ```
 USAGE
-  $ databox integration list [--json] [--page <value>] [--page-size <value>] [--search <value>]
+  $ databox integration list [--json] [--page <value>] [--page-size <value>] [--search <value>] [--sort-by <value>]
+    [--sort-order asc|desc]
 
 FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number
-  --page-size=<value>  Number of items per page
-  --search=<value>     Search by integration name
+  --json                 Output as JSON
+  --page=<value>         Page number
+  --page-size=<value>    Number of items per page
+  --search=<value>       Search by integration name
+  --sort-by=<value>      Field to sort by
+  --sort-order=<option>  Sort direction
+                         <options: asc|desc>
 
 DESCRIPTION
   List available integrations
@@ -2106,13 +2170,17 @@ Create a custom metric
 ```
 USAGE
   $ databox metric create --date <value> --dataset-id <value> --measure <value> --name <value> [--json]
+    [--aggregation-function <value>] [--dimension <value>...] [--filters <value>]
 
 FLAGS
-  --dataset-id=<value>  (required) Dataset ID to create the metric on
-  --date=<value>        (required) Date field reference as JSON ({"id":"...","name":"..."})
-  --json                Output as JSON
-  --measure=<value>     (required) Measure field reference as JSON ({"id":"...","name":"..."})
-  --name=<value>        (required) Name of the metric
+  --aggregation-function=<value>  [default: sum] Aggregation applied to the measure
+  --dataset-id=<value>            (required) Dataset ID to create the metric on
+  --date=<value>                  (required) Date field reference as JSON ({"id":"...","name":"..."})
+  --dimension=<value>...          Dimension field reference as JSON ({"id":"...","name":"..."}); repeat for several
+  --filters=<value>               JSON array of filters ([{"field":"...","operator":"...","values":["..."]}])
+  --json                          Output as JSON
+  --measure=<value>               (required) Measure field reference as JSON ({"id":"...","name":"..."})
+  --name=<value>                  (required) Name of the metric
 
 DESCRIPTION
   Create a custom metric
@@ -2132,14 +2200,16 @@ Load metric data
 ```
 USAGE
   $ databox metric data --date-from <value> --date-to <value> --granularity
-    hourly|daily|weekly|monthly|quarterly|yearly|allTime --metric-id <value> [--json] [--data-source-id <value>]
-    [--dataset-id <value>]
+    hourly|daily|weekly|monthly|quarterly|yearly|allTime --metric-id <value> [--json] [--data-source-id <value> |
+    --dataset-id <value>] [--dimension <value>...] [--filters <value>]
 
 FLAGS
   --data-source-id=<value>  Data source ID (alternative to --dataset-id)
   --dataset-id=<value>      Dataset ID (alternative to --data-source-id)
   --date-from=<value>       (required) Start date (YYYY-MM-DD)
   --date-to=<value>         (required) End date (YYYY-MM-DD)
+  --dimension=<value>...    Dimension to break the data down by (repeat for several)
+  --filters=<value>         JSON object: {logicalOperator, groups}
   --granularity=<option>    (required) Time granularity
                             <options: hourly|daily|weekly|monthly|quarterly|yearly|allTime>
   --json                    Output as JSON
@@ -2188,19 +2258,23 @@ Get dimension values for a metric
 
 ```
 USAGE
-  $ databox metric dimension-values --dataset-id <value> --dimension <value> --metric-id <value> [--json]
+  $ databox metric dimension-values --dimension <value>... --metric-id <value> --source-id <value> [--json]
 
 FLAGS
-  --dataset-id=<value>  (required) Dataset ID
-  --dimension=<value>   (required) Dimension key
-  --json                Output as JSON
-  --metric-id=<value>   (required) Metric ID
+  --dimension=<value>...  (required) Dimension key (repeat for several)
+  --json                  Output as JSON
+  --metric-id=<value>     (required) Metric ID
+  --source-id=<value>     (required) Source ID of the metric (the sourceId shown by "metric list")
 
 DESCRIPTION
   Get dimension values for a metric
 
 EXAMPLES
-  $ databox metric dimension-values --metric-id "500|custom_query_100" --dimension country --dataset-id 123
+  $ databox metric dimension-values --metric-id "500|custom_query_100" --dimension country --source-id 123
+
+  $ databox metric dimension-values --metric-id "500|custom_query_100" --dimension country --dimension city --source-id 123
+
+  $ databox metric dimension-values --metric-id "500|custom_query_100" --dimension country --source-id 123 --json
 ```
 
 _See code: [src/commands/metric/dimension-values.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/dimension-values.ts)_
@@ -2226,6 +2300,8 @@ DESCRIPTION
 
 EXAMPLES
   $ databox metric drilldown --metric-id "500|custom_query_100" --dataset-id 123 --start-timestamp 1704067200 --end-timestamp 1706745600
+
+  $ databox metric drilldown --metric-id "500|custom_query_100" --dataset-id 123 --start-timestamp 1704067200 --end-timestamp 1706745600 --json
 ```
 
 _See code: [src/commands/metric/drilldown.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/drilldown.ts)_
@@ -2261,15 +2337,14 @@ List metrics
 
 ```
 USAGE
-  $ databox metric list [--json] [--data-source-id <value>] [--page <value>] [--page-size <value>] [--search
-    <value>]
+  $ databox metric list [--json] [--source-id <value>] [--page <value>] [--page-size <value>] [--search <value>]
 
 FLAGS
-  --data-source-id=<value>  Filter by data source ID
-  --json                    Output as JSON
-  --page=<value>            Page number
-  --page-size=<value>       Number of items per page
-  --search=<value>          Search by metric name
+  --json               Output as JSON
+  --page=<value>       Page number
+  --page-size=<value>  Number of items per page
+  --search=<value>     Search by metric name
+  --source-id=<value>  Filter by source ID (data source or dataset)
 
 DESCRIPTION
   List metrics
@@ -2277,7 +2352,7 @@ DESCRIPTION
 EXAMPLES
   $ databox metric list
 
-  $ databox metric list --data-source-id 42
+  $ databox metric list --source-id 42
 
   $ databox metric list --search revenue
 
@@ -2319,20 +2394,28 @@ Update a metric
 
 ```
 USAGE
-  $ databox metric update METRICID [--json] [--name <value>]
+  $ databox metric update METRICID [--json] [--aggregation-function <value>] [--date <value>] [--dimension
+    <value>...] [--filters <value>] [--measure <value>] [--name <value>]
 
 ARGUMENTS
   METRICID  The metric ID to update
 
 FLAGS
-  --json          Output as JSON
-  --name=<value>  New name for the metric
+  --aggregation-function=<value>  New aggregation applied to the measure
+  --date=<value>                  New date field reference as JSON ({"id":"...","name":"..."})
+  --dimension=<value>...          Dimension field reference as JSON ({"id":"...","name":"..."}); repeat for several
+  --filters=<value>               JSON array of filters ([{"field":"...","operator":"...","values":["..."]}])
+  --json                          Output as JSON
+  --measure=<value>               New measure field reference as JSON ({"id":"...","name":"..."})
+  --name=<value>                  New name for the metric
 
 DESCRIPTION
   Update a metric
 
 EXAMPLES
   $ databox metric update "500|custom_query_100" --name "New Name"
+
+  $ databox metric update "500|custom_query_100" --name "New Name" --json
 ```
 
 _See code: [src/commands/metric/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/update.ts)_
@@ -2437,10 +2520,11 @@ Update your profile
 
 ```
 USAGE
-  $ databox profile update [--json] [--name <value>] [--timezone <value>]
+  $ databox profile update [--json] [--metadata <value>] [--name <value>] [--timezone <value>]
 
 FLAGS
   --json              Output as JSON
+  --metadata=<value>  JSON object: {department, title, role}
   --name=<value>      New display name
   --timezone=<value>  New timezone
 
@@ -2514,11 +2598,12 @@ Invite a user to the account
 
 ```
 USAGE
-  $ databox user invite --email <value> --role admin|user [--json]
+  $ databox user invite --email <value> --role admin|user [--json] [--name <value>]
 
 FLAGS
   --email=<value>  (required) Email address of the user to invite
   --json           Output as JSON
+  --name=<value>   Display name for the new user
   --role=<option>  (required) Role for the new user
                    <options: admin|user>
 
@@ -2539,12 +2624,19 @@ List users in the account
 
 ```
 USAGE
-  $ databox user list [--json] [--page <value>] [--page-size <value>]
+  $ databox user list [--json] [--page <value>] [--page-size <value>] [--role admin|user] [--search <value>]
+    [--sort-by <value>] [--sort-order asc|desc]
 
 FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number
-  --page-size=<value>  Number of items per page
+  --json                 Output as JSON
+  --page=<value>         Page number
+  --page-size=<value>    Number of items per page
+  --role=<option>        Filter by role
+                         <options: admin|user>
+  --search=<value>       Search by name or email
+  --sort-by=<value>      Field to sort by
+  --sort-order=<option>  Sort direction
+                         <options: asc|desc>
 
 DESCRIPTION
   List users in the account
@@ -2563,14 +2655,15 @@ Update a user's role
 
 ```
 USAGE
-  $ databox user update USERID --role admin|user [--json]
+  $ databox user update USERID [--json] [--name <value>] [--role admin|user]
 
 ARGUMENTS
   USERID  The user ID to update
 
 FLAGS
   --json           Output as JSON
-  --role=<option>  (required) New role for the user
+  --name=<value>   New display name for the user
+  --role=<option>  New role for the user
                    <options: admin|user>
 
 DESCRIPTION

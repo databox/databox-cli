@@ -16,7 +16,7 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | Task | Command |
 |------|---------|
 | List datasets | `databox dataset list` |
-| Create dataset | `databox dataset create --title "Name" --data-source-id ID` |
+| Create dataset | `databox dataset create --name "Name" --data-source-id ID` |
 | Get dataset details | `databox dataset get ID` |
 | View schema | `databox dataset schema ID` |
 | View data | `databox dataset data ID` |
@@ -27,7 +27,7 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | Get ingestion detail | `databox dataset ingestion ID INGESTION_ID` |
 | Ingestion stats | `databox dataset ingestion-statistics ID` |
 | Duplicate dataset | `databox dataset duplicate ID` |
-| Update title | `databox dataset update ID --title "New Name"` |
+| Update name | `databox dataset update ID --name "New Name"` |
 | Set timezone | `databox dataset set-timezone ID --timezone "US/Eastern"` |
 | View/set permissions | `databox dataset permissions ID` |
 | View/set metadata | `databox dataset metadata ID` |
@@ -45,7 +45,7 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 
 | Flag | Required | Description |
 |------|----------|-------------|
-| `--title` | Yes | Dataset name |
+| `--name` | Yes | Dataset name |
 | `--data-source-id` | Yes | Parent data source ID |
 | `--primary-key` | No | Primary key columns (repeatable) |
 | `--schema` | No | JSON schema definition |
@@ -56,7 +56,7 @@ Pass schema as JSON string with `--schema`:
 
 ```bash
 databox dataset create \
-  --title "Web Analytics" \
+  --name "Web Analytics" \
   --data-source-id 42 \
   --primary-key date \
   --primary-key page \
@@ -88,12 +88,12 @@ cat metrics.json | databox dataset ingest 67890
 
 ```bash
 # 1. Create a data source
-databox data-source create --title "My App" --json
+databox data-source create --name "My App" --json
 # Returns: {"id": 42, ...}
 
 # 2. Create a dataset with schema
 databox dataset create \
-  --title "Daily Metrics" \
+  --name "Daily Metrics" \
   --data-source-id 42 \
   --primary-key date \
   --schema '[{"columnId":"date","dataType":"datetime"},{"columnId":"users","dataType":"number"}]' \

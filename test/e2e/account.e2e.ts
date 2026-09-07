@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectKey, expectOk, json} from './helpers/cli.js'
+import {cli, cliWithRetry, expectField, expectKey, expectOk, json} from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
 interface Account {
@@ -14,7 +14,7 @@ describe('account', () => {
   let account: Account
 
   before(async () => {
-    account = json<Account>(await cli(['account', 'info', '--json']))
+    account = json<Account>(await cliWithRetry(['account', 'info', '--json']))
   })
 
   it('returns the account with its documented fields', () => {
@@ -66,14 +66,14 @@ describe('account', () => {
     expect(options).to.be.an('object')
   })
 
-  it('lists the account data sources', async () => {
-    const dataSources = json<unknown[]>(await cli(['account', 'data-sources', '--page-size', '5', '--json']))
-    expect(dataSources).to.be.an('array')
-  })
-
-  it('lists the account datasets', async () => {
-    const datasets = json<unknown[]>(await cli(['account', 'datasets', '--page-size', '5', '--json']))
-    expect(datasets).to.be.an('array')
+  // `account data-sources` / `account datasets` were v1 spellings of `data-source list`
+  // and `dataset list`; removed in the v2-only CLI. Pinned so they do not creep back.
+  it('no longer has the v1 account listing twins', async () => {
+    for (const argv of [['account', 'data-sources'], ['account', 'datasets']]) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await cli(argv)
+      expect(result.code, `"databox ${argv.join(' ')}" should not exist`).to.not.equal(0)
+    }
   })
 
   // An empty string is a real value — it clears a nullable field. A truthiness

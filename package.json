@@ -25,20 +25,47 @@
     ],
     "topicSeparator": " ",
     "topics": {
-      "auth": {
-        "description": "Authenticate with the Databox API"
-      },
       "account": {
         "description": "Manage Databox accounts"
       },
-      "data-source": {
-        "description": "Manage data sources"
+      "activity-log": {
+        "description": "View the account activity log"
       },
       "analyze": {
         "description": "Analyze datasets with Genie AI"
       },
+      "auth": {
+        "description": "Authenticate with the Databox API"
+      },
+      "billing": {
+        "description": "View plan details and invoices"
+      },
+      "client": {
+        "description": "Manage client accounts (agency model)"
+      },
+      "connection": {
+        "description": "Manage integration connections and their permissions"
+      },
+      "data-source": {
+        "description": "Manage data sources"
+      },
+      "databoard": {
+        "description": "Browse databoards and their metrics"
+      },
       "dataset": {
         "description": "Manage datasets and ingest data"
+      },
+      "integration": {
+        "description": "Browse the integration catalog"
+      },
+      "metric": {
+        "description": "Create, query and manage metrics"
+      },
+      "profile": {
+        "description": "View and update your user profile"
+      },
+      "user": {
+        "description": "Manage team members and their roles"
       }
     },
     "additionalHelpFlags": [

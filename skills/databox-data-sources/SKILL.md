@@ -18,9 +18,9 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | List data sources | `databox data-source list` |
 | Search data sources | `databox data-source list --search "analytics"` |
 | Get data source details | `databox data-source get ID` |
-| Create data source | `databox data-source create --title "Name"` |
-| Create with key | `databox data-source create --title "Name" --key Datadoo` |
-| Update title | `databox data-source update ID --title "New Name"` |
+| Create data source | `databox data-source create --name "Name"` |
+| Create with key | `databox data-source create --name "Name" --integration-key Datadoo` |
+| Update name | `databox data-source update ID --name "New Name"` |
 | Set timezone | `databox data-source set-timezone ID --timezone "US/Eastern"` |
 | View sync frequencies | `databox data-source sync-frequencies ID` |
 | Set sync frequency | `databox data-source set-sync-frequency ID --interval 60` |
@@ -34,11 +34,11 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 
 ```bash
 # 1. Create a data source
-databox data-source create --title "My API Data" --timezone "UTC" --json
+databox data-source create --name "My API Data" --timezone "UTC" --json
 # Returns: {"id": 42, ...}
 
 # 2. Create a dataset under it
-databox dataset create --title "Daily Metrics" --data-source-id 42
+databox dataset create --name "Daily Metrics" --data-source-id 42
 
 # 3. Push data
 databox dataset ingest 67890 --file data.json
@@ -54,4 +54,4 @@ These commands prompt for confirmation. Use `--force` to skip when scripting:
 
 - All commands support `--json` for machine-readable output
 - Data source IDs are numeric (e.g., `42`)
-- The `--key` flag on create sets the integration key for third-party integrations (e.g., Datadoo)
+- The `--integration-key` flag on create sets the integration key for third-party integrations (e.g., Datadoo)

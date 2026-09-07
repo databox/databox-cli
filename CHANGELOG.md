@@ -4,6 +4,7 @@
 
 **Breaking change**: The CLI now exclusively uses the Databox V2 API. All V1 API calls have been removed. This requires a Databox account with V2 API access.
 
+- **Removed** — `account data-sources` and `account datasets`. They were v1 spellings of `data-source list` and `dataset list` against the same endpoints; use those, with `--account-id` to target another account.
 - **Activity log** nested under account — `activity-log list` now calls `/v2/account/activity-log` (was `/v2/activity-log`). The command name is unchanged.
 - **New command** — `profile metadata-options` returns available departments and roles for profile metadata updates.
 
@@ -20,10 +21,10 @@ Every v0.x command is still supported in some form. Here's exactly where each on
 | v0.x Command | v1.0 Equivalent | What Changed |
 |---|---|---|
 | `account list` | `account info` | **Renamed.** V2 returns your own account as a single object. To list accounts you manage, use `client list` (agency/client model). To access a specific account's resources, pass `--account-id` on any command. |
-| `account data-sources ACCOUNTID` | `data-source list` or `account data-sources --account-id ID` | **Positional arg removed.** The `ACCOUNTID` arg is replaced by the global `--account-id` flag. Omit it to use your own account. The new `data-source list` command is the preferred way. |
-| `account datasets ACCOUNTID` | `dataset list` or `account datasets --account-id ID` | **Same as above.** The new `dataset list` is preferred. `--type` filter removed — merged datasets are not in V2 (deferred to backlog). |
+| `account data-sources ACCOUNTID` | `data-source list` | **Removed.** Use `data-source list`, with the global `--account-id` flag to target another account. |
+| `account datasets ACCOUNTID` | `dataset list` | **Removed.** Use `dataset list`, with the global `--account-id` flag to target another account. `--type` filter removed — merged datasets are not in V2 (deferred to backlog). |
 | `account timezones` | `account timezones` | No changes. |
-| `data-source create` | `data-source create` | `--account-id` is now a global flag (works on all commands). `--key` flag preserved for third-party integrations (e.g., Datadoo). |
+| `data-source create` | `data-source create` | `--account-id` is now a global flag (works on all commands). `--key` is renamed to `--integration-key` for third-party integrations (e.g., Datadoo). |
 | `data-source datasets ID` | `data-source datasets ID` | No user-facing changes. |
 | `data-source delete ID` | `data-source delete ID` | No changes. |
 | `dataset create` | `dataset create` | `--primary-keys` renamed to `--primary-key` (singular, still accepts multiple values). Schema column field `name` renamed to `columnId`. See schema example below. |
@@ -82,8 +83,6 @@ databox dataset list
 - `account update` — Update account name/settings
 - `account usage` — Show usage statistics
 - `account timezones` — List supported timezones
-- `account data-sources` — List data sources
-- `account datasets` — List datasets
 
 #### Profile
 - `profile info` — Show your profile
