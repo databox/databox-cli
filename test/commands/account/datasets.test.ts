@@ -17,9 +17,11 @@ describe('account datasets', () => {
             items: [
               {
                 id: 100,
-                dataSourceId: 10,
-                title: 'Dataset One',
-                createdAt: '2024-01-01T00:00:00Z',
+                parentDataSourceId: 10,
+                name: 'Dataset One',
+                timezone: null,
+                datasetType: 'ingestion',
+                statusInfo: {status: 'active'},
               },
             ],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
@@ -44,6 +46,6 @@ describe('account datasets', () => {
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
     expect(parsed).to.have.lengthOf(1)
-    expect(parsed[0]).to.deep.include({id: 100, dataSourceId: 10, title: 'Dataset One'})
+    expect(parsed[0]).to.deep.include({id: 100, parentDataSourceId: 10, name: 'Dataset One'})
   })
 })

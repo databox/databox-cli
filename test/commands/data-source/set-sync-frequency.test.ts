@@ -1,7 +1,7 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
 
 describe('data-source set-sync-frequency', () => {
   beforeEach(() => {
@@ -20,5 +20,11 @@ describe('data-source set-sync-frequency', () => {
   it('sets sync frequency', async () => {
     const {stdout} = await runCommand(['data-source', 'set-sync-frequency', '42', '--interval', '60'], {root: process.cwd()})
     expect(stdout).to.include('Sync frequency set')
+  })
+
+  // The API contract is {syncInterval}, not {interval}.
+  it('sends syncInterval, not interval', async () => {
+    await runCommand(['data-source', 'set-sync-frequency', '42', '--interval', '60'], {root: process.cwd()})
+    expect(lastBody('PUT', '/v2/data-sources/42/sync-frequency')).to.deep.equal({syncInterval: 60})
   })
 })

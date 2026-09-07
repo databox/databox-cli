@@ -5,11 +5,12 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface ActivityLogEntry {
   action: string
+  createdAt: string
   id: number
-  resourceId: string
-  resourceType: string
-  timestamp: string
-  userName: string
+  isSystem: boolean
+  resourceId: string | null
+  resourceType: string | null
+  user: {id: number; name: string} | null
 }
 
 interface ActivityLogResponse {
@@ -34,7 +35,10 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
   static flags = {
     page: Flags.integer({description: 'Page number'}),
     'page-size': Flags.integer({description: 'Number of items per page'}),
+    'date-from': Flags.string({description: 'Only entries on or after this date (ISO 8601)'}),
+    'date-to': Flags.string({description: 'Only entries on or before this date (ISO 8601)'}),
     'resource-type': Flags.string({description: 'Filter by resource type'}),
+    search: Flags.string({description: 'Search the log text'}),
     'user-id': Flags.string({description: 'Filter by user ID'}),
   }
 
@@ -42,6 +46,9 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
     const query: Record<string, string | number | undefined> = {}
     if (this.flags['resource-type']) query.resourceType = this.flags['resource-type']
     if (this.flags['user-id']) query.userId = this.flags['user-id']
+    if (this.flags.search) query.search = this.flags.search
+    if (this.flags['date-from']) query.dateFrom = this.flags['date-from']
+    if (this.flags['date-to']) query.dateTo = this.flags['date-to']
     if (this.flags.page !== undefined) query.page = this.flags.page
     if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
 
@@ -58,8 +65,8 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
         {header: 'Action', key: 'action'},
         {header: 'Resource Type', key: 'resourceType'},
         {header: 'Resource ID', key: 'resourceId'},
-        {header: 'Timestamp', key: 'timestamp'},
-        {header: 'User', key: 'userName'},
+        {header: 'Created At', key: 'createdAt'},
+        {get: (row) => (row.isSystem ? 'system' : (row.user?.name ?? '')), header: 'User'},
       ],
       this.flags.json,
     )

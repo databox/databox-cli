@@ -12,12 +12,13 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
 
   static examples = [
     '<%= config.bin %> dataset set-metadata 12345 --description "Revenue tracking"',
-    '<%= config.bin %> dataset set-metadata 12345 --tags \'["finance","quarterly"]\'',
+    '<%= config.bin %> dataset set-metadata 12345 --synonyms \'["finance","quarterly"]\'',
   ]
 
   static flags = {
     description: Flags.string({description: 'Dataset description'}),
-    tags: Flags.string({description: 'JSON array of tags'}),
+    'default-time-dimension': Flags.string({description: 'Column ID to use as the default time dimension'}),
+    synonyms: Flags.string({description: 'JSON array of synonyms'}),
   }
 
   async run(): Promise<void> {
@@ -27,16 +28,23 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
 
     const body: Record<string, unknown> = {}
     if (flags.description !== undefined) body.description = flags.description
-    if (flags.tags) {
+    if (flags.synonyms) {
       try {
-        body.tags = JSON.parse(flags.tags) as string[]
+        body.synonyms = JSON.parse(flags.synonyms) as string[]
       } catch {
-        this.error('Invalid JSON for --tags. Expected format: \'["tag1","tag2"]\'', {exit: 2})
+        this.error('Invalid JSON for --synonyms. Expected format: \'["name1","name2"]\'', {exit: 2})
       }
     }
 
+    if (flags['default-time-dimension'] !== undefined) {
+      body.defaultTimeDimension = flags['default-time-dimension']
+    }
+
     if (Object.keys(body).length === 0) {
-      this.error('Provide at least one field to update (--description or --tags).', {exit: 1})
+      this.error(
+        'Provide at least one field to update (--description, --synonyms or --default-time-dimension).',
+        {exit: 1},
+      )
     }
 
     const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/metadata`, body, this.accountHeaders)

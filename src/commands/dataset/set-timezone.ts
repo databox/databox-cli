@@ -15,6 +15,7 @@ export default class DatasetSetTimezone extends BaseCommand<typeof DatasetSetTim
   ]
 
   static flags = {
+    'purge-data': Flags.boolean({default: false, description: 'Purge existing data when changing the timezone'}),
     timezone: Flags.string({description: 'Timezone to set', required: true}),
   }
 
@@ -23,7 +24,10 @@ export default class DatasetSetTimezone extends BaseCommand<typeof DatasetSetTim
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    await this.apiClient.put(`/v2/datasets/${args.datasetId}/timezone`, {timezone: flags.timezone}, this.accountHeaders)
+    await this.apiClient.put(`/v2/datasets/${args.datasetId}/timezone`, {
+      purgeData: flags['purge-data'],
+      timezone: flags.timezone,
+    }, this.accountHeaders)
 
     this.log(`Timezone set to ${flags.timezone} for dataset ${args.datasetId}.`)
   }

@@ -5,9 +5,10 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Invoice {
   amount: number
-  date: string
+  currency: string
+  date: string | null
+  description: string
   downloadUrl: string | null
-  id: number
   status: string
 }
 
@@ -47,9 +48,9 @@ export default class BillingInvoices extends BaseCommand<typeof BillingInvoices>
     formatOutput(
       response.items,
       [
-        {header: 'ID', key: 'id'},
-        {header: 'Date', key: 'date'},
-        {header: 'Amount', get: (row) => String(row.amount)},
+        {get: (row) => row.date ?? '', header: 'Date'},
+        {header: 'Description', key: 'description'},
+        {get: (row) => `${row.amount} ${row.currency}`, header: 'Amount'},
         {header: 'Status', key: 'status'},
         {header: 'Download URL', get: (row) => row.downloadUrl ?? ''},
       ],

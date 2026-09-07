@@ -13,16 +13,17 @@ export default class UserInvite extends BaseCommand<typeof UserInvite> {
 
   static flags = {
     email: Flags.string({description: 'Email address of the user to invite', required: true}),
+    name: Flags.string({description: 'Display name for the new user'}),
     role: Flags.string({description: 'Role for the new user', options: ['admin', 'user'], required: true}),
   }
 
   async run(): Promise<void> {
     const {flags} = await this.parse(UserInvite)
 
-    const response = await this.apiClient.post('/v2/users', {
-      email: flags.email,
-      role: flags.role,
-    }, this.accountHeaders)
+    const body: Record<string, unknown> = {email: flags.email, role: flags.role}
+    if (flags.name !== undefined) body.name = flags.name
+
+    const response = await this.apiClient.post('/v2/users', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

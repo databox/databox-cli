@@ -4,13 +4,17 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface DatasetGetResponse {
-  createdAt: string
-  dataSourceId: number
+  columnCount: number
+  createdAt: string | null
+  datasetType: string
   id: number
-  primaryKey: string[] | null
-  schema: Array<{columnId: string; dataType: string}> | null
-  timezone: string | null
   name: string
+  // Column definitions are not on the detail payload — use `dataset schema ID`.
+  parentDataSourceId: number | null
+  primaryKey: string[] | null
+  rowCount: number
+  syncInterval: number | null
+  timezone: string | null
 }
 
 export default class DatasetGet extends BaseCommand<typeof DatasetGet> {

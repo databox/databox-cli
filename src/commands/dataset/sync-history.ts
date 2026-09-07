@@ -4,9 +4,11 @@ import {BaseCommand} from '../../base-command.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface SyncHistoryItem {
-  completedAt: string | null
-  startedAt: string
+  affectedRows: number | null
+  finishedAt: string | null
+  startedAt: string | null
   status: string
+  syncType: string | null
 }
 
 interface SyncHistoryResponse {
@@ -53,9 +55,10 @@ export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHi
     formatOutput(
       response.items,
       [
-        {header: 'Started At', key: 'startedAt'},
-        {header: 'Completed At', get: (row) => row.completedAt ?? 'N/A'},
+        {get: (row) => row.startedAt ?? '', header: 'Started At'},
+        {get: (row) => row.finishedAt ?? 'N/A', header: 'Finished At'},
         {header: 'Status', key: 'status'},
+        {get: (row) => row.syncType ?? '', header: 'Type'},
       ],
       this.flags.json,
     )

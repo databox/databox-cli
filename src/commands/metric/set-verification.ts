@@ -23,7 +23,7 @@ export default class MetricSetVerification extends BaseCommand<typeof MetricSetV
     const {args, flags} = await this.parse(MetricSetVerification)
 
     const response = await this.apiClient.put(`/v2/metrics/${encodeURIComponent(args.metricId)}/verification`, {
-      status: flags.status,
+      isVerified: flags.status === 'verified',
     }, this.accountHeaders)
 
     formatSingle(response, this.flags.json)

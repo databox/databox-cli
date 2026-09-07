@@ -15,6 +15,7 @@ export default class ClientCreate extends BaseCommand<typeof ClientCreate> {
   static flags = {
     'managed-by-id': Flags.integer({description: 'User ID of the account manager'}),
     name: Flags.string({description: 'Name of the client account', required: true}),
+    'website-url': Flags.string({description: 'Website URL for the client account'}),
   }
 
   async run(): Promise<void> {
@@ -22,6 +23,7 @@ export default class ClientCreate extends BaseCommand<typeof ClientCreate> {
 
     const body: Record<string, unknown> = {name: flags.name}
     if (flags['managed-by-id']) body.managedById = flags['managed-by-id']
+    if (flags['website-url'] !== undefined) body.websiteUrl = flags['website-url']
 
     const response = await this.apiClient.post('/v2/clients', body, this.accountHeaders)
 

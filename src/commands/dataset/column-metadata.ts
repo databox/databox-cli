@@ -9,6 +9,10 @@ interface ColumnMeta {
   displayName: string | null
 }
 
+interface ColumnMetaResponse {
+  items: ColumnMeta[]
+}
+
 export default class DatasetColumnMetadata extends BaseCommand<typeof DatasetColumnMetadata> {
   static args = {
     datasetId: Args.string({description: 'The dataset ID', required: true}),
@@ -26,10 +30,10 @@ export default class DatasetColumnMetadata extends BaseCommand<typeof DatasetCol
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<ColumnMeta[]>(`/v2/datasets/${args.datasetId}/column-metadata`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<ColumnMetaResponse>(`/v2/datasets/${args.datasetId}/column-metadata`, undefined, this.accountHeaders)
 
     formatOutput(
-      response,
+      response.items,
       [
         {header: 'Column ID', key: 'columnId'},
         {header: 'Display Name', get: (row) => row.displayName ?? ''},

@@ -27,7 +27,7 @@ export default class DatasetSetVerification extends BaseCommand<typeof DatasetSe
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    await this.apiClient.put(`/v2/datasets/${args.datasetId}/verification`, {status: flags.status}, this.accountHeaders)
+    await this.apiClient.put(`/v2/datasets/${args.datasetId}/verification`, {isVerified: flags.status === 'verified'}, this.accountHeaders)
 
     this.log(`Verification set to ${flags.status} for dataset ${args.datasetId}.`)
   }

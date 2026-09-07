@@ -4,10 +4,11 @@ import {BaseCommand} from '../../base-command.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Dataset {
-  createdAt: string
-  dataSourceId: number
+  datasetType: string
   id: number
   name: string
+  parentDataSourceId: number | null
+  statusInfo: {status: string} | null
 }
 
 interface DatasetListResponse {
@@ -44,9 +45,10 @@ export default class AccountDatasets extends BaseCommand<typeof AccountDatasets>
       response.items,
       [
         {header: 'ID', key: 'id'},
-        {header: 'Data Source ID', key: 'dataSourceId'},
+        {get: (row) => (row.parentDataSourceId === null ? '' : String(row.parentDataSourceId)), header: 'Data Source ID'},
         {header: 'Name', key: 'name'},
-        {header: 'Created', key: 'createdAt'},
+        {header: 'Type', key: 'datasetType'},
+        {get: (row) => row.statusInfo?.status ?? '', header: 'Status'},
       ],
       this.flags.json,
     )

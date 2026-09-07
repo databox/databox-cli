@@ -18,6 +18,8 @@ export default class DataSourceSetTimezone extends BaseCommand<typeof DataSource
   ]
 
   static flags = {
+    'apply-to-datasets': Flags.boolean({default: false, description: 'Apply the timezone to the datasets too'}),
+    'purge-data': Flags.boolean({default: false, description: 'Purge existing data when changing the timezone'}),
     timezone: Flags.string({description: 'Timezone value', required: true}),
   }
 
@@ -25,7 +27,11 @@ export default class DataSourceSetTimezone extends BaseCommand<typeof DataSource
     const {args} = await this.parse(DataSourceSetTimezone)
     this.requireNumericId(args.dataSourceId, 'Data source ID')
 
-    await this.apiClient.put(`/v2/data-sources/${args.dataSourceId}/timezone`, {timezone: this.flags.timezone}, this.accountHeaders)
+    await this.apiClient.put(`/v2/data-sources/${args.dataSourceId}/timezone`, {
+      applyToDatasets: this.flags['apply-to-datasets'],
+      purgeData: this.flags['purge-data'],
+      timezone: this.flags.timezone,
+    }, this.accountHeaders)
 
     this.log(`Timezone set to "${this.flags.timezone}" for data source ${args.dataSourceId}.`)
   }

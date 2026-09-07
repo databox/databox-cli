@@ -5,11 +5,14 @@ import {formatSingle} from '../../lib/output.js'
 
 interface DataSourceDetail {
   connectionId: number | null
+  createdAt: string | null
   id: number
-  integrationKey: string
+  integrationKey: string | null
+  lastActivityAt: string | null
+  name: string
   statusInfo: {status: string}
-  timezone: string
-  title: string
+  syncInterval: number | null
+  timezone: string | null
 }
 
 export default class DataSourceGet extends BaseCommand<typeof DataSourceGet> {

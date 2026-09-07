@@ -26,9 +26,12 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
   ]
 
   static flags = {
+    'connection-id': Flags.integer({description: 'Filter by connection ID'}),
     page: Flags.integer({description: 'Page number (0-indexed)'}),
     'page-size': Flags.integer({description: 'Number of items per page'}),
     search: Flags.string({description: 'Search by name'}),
+    'sort-by': Flags.string({description: 'Field to sort by'}),
+    'sort-order': Flags.string({description: 'Sort direction', options: ['asc', 'desc']}),
   }
 
   async run(): Promise<void> {
@@ -36,6 +39,9 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
     if (this.flags.page !== undefined) query.page = this.flags.page
     if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
     if (this.flags.search) query.search = this.flags.search
+    if (this.flags['connection-id'] !== undefined) query.connectionId = this.flags['connection-id']
+    if (this.flags['sort-by']) query.sortBy = this.flags['sort-by']
+    if (this.flags['sort-order']) query.sortOrder = this.flags['sort-order']
 
     const response = await this.apiClient.get<DataSourceListResponse>(
       '/v2/data-sources',

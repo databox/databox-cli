@@ -1,7 +1,7 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
 
 describe('account update', () => {
   beforeEach(() => {
@@ -29,5 +29,21 @@ describe('account update', () => {
     const {stdout} = await runCommand(['account', 'update', '--name', 'UpdatedName', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
     expect(parsed).to.deep.include({id: 1, name: 'UpdatedName'})
+  })
+
+  it('sends the full contract surface', async () => {
+    await runCommand([
+      'account', 'update',
+      '--name', 'N', '--company-name', 'C', '--website-url', 'W',
+      '--tax-number', 'T', '--billing-name', 'B',
+      '--address', '{"city":"Boston"}',
+      '--settings', '{"calendar":"Gregorian"}',
+      '--metadata', '{"companySize":"10"}',
+    ], {root: process.cwd()})
+
+    expect(lastBody('PATCH', '/v2/account')).to.deep.equal({
+      name: 'N', companyName: 'C', websiteUrl: 'W', taxNumber: 'T', billingName: 'B',
+      address: {city: 'Boston'}, settings: {calendar: 'Gregorian'}, metadata: {companySize: '10'},
+    })
   })
 })

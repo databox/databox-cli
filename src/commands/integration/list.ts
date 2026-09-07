@@ -32,6 +32,8 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
     page: Flags.integer({description: 'Page number'}),
     'page-size': Flags.integer({description: 'Number of items per page'}),
     search: Flags.string({description: 'Search by integration name'}),
+    'sort-by': Flags.string({description: 'Field to sort by'}),
+    'sort-order': Flags.string({description: 'Sort direction', options: ['asc', 'desc']}),
   }
 
   async run(): Promise<void> {
@@ -39,6 +41,8 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
     if (this.flags.search) query.search = this.flags.search
     if (this.flags.page !== undefined) query.page = this.flags.page
     if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    if (this.flags['sort-by']) query.sortBy = this.flags['sort-by']
+    if (this.flags['sort-order']) query.sortOrder = this.flags['sort-order']
 
     const response = await this.apiClient.get<IntegrationsResponse>(
       '/v2/integrations',

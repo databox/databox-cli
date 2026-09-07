@@ -13,7 +13,7 @@ describe('metric list', () => {
         status: 'success',
         requestId: 'test',
         data: {
-          items: [{id: '42|custom_query_1', name: 'Revenue', dataSourceId: 42, type: 'custom_query'}],
+          items: [{id: '42|custom_query_1', name: 'Revenue', sourceId: 42, dimensions: ['country'], supportsDrilldown: true, verificationInfo: {isVerified: true}}],
           pagination: {page: 0, pageSize: 25, totalItems: 1},
         },
       },

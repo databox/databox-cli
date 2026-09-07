@@ -19,6 +19,7 @@ export default class ClientUpdate extends BaseCommand<typeof ClientUpdate> {
   static flags = {
     'managed-by-id': Flags.integer({description: 'User ID of the account manager'}),
     name: Flags.string({description: 'New name for the client account'}),
+    'website-url': Flags.string({description: 'New website URL'}),
   }
 
   async run(): Promise<void> {
@@ -26,11 +27,12 @@ export default class ClientUpdate extends BaseCommand<typeof ClientUpdate> {
     this.requireNumericId(args.clientId, 'Client ID')
 
     const body: Record<string, unknown> = {}
-    if (this.flags.name) body.name = this.flags.name
+    if (this.flags.name !== undefined) body.name = this.flags.name
     if (this.flags['managed-by-id']) body.managedById = this.flags['managed-by-id']
+    if (this.flags['website-url'] !== undefined) body.websiteUrl = this.flags['website-url']
 
     if (Object.keys(body).length === 0) {
-      this.error('Provide at least one field to update (--name, --managed-by-id).', {exit: 1})
+      this.error('Provide at least one field to update (--name, --managed-by-id, --website-url).', {exit: 1})
     }
 
     const response = await this.apiClient.patch(`/v2/clients/${args.clientId}`, body, this.accountHeaders)

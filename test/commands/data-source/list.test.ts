@@ -14,7 +14,7 @@ describe('data-source list', () => {
           status: 'success',
           requestId: 'test',
           data: {
-            items: [{id: 42, title: 'My Source', integrationKey: 'DataboxAPI', timezone: 'UTC', connectionId: null}],
+            items: [{id: 42, name: 'My Source', integrationKey: 'Datadoo', timezone: 'UTC', statusInfo: {status: 'active'}, connectionId: null, createdAt: '2024-01-01', lastActivityAt: null}],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
         },

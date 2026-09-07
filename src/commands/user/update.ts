@@ -16,16 +16,23 @@ export default class UserUpdate extends BaseCommand<typeof UserUpdate> {
   ]
 
   static flags = {
-    role: Flags.string({description: 'New role for the user', options: ['admin', 'user'], required: true}),
+    name: Flags.string({description: 'New display name for the user'}),
+    role: Flags.string({description: 'New role for the user', options: ['admin', 'user']}),
   }
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(UserUpdate)
     this.requireNumericId(args.userId, 'User ID')
 
-    const response = await this.apiClient.patch(`/v2/users/${args.userId}`, {
-      role: flags.role,
-    }, this.accountHeaders)
+    const body: Record<string, unknown> = {}
+    if (flags.name !== undefined) body.name = flags.name
+    if (flags.role !== undefined) body.role = flags.role
+
+    if (Object.keys(body).length === 0) {
+      this.error('Provide at least one field to update (--name or --role).', {exit: 1})
+    }
+
+    const response = await this.apiClient.patch(`/v2/users/${args.userId}`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

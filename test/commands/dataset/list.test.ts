@@ -14,7 +14,7 @@ describe('dataset list', () => {
           status: 'success',
           requestId: 'test',
           data: {
-            items: [{id: 123, title: 'My Dataset', dataSourceId: 42, createdAt: '2024-01-01'}],
+            items: [{id: 123, parentDataSourceId: 42, name: 'My Dataset', timezone: null, datasetType: 'ingestion', statusInfo: {status: 'active'}, verificationInfo: {isVerified: false}, ingestionInfo: null}],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
         },

@@ -20,6 +20,7 @@ export default class DataSourceSetPermissions extends BaseCommand<typeof DataSou
 
   static flags = {
     'access-level': Flags.string({description: 'Access level (e.g. everyone, specific_users)', required: true}),
+    'access-list': Flags.integer({description: 'User ID granted access (repeat for several)', multiple: true}),
   }
 
   async run(): Promise<void> {
@@ -28,7 +29,9 @@ export default class DataSourceSetPermissions extends BaseCommand<typeof DataSou
 
     const response = await this.apiClient.put<Record<string, unknown>>(
       `/v2/data-sources/${args.dataSourceId}/permissions`,
-      {accessLevel: this.flags['access-level']},
+      this.flags['access-list']
+        ? {accessLevel: this.flags['access-level'], accessList: this.flags['access-list']}
+        : {accessLevel: this.flags['access-level']},
       this.accountHeaders,
     )
 

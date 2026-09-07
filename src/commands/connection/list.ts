@@ -5,9 +5,10 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Connection {
   id: number
-  integrationKey: string
+  integrationKey: string | null
   name: string
-  status: string
+  sharedWithClients: boolean
+  statusInfo: {status: string} | null
 }
 
 interface ConnectionsResponse {
@@ -52,7 +53,8 @@ export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
         {header: 'Integration', key: 'integrationKey'},
-        {header: 'Status', key: 'status'},
+        {get: (row) => row.statusInfo?.status ?? '', header: 'Status'},
+        {get: (row) => (row.sharedWithClients ? 'yes' : ''), header: 'Shared'},
       ],
       this.flags.json,
     )

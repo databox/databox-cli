@@ -4,11 +4,14 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface IngestionResponse {
+  duration?: number | null
   errors?: unknown
+  finishedAt: string | null
   ingestionId: string
   metrics?: unknown
+  startedAt: string | null
   status: string
-  timestamp: string
+  user?: {id: number; name: string} | null
 }
 
 export default class DatasetIngestion extends BaseCommand<typeof DatasetIngestion> {
@@ -35,20 +38,6 @@ export default class DatasetIngestion extends BaseCommand<typeof DatasetIngestio
       this.accountHeaders,
     )
 
-    const output: Record<string, unknown> = {
-      ingestionId: response.ingestionId,
-      timestamp: response.timestamp,
-      status: response.status,
-    }
-
-    if (response.metrics !== undefined) {
-      output.metrics = typeof response.metrics === 'string' ? response.metrics : JSON.stringify(response.metrics)
-    }
-
-    if (response.errors !== undefined) {
-      output.errors = typeof response.errors === 'string' ? response.errors : JSON.stringify(response.errors)
-    }
-
-    formatSingle(output, this.flags.json)
+    formatSingle(response, this.flags.json)
   }
 }

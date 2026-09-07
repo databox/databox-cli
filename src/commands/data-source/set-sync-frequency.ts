@@ -25,7 +25,7 @@ export default class DataSourceSetSyncFrequency extends BaseCommand<typeof DataS
     const {args} = await this.parse(DataSourceSetSyncFrequency)
     this.requireNumericId(args.dataSourceId, 'Data source ID')
 
-    await this.apiClient.put(`/v2/data-sources/${args.dataSourceId}/sync-frequency`, {interval: this.flags.interval}, this.accountHeaders)
+    await this.apiClient.put(`/v2/data-sources/${args.dataSourceId}/sync-frequency`, {syncInterval: this.flags.interval}, this.accountHeaders)
 
     this.log(`Sync frequency set to ${this.flags.interval} minutes for data source ${args.dataSourceId}.`)
   }

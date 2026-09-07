@@ -9,7 +9,7 @@ describe('dataset column-metadata', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/datasets/123/column-metadata',
-      response: {status: 'success', requestId: 'test', data: [{columnId: 'date', description: 'The date', displayName: 'Date'}]},
+      response: {status: 'success', requestId: 'test', data: {items: [{columnId: 'date', description: 'The date', displayName: 'Date'}]}},
     }])
   })
 

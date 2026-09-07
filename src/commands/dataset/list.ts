@@ -4,10 +4,13 @@ import {BaseCommand} from '../../base-command.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface DatasetListItem {
-  createdAt: string
-  dataSourceId: number
+  datasetType: string
   id: number
   name: string
+  parentDataSourceId: number | null
+  statusInfo: {status: string} | null
+  timezone: string | null
+  verificationInfo: {isVerified: boolean} | null
 }
 
 interface DatasetListResponse {
@@ -34,6 +37,8 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
     page: Flags.integer({description: 'Page number (0-indexed)'}),
     'page-size': Flags.integer({description: 'Number of items per page'}),
     search: Flags.string({description: 'Search by name'}),
+    'sort-by': Flags.string({description: 'Field to sort by'}),
+    'sort-order': Flags.string({description: 'Sort direction', options: ['asc', 'desc']}),
   }
 
   async run(): Promise<void> {
@@ -42,6 +47,8 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
     if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
     if (this.flags.search) query.search = this.flags.search
     if (this.flags['data-source-id']) query.dataSourceId = this.flags['data-source-id']
+    if (this.flags['sort-by']) query.sortBy = this.flags['sort-by']
+    if (this.flags['sort-order']) query.sortOrder = this.flags['sort-order']
 
     const response = await this.apiClient.get<DatasetListResponse>(
       '/v2/datasets',
@@ -54,8 +61,9 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {header: 'Data Source ID', key: 'dataSourceId'},
-        {header: 'Created', key: 'createdAt'},
+        {get: (row) => (row.parentDataSourceId === null ? '' : String(row.parentDataSourceId)), header: 'Data Source ID'},
+        {header: 'Type', key: 'datasetType'},
+        {get: (row) => row.statusInfo?.status ?? '', header: 'Status'},
       ],
       this.flags.json,
     )

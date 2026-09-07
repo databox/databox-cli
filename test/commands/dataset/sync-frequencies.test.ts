@@ -9,7 +9,7 @@ describe('dataset sync-frequencies', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/datasets/123/available-sync-frequencies',
-      response: {status: 'success', requestId: 'test', data: {items: [{interval: 60, label: 'Hourly'}], pagination: {page: 0, pageSize: 25, totalItems: 1}}},
+      response: {status: 'success', requestId: 'test', data: [{availability: 'included', isDefault: true, isSelected: true, label: 'Hourly', syncInterval: 60}]},
     }])
   })
 

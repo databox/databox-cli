@@ -24,7 +24,7 @@ export default class ConnectionUpdate extends BaseCommand<typeof ConnectionUpdat
     this.requireNumericId(args.connectionId, 'Connection ID')
 
     const body: Record<string, unknown> = {}
-    if (flags.name) body.name = flags.name
+    if (flags.name !== undefined) body.name = flags.name
 
     if (Object.keys(body).length === 0) {
       this.error('Provide at least one field to update (--name).', {exit: 1})

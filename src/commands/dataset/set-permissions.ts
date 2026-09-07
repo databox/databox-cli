@@ -20,6 +20,7 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
       description: 'Access level (e.g., everyone, specific_users)',
       required: true,
     }),
+    'access-list': Flags.integer({description: 'User ID granted access (repeat for several)', multiple: true}),
   }
 
   async run(): Promise<void> {
@@ -29,7 +30,9 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
 
     const response = await this.apiClient.put<Record<string, unknown>>(
       `/v2/datasets/${args.datasetId}/permissions`,
-      {accessLevel: flags['access-level']},
+      flags['access-list']
+        ? {accessLevel: flags['access-level'], accessList: flags['access-list']}
+        : {accessLevel: flags['access-level']},
       this.accountHeaders,
     )
 

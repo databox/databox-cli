@@ -4,12 +4,11 @@ import {BaseCommand} from '../../base-command.js'
 import {formatOutput} from '../../lib/output.js'
 
 interface SyncFrequency {
-  interval: number
+  availability: string
+  isDefault: boolean
+  isSelected: boolean
   label: string
-}
-
-interface SyncFrequenciesResponse {
-  items: SyncFrequency[]
+  syncInterval: number
 }
 
 export default class DatasetSyncFrequencies extends BaseCommand<typeof DatasetSyncFrequencies> {
@@ -29,17 +28,20 @@ export default class DatasetSyncFrequencies extends BaseCommand<typeof DatasetSy
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<SyncFrequenciesResponse>(
+    // This endpoint returns a bare array, not the usual {items} envelope.
+    const response = await this.apiClient.get<SyncFrequency[]>(
       `/v2/datasets/${args.datasetId}/available-sync-frequencies`,
       undefined,
       this.accountHeaders,
     )
 
     formatOutput(
-      response.items,
+      response,
       [
-        {header: 'Interval (min)', key: 'interval'},
+        {get: (row) => String(row.syncInterval), header: 'Interval (min)'},
         {header: 'Label', key: 'label'},
+        {get: (row) => (row.isSelected ? 'yes' : ''), header: 'Selected'},
+        {header: 'Availability', key: 'availability'},
       ],
       this.flags.json,
     )

@@ -19,17 +19,44 @@ export default class AccountUpdate extends BaseCommand<typeof AccountUpdate> {
   ]
 
   static flags = {
+    address: Flags.string({description: 'JSON object: {street, zip, city, state, country}'}),
+    'billing-name': Flags.string({description: 'Billing name'}),
     'company-name': Flags.string({description: 'Company name'}),
+    metadata: Flags.string({
+      description: 'JSON object: {industry, businessType, companySize, annualRevenue}',
+    }),
     name: Flags.string({description: 'Account name'}),
+    settings: Flags.string({
+      description: 'JSON object: {dateFormat, numberFormat, firstDayOfWeek, calendar}',
+    }),
+    'tax-number': Flags.string({description: 'Tax number'}),
+    'website-url': Flags.string({description: 'Website URL'}),
+  }
+
+  private parseJsonFlag(value: string, flag: string): unknown {
+    try {
+      return JSON.parse(value)
+    } catch {
+      this.error(`Invalid JSON for --${flag}.`, {exit: 2})
+    }
   }
 
   async run(): Promise<void> {
     const body: Record<string, unknown> = {}
-    if (this.flags.name) body.name = this.flags.name
-    if (this.flags['company-name']) body.companyName = this.flags['company-name']
+    if (this.flags.name !== undefined) body.name = this.flags.name
+    if (this.flags['company-name'] !== undefined) body.companyName = this.flags['company-name']
+    if (this.flags['website-url'] !== undefined) body.websiteUrl = this.flags['website-url']
+    if (this.flags['tax-number'] !== undefined) body.taxNumber = this.flags['tax-number']
+    if (this.flags['billing-name'] !== undefined) body.billingName = this.flags['billing-name']
+    if (this.flags.address) body.address = this.parseJsonFlag(this.flags.address, 'address')
+    if (this.flags.settings) body.settings = this.parseJsonFlag(this.flags.settings, 'settings')
+    if (this.flags.metadata) body.metadata = this.parseJsonFlag(this.flags.metadata, 'metadata')
 
     if (Object.keys(body).length === 0) {
-      this.error('Provide at least one field to update (--name or --company-name).', {exit: 1})
+      this.error(
+        'Provide at least one field to update (--name, --company-name, --website-url, --tax-number, --billing-name, --address, --settings or --metadata).',
+        {exit: 1},
+      )
     }
 
     const response = await this.apiClient.patch<AccountResponse>('/v2/account', body, this.accountHeaders)

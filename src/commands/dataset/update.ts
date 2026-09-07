@@ -25,7 +25,7 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const body: Record<string, unknown> = {}
-    if (flags.name) body.name = flags.name
+    if (flags.name !== undefined) body.name = flags.name
 
     if (Object.keys(body).length === 0) {
       this.error('Provide at least one field to update (--name).', {exit: 1})

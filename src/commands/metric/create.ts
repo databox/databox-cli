@@ -12,7 +12,18 @@ export default class MetricCreate extends BaseCommand<typeof MetricCreate> {
   ]
 
   static flags = {
+    'aggregation-function': Flags.string({
+      default: 'sum',
+      description: 'Aggregation applied to the measure',
+    }),
     date: Flags.string({description: 'Date field reference as JSON ({"id":"...","name":"..."})', required: true}),
+    dimension: Flags.string({
+      description: 'Dimension field reference as JSON ({"id":"...","name":"..."}); repeat for several',
+      multiple: true,
+    }),
+    filters: Flags.string({
+      description: 'JSON array of filters ([{"field":"...","operator":"...","values":["..."]}])',
+    }),
     'dataset-id': Flags.integer({description: 'Dataset ID to create the metric on', required: true}),
     measure: Flags.string({description: 'Measure field reference as JSON ({"id":"...","name":"..."})', required: true}),
     name: Flags.string({description: 'Name of the metric', required: true}),
@@ -35,12 +46,33 @@ export default class MetricCreate extends BaseCommand<typeof MetricCreate> {
       this.error('Invalid JSON for --measure. Expected format: {"id":"...","name":"..."}', {exit: 2})
     }
 
-    const response = await this.apiClient.post('/v2/metrics', {
+    const body: Record<string, unknown> = {
+      aggregationFunction: flags['aggregation-function'],
       datasetId: flags['dataset-id'],
       date,
       measure,
       name: flags.name,
-    }, this.accountHeaders)
+    }
+
+    if (flags.dimension) {
+      body.dimensions = flags.dimension.map((value, index) => {
+        try {
+          return JSON.parse(value) as unknown
+        } catch {
+          this.error(`Invalid JSON for --dimension #${index + 1}. Expected format: {"id":"...","name":"..."}`, {exit: 2})
+        }
+      })
+    }
+
+    if (flags.filters) {
+      try {
+        body.filters = JSON.parse(flags.filters) as unknown
+      } catch {
+        this.error('Invalid JSON for --filters. Expected format: [{"field":"...","operator":"...","values":["..."]}]', {exit: 2})
+      }
+    }
+
+    const response = await this.apiClient.post('/v2/metrics', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

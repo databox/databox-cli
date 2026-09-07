@@ -4,9 +4,11 @@ import {BaseCommand} from '../../base-command.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Ingestion {
+  duration: number | null
+  finishedAt: string | null
   ingestionId: string
+  startedAt: string | null
   status: string
-  timestamp: string
 }
 
 interface IngestionsResponse {
@@ -55,7 +57,8 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
       response.items,
       [
         {header: 'Ingestion ID', key: 'ingestionId'},
-        {header: 'Timestamp', key: 'timestamp'},
+        {get: (row) => row.startedAt ?? '', header: 'Started At'},
+        {get: (row) => row.finishedAt ?? '', header: 'Finished At'},
         {header: 'Status', key: 'status'},
       ],
       this.flags.json,

@@ -4,9 +4,10 @@ import {BaseCommand} from '../../base-command.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Dataset {
-  createdAt: string
+  datasetType: string
   id: number
   name: string | null
+  statusInfo: {status: string} | null
 }
 
 interface DatasetsResponse {
@@ -52,7 +53,8 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {header: 'Created', key: 'createdAt'},
+        {header: 'Type', key: 'datasetType'},
+        {get: (row) => row.statusInfo?.status ?? '', header: 'Status'},
       ],
       this.flags.json,
     )

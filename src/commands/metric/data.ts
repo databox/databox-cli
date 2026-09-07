@@ -15,6 +15,8 @@ export default class MetricData extends BaseCommand<typeof MetricData> {
     'data-source-id': Flags.integer({description: 'Data source ID (alternative to --dataset-id)'}),
     'dataset-id': Flags.integer({description: 'Dataset ID (alternative to --data-source-id)'}),
     'date-from': Flags.string({description: 'Start date (YYYY-MM-DD)', required: true}),
+    dimension: Flags.string({description: 'Dimension to break the data down by (repeat for several)', multiple: true}),
+    filters: Flags.string({description: 'JSON object: {logicalOperator, groups}'}),
     'date-to': Flags.string({description: 'End date (YYYY-MM-DD)', required: true}),
     granularity: Flags.string({description: 'Time granularity', options: ['hourly', 'daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'allTime'], required: true}),
     'metric-id': Flags.string({description: 'Metric ID', required: true}),
@@ -38,6 +40,14 @@ export default class MetricData extends BaseCommand<typeof MetricData> {
 
     if (flags['data-source-id']) body.dataSourceId = flags['data-source-id']
     if (flags['dataset-id']) body.datasetId = flags['dataset-id']
+    if (flags.dimension) body.dimensions = flags.dimension
+    if (flags.filters) {
+      try {
+        body.filters = JSON.parse(flags.filters) as unknown
+      } catch {
+        this.error('Invalid JSON for --filters. Expected format: {"logicalOperator":"AND","groups":[...]}', {exit: 2})
+      }
+    }
 
     const response = await this.apiClient.post('/v2/metrics/data', body, this.accountHeaders)
 

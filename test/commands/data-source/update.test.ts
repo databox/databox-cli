@@ -10,7 +10,7 @@ describe('data-source update', () => {
       {
         method: 'PATCH',
         path: '/v2/data-sources/42',
-        response: {status: 'success', requestId: 'test', data: {id: 42, title: 'Updated'}},
+        response: {status: 'success', requestId: 'test', data: {id: 42, name: 'Updated'}},
       },
     ])
   })
@@ -18,12 +18,12 @@ describe('data-source update', () => {
   afterEach(() => { restoreApi(); cleanupTestConfig() })
 
   it('updates a data source', async () => {
-    const {stdout} = await runCommand(['data-source', 'update', '42', '--title', 'Updated'], {root: process.cwd()})
+    const {stdout} = await runCommand(['data-source', 'update', '42', '--name', 'Updated'], {root: process.cwd()})
     expect(stdout).to.include('Updated')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['data-source', 'update', '42', '--title', 'Updated', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['data-source', 'update', '42', '--name', 'Updated', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
     expect(parsed.id).to.equal(42)
   })

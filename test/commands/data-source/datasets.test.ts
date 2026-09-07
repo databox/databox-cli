@@ -17,9 +17,11 @@ describe('data-source datasets', () => {
             items: [
               {
                 id: 100,
-                title: 'Linked Dataset',
-                dataSourceId: 42,
-                createdAt: '2024-01-01T00:00:00Z',
+                name: 'Linked Dataset',
+                parentDataSourceId: 42,
+                timezone: null,
+                datasetType: 'ingestion',
+                statusInfo: {status: 'active'},
               },
             ],
             pagination: {page: 0, pageSize: 25, totalItems: 1},

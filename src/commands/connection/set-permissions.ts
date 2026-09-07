@@ -17,15 +17,21 @@ export default class ConnectionSetPermissions extends BaseCommand<typeof Connect
 
   static flags = {
     'access-level': Flags.string({description: 'Access level for the connection', required: true}),
+    'access-list': Flags.integer({description: 'User ID granted access (repeat for several)', multiple: true}),
+    'shared-with-clients': Flags.boolean({default: false, description: 'Share this connection with client accounts'}),
   }
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(ConnectionSetPermissions)
     this.requireNumericId(args.connectionId, 'Connection ID')
 
-    const response = await this.apiClient.put(`/v2/connections/${args.connectionId}/permissions`, {
+    const body: Record<string, unknown> = {
       accessLevel: flags['access-level'],
-    }, this.accountHeaders)
+      sharedWithClients: flags['shared-with-clients'],
+    }
+    if (flags['access-list']) body.accessList = flags['access-list']
+
+    const response = await this.apiClient.put(`/v2/connections/${args.connectionId}/permissions`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

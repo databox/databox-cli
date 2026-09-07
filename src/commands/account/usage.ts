@@ -1,9 +1,15 @@
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
+interface UsageBucket {
+  count: number
+  limit: number | null
+}
+
 interface AccountUsageResponse {
-  dataSources: {current: number; limit: number}
-  users: {current: number; limit: number}
+  clients: UsageBucket
+  dataSources: UsageBucket
+  users: UsageBucket
 }
 
 export default class AccountUsage extends BaseCommand<typeof AccountUsage> {

@@ -4,10 +4,12 @@ import {BaseCommand} from '../../base-command.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Metric {
+  dimensions: string[]
   id: string
   name: string
-  sourceId: number
-  type: string
+  sourceId: number | null
+  supportsDrilldown: boolean
+  verificationInfo: {isVerified: boolean} | null
 }
 
 interface MetricsResponse {
@@ -54,8 +56,9 @@ export default class MetricList extends BaseCommand<typeof MetricList> {
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {header: 'Source ID', key: 'sourceId'},
-        {header: 'Type', key: 'type'},
+        {get: (row) => (row.sourceId === null ? '' : String(row.sourceId)), header: 'Source ID'},
+        {get: (row) => row.dimensions.join(', '), header: 'Dimensions'},
+        {get: (row) => (row.verificationInfo?.isVerified ? 'yes' : ''), header: 'Verified'},
       ],
       this.flags.json,
     )

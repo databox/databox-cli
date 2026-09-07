@@ -9,7 +9,7 @@ describe('metric dimension-values', () => {
     mockApi([{
       method: 'POST',
       path: '/v2/metrics/dimensions/values',
-      response: {status: 'success', requestId: 'test', data: {items: [{value: 'US'}, {value: 'UK'}]}},
+      response: {status: 'success', requestId: 'test', data: {dimensionValues: ['US', 'UK']}},
     }])
   })
 
@@ -20,7 +20,7 @@ describe('metric dimension-values', () => {
       'metric', 'dimension-values',
       '--metric-id', 'test',
       '--dimension', 'country',
-      '--dataset-id', '123',
+      '--source-id', '123',
     ], {root: process.cwd()})
     expect(stdout).to.include('US')
   })
@@ -30,7 +30,7 @@ describe('metric dimension-values', () => {
       'metric', 'dimension-values',
       '--metric-id', 'test',
       '--dimension', 'country',
-      '--dataset-id', '123',
+      '--source-id', '123',
       '--json',
     ], {root: process.cwd()})
     const parsed = JSON.parse(stdout)

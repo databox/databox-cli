@@ -17,10 +17,13 @@ describe('account data-sources', () => {
             items: [
               {
                 id: 10,
-                title: 'My Source',
+                name: 'My Source',
                 integrationKey: 'DataboxAPI',
                 timezone: 'UTC',
+                statusInfo: {status: 'active'},
                 connectionId: null,
+                createdAt: '2024-01-01T00:00:00Z',
+                lastActivityAt: null,
               },
             ],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
@@ -45,6 +48,6 @@ describe('account data-sources', () => {
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
     expect(parsed).to.have.lengthOf(1)
-    expect(parsed[0]).to.deep.include({id: 10, title: 'My Source'})
+    expect(parsed[0]).to.deep.include({id: 10, name: 'My Source'})
   })
 })

@@ -4,9 +4,11 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface DatasetCreateResponse {
-  createdAt: string | null
-  id: number | null
-  name: string | null
+  datasetType: string
+  id: number
+  name: string
+  parentDataSourceId: number | null
+  timezone: string | null
 }
 
 export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
