@@ -19,7 +19,7 @@ export default class UserGet extends BaseCommand<typeof UserGet> {
     const {args} = await this.parse(UserGet)
     this.requireNumericId(args.userId, 'User ID')
 
-    const response = await this.apiClient.get(`/v2/users/${args.userId}`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/users/${args.userId}`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

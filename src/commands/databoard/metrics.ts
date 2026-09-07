@@ -19,7 +19,7 @@ export default class DataboardMetrics extends BaseCommand<typeof DataboardMetric
     const {args} = await this.parse(DataboardMetrics)
     this.requireNumericId(args.databoardId, 'Databoard ID')
 
-    const response = await this.apiClient.get(`/v2/databoards/${args.databoardId}/metrics`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/databoards/${args.databoardId}/metrics`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

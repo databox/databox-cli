@@ -23,7 +23,7 @@ export default class UserInvite extends BaseCommand<typeof UserInvite> {
     const body: Record<string, unknown> = {email: flags.email, role: flags.role}
     if (flags.name !== undefined) body.name = flags.name
 
-    const response = await this.apiClient.post('/v2/users', body, this.accountHeaders)
+    const response = await this.apiClient.post<Record<string, unknown>>('/v2/users', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

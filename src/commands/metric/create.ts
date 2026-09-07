@@ -72,7 +72,7 @@ export default class MetricCreate extends BaseCommand<typeof MetricCreate> {
       }
     }
 
-    const response = await this.apiClient.post('/v2/metrics', body, this.accountHeaders)
+    const response = await this.apiClient.post<Record<string, unknown>>('/v2/metrics', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

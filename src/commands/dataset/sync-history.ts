@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface SyncHistoryItem {
@@ -33,8 +34,7 @@ export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHi
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number (0-indexed)'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
   }
 
   async run(): Promise<void> {
@@ -43,8 +43,7 @@ export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHi
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const query: Record<string, string | number | undefined> = {}
-    if (this.flags.page !== undefined) query.page = this.flags.page
-    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    addPagination(query, this.flags)
 
     const response = await this.apiClient.get<SyncHistoryResponse>(
       `/v2/datasets/${args.datasetId}/sync-history`,

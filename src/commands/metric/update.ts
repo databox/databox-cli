@@ -29,14 +29,6 @@ export default class MetricUpdate extends BaseCommand<typeof MetricUpdate> {
     name: Flags.string({description: 'New name for the metric'}),
   }
 
-  private parseJsonFlag(value: string, flag: string, shape: string): unknown {
-    try {
-      return JSON.parse(value)
-    } catch {
-      this.error(`Invalid JSON for --${flag}. Expected format: ${shape}`, {exit: 2})
-    }
-  }
-
   async run(): Promise<void> {
     const {args, flags} = await this.parse(MetricUpdate)
 
@@ -66,7 +58,7 @@ export default class MetricUpdate extends BaseCommand<typeof MetricUpdate> {
       )
     }
 
-    const response = await this.apiClient.patch(`/v2/metrics/${encodeURIComponent(args.metricId)}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/metrics/${encodeURIComponent(args.metricId)}`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

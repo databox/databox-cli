@@ -32,7 +32,7 @@ export default class UserUpdate extends BaseCommand<typeof UserUpdate> {
       this.error('Provide at least one field to update (--name or --role).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch(`/v2/users/${args.userId}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/users/${args.userId}`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

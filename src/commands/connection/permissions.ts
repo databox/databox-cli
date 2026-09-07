@@ -19,7 +19,7 @@ export default class ConnectionPermissions extends BaseCommand<typeof Connection
     const {args} = await this.parse(ConnectionPermissions)
     this.requireNumericId(args.connectionId, 'Connection ID')
 
-    const response = await this.apiClient.get(`/v2/connections/${args.connectionId}/permissions`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/connections/${args.connectionId}/permissions`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

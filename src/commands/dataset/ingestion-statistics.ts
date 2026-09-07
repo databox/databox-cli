@@ -20,7 +20,7 @@ export default class DatasetIngestionStatistics extends BaseCommand<typeof Datas
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get(`/v2/datasets/${args.datasetId}/ingestion-statistics`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/ingestion-statistics`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

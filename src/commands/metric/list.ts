@@ -1,6 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Metric {
@@ -33,8 +34,7 @@ export default class MetricList extends BaseCommand<typeof MetricList> {
 
   static flags = {
     'source-id': Flags.string({description: 'Filter by source ID (data source or dataset)'}),
-    page: Flags.integer({description: 'Page number'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
     search: Flags.string({description: 'Search by metric name'}),
   }
 
@@ -42,8 +42,7 @@ export default class MetricList extends BaseCommand<typeof MetricList> {
     const query: Record<string, string | number | undefined> = {}
     if (this.flags['source-id']) query.sourceId = this.flags['source-id']
     if (this.flags.search) query.search = this.flags.search
-    if (this.flags.page !== undefined) query.page = this.flags.page
-    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    addPagination(query, this.flags)
 
     const response = await this.apiClient.get<MetricsResponse>(
       '/v2/metrics',

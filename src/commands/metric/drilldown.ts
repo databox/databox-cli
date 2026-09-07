@@ -21,7 +21,7 @@ export default class MetricDrilldown extends BaseCommand<typeof MetricDrilldown>
   async run(): Promise<void> {
     const {flags} = await this.parse(MetricDrilldown)
 
-    const response = await this.apiClient.post('/v2/metrics/drilldown', {
+    const response = await this.apiClient.post<Record<string, unknown>>('/v2/metrics/drilldown', {
       datasetId: flags['dataset-id'],
       metricId: flags['metric-id'],
       period: {

@@ -20,7 +20,7 @@ export default class DatasetPermissions extends BaseCommand<typeof DatasetPermis
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get(`/v2/datasets/${args.datasetId}/permissions`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/permissions`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

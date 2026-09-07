@@ -30,7 +30,7 @@ export default class ConnectionUpdate extends BaseCommand<typeof ConnectionUpdat
       this.error('Provide at least one field to update (--name).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch(`/v2/connections/${args.connectionId}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/connections/${args.connectionId}`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

@@ -1,6 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface ActivityLogEntry {
@@ -33,8 +34,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
     'date-from': Flags.string({description: 'Only entries on or after this date (ISO 8601)'}),
     'date-to': Flags.string({description: 'Only entries on or before this date (ISO 8601)'}),
     'resource-type': Flags.string({description: 'Filter by resource type'}),
@@ -49,8 +49,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
     if (this.flags.search) query.search = this.flags.search
     if (this.flags['date-from']) query.dateFrom = this.flags['date-from']
     if (this.flags['date-to']) query.dateTo = this.flags['date-to']
-    if (this.flags.page !== undefined) query.page = this.flags.page
-    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    addPagination(query, this.flags)
 
     const response = await this.apiClient.get<ActivityLogResponse>(
       '/v2/account/activity-log',

@@ -24,7 +24,7 @@ export default class DatasetDuplicate extends BaseCommand<typeof DatasetDuplicat
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.post(
+    const response = await this.apiClient.post<Record<string, unknown>>(
       `/v2/datasets/${args.datasetId}/duplicate`,
       flags.name ? {name: flags.name} : undefined,
       this.accountHeaders,

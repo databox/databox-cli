@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Ingestion {
@@ -29,13 +30,12 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
 
   static examples = [
     '<%= config.bin %> dataset ingestions 12345',
-    '<%= config.bin %> dataset ingestions 12345 --page 1 --page-size 20',
+    '<%= config.bin %> dataset ingestions 12345 --page 0 --page-size 20',
     '<%= config.bin %> dataset ingestions 12345 --json',
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
   }
 
   async run(): Promise<void> {
@@ -44,8 +44,7 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const query: Record<string, string | number | undefined> = {}
-    if (this.flags.page !== undefined) query.page = this.flags.page
-    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    addPagination(query, this.flags)
 
     const response = await this.apiClient.get<IngestionsResponse>(
       `/v2/datasets/${args.datasetId}/ingestions`,

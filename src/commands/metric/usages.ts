@@ -18,7 +18,7 @@ export default class MetricUsages extends BaseCommand<typeof MetricUsages> {
   async run(): Promise<void> {
     const {args} = await this.parse(MetricUsages)
 
-    const response = await this.apiClient.get(`/v2/metrics/${encodeURIComponent(args.metricId)}/usages`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/metrics/${encodeURIComponent(args.metricId)}/usages`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

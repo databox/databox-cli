@@ -19,7 +19,7 @@ export default class ClientGet extends BaseCommand<typeof ClientGet> {
     const {args} = await this.parse(ClientGet)
     this.requireNumericId(args.clientId, 'Client ID')
 
-    const response = await this.apiClient.get(`/v2/clients/${args.clientId}`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/clients/${args.clientId}`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

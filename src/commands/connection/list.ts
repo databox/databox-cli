@@ -1,6 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Connection {
@@ -30,16 +31,14 @@ export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
     search: Flags.string({description: 'Search by connection name'}),
   }
 
   async run(): Promise<void> {
     const query: Record<string, string | number | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
-    if (this.flags.page !== undefined) query.page = this.flags.page
-    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    addPagination(query, this.flags)
 
     const response = await this.apiClient.get<ConnectionsResponse>(
       '/v2/connections',

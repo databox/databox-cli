@@ -52,11 +52,11 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
     }
 
     if (flags.schema) {
-      try {
-        body.schema = JSON.parse(flags.schema) as Array<{columnId: string; dataType: 'datetime' | 'number' | 'string'}>
-      } catch {
-        this.error('Invalid JSON for --schema. Expected format: [{"columnId":"...","dataType":"..."}]', {exit: 2})
-      }
+      body.schema = this.parseJsonFlag<Array<{columnId: string; dataType: 'datetime' | 'number' | 'string'}>>(
+        flags.schema,
+        'schema',
+        '[{"columnId":"...","dataType":"..."}]',
+      )
     }
 
     const response = await this.apiClient.post<DatasetCreateResponse>('/v2/datasets', body, this.accountHeaders)

@@ -33,14 +33,6 @@ export default class AccountUpdate extends BaseCommand<typeof AccountUpdate> {
     'website-url': Flags.string({description: 'Website URL'}),
   }
 
-  private parseJsonFlag(value: string, flag: string): unknown {
-    try {
-      return JSON.parse(value)
-    } catch {
-      this.error(`Invalid JSON for --${flag}.`, {exit: 2})
-    }
-  }
-
   async run(): Promise<void> {
     const body: Record<string, unknown> = {}
     if (this.flags.name !== undefined) body.name = this.flags.name
@@ -48,9 +40,9 @@ export default class AccountUpdate extends BaseCommand<typeof AccountUpdate> {
     if (this.flags['website-url'] !== undefined) body.websiteUrl = this.flags['website-url']
     if (this.flags['tax-number'] !== undefined) body.taxNumber = this.flags['tax-number']
     if (this.flags['billing-name'] !== undefined) body.billingName = this.flags['billing-name']
-    if (this.flags.address) body.address = this.parseJsonFlag(this.flags.address, 'address')
-    if (this.flags.settings) body.settings = this.parseJsonFlag(this.flags.settings, 'settings')
-    if (this.flags.metadata) body.metadata = this.parseJsonFlag(this.flags.metadata, 'metadata')
+    if (this.flags.address) body.address = this.parseJsonFlag(this.flags.address, 'address', '{"street":"...","city":"...","country":"..."}')
+    if (this.flags.settings) body.settings = this.parseJsonFlag(this.flags.settings, 'settings', '{"dateFormat":"...","calendar":"..."}')
+    if (this.flags.metadata) body.metadata = this.parseJsonFlag(this.flags.metadata, 'metadata', '{"industry":["..."],"companySize":"..."}')
 
     if (Object.keys(body).length === 0) {
       this.error(

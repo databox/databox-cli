@@ -23,18 +23,14 @@ export default class ProfileUpdate extends BaseCommand<typeof ProfileUpdate> {
     if (this.flags.name !== undefined) body.name = this.flags.name
     if (this.flags.timezone !== undefined) body.timezone = this.flags.timezone
     if (this.flags.metadata) {
-      try {
-        body.metadata = JSON.parse(this.flags.metadata)
-      } catch {
-        this.error('Invalid JSON for --metadata. Expected format: {"department":"...","title":"...","role":"..."}', {exit: 2})
-      }
+      body.metadata = this.parseJsonFlag(this.flags.metadata, 'metadata', '{"department":"...","title":"...","role":"..."}')
     }
 
     if (Object.keys(body).length === 0) {
       this.error('Provide at least one field to update (--name, --timezone or --metadata).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch('/v2/profile', body, this.accountHeaders)
+    const response = await this.apiClient.patch<Record<string, unknown>>('/v2/profile', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

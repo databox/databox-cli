@@ -27,14 +27,9 @@ export default class DatasetAddModification extends BaseCommand<typeof DatasetAd
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    let body: Record<string, unknown>
-    try {
-      body = JSON.parse(flags.data) as Record<string, unknown>
-    } catch {
-      this.error('Invalid JSON for --data. Expected a JSON object.', {exit: 2})
-    }
+    const body = this.parseJsonFlag<Record<string, unknown>>(flags.data, 'data', '{"columnFilters":{...}}')
 
-    const response = await this.apiClient.post(`/v2/datasets/${args.datasetId}/modifications`, body, this.accountHeaders)
+    const response = await this.apiClient.post<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/modifications`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

@@ -27,14 +27,13 @@ export default class DatasetSetColumnMetadata extends BaseCommand<typeof Dataset
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    let columns: Array<{columnId: string; description?: string; displayName?: string}>
-    try {
-      columns = JSON.parse(flags.columns) as Array<{columnId: string; description?: string; displayName?: string}>
-    } catch {
-      this.error('Invalid JSON for --columns. Expected format: [{"columnId":"...","label":"..."}]', {exit: 2})
-    }
+    const columns = this.parseJsonFlag<Array<{columnId: string; description?: string; displayName?: string}>>(
+      flags.columns,
+      'columns',
+      '[{"columnId":"...","description":"..."}]',
+    )
 
-    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/column-metadata`, {columns}, this.accountHeaders)
+    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/column-metadata`, {columns}, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

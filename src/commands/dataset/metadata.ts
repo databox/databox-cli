@@ -20,7 +20,7 @@ export default class DatasetMetadata extends BaseCommand<typeof DatasetMetadata>
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get(`/v2/datasets/${args.datasetId}/metadata`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/metadata`, undefined, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

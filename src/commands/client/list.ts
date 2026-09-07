@@ -1,6 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, addSorting, paginationFlags, sortFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Client {
@@ -28,20 +29,16 @@ export default class ClientList extends BaseCommand<typeof ClientList> {
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
     search: Flags.string({description: 'Search by name'}),
-    'sort-by': Flags.string({description: 'Field to sort by'}),
-    'sort-order': Flags.string({description: 'Sort direction', options: ['asc', 'desc']}),
+    ...sortFlags,
   }
 
   async run(): Promise<void> {
     const query: Record<string, string | number | undefined> = {}
-    if (this.flags.page !== undefined) query.page = this.flags.page
-    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    addPagination(query, this.flags)
     if (this.flags.search) query.search = this.flags.search
-    if (this.flags['sort-by']) query.sortBy = this.flags['sort-by']
-    if (this.flags['sort-order']) query.sortOrder = this.flags['sort-order']
+    addSorting(query, this.flags)
 
     const response = await this.apiClient.get<ClientsResponse>(
       '/v2/clients',

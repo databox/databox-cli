@@ -29,11 +29,7 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
     const body: Record<string, unknown> = {}
     if (flags.description !== undefined) body.description = flags.description
     if (flags.synonyms) {
-      try {
-        body.synonyms = JSON.parse(flags.synonyms) as string[]
-      } catch {
-        this.error('Invalid JSON for --synonyms. Expected format: \'["name1","name2"]\'', {exit: 2})
-      }
+      body.synonyms = this.parseJsonFlag<string[]>(flags.synonyms, 'synonyms', '["name1","name2"]')
     }
 
     if (flags['default-time-dimension'] !== undefined) {
@@ -47,7 +43,7 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
       )
     }
 
-    const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}/metadata`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/metadata`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

@@ -26,12 +26,7 @@ export default class DatasetUpdateModification extends BaseCommand<typeof Datase
     const {args} = await this.parse(DatasetUpdateModification)
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    let body: Record<string, unknown>
-    try {
-      body = JSON.parse(this.flags.data) as Record<string, unknown>
-    } catch {
-      this.error('Invalid JSON for --data. Expected a JSON object.', {exit: 2})
-    }
+    const body = this.parseJsonFlag<Record<string, unknown>>(this.flags.data, 'data', '{"columnFilters":{...}}')
 
     const response = await this.apiClient.put<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/modifications`, body, this.accountHeaders)
 
