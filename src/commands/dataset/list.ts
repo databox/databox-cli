@@ -1,16 +1,18 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, addSorting, paginationFlags, sortFlags} from '../../lib/flags.js'
+import {
+  addPagination, addSorting, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface DatasetListItem {
   datasetType: string
   id: number
   name: string
-  parentDataSourceId: number | null
+  parentDataSourceId: null | number
   statusInfo: {status: string} | null
-  timezone: string | null
+  timezone: null | string
   verificationInfo: {isVerified: boolean} | null
 }
 
@@ -41,7 +43,7 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
     if (this.flags.search) query.search = this.flags.search
     if (this.flags['data-source-id']) query.dataSourceId = this.flags['data-source-id']
@@ -58,9 +60,9 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {get: (row) => (row.parentDataSourceId === null ? '' : String(row.parentDataSourceId)), header: 'Data Source ID'},
+        {get: row => (row.parentDataSourceId === null ? '' : String(row.parentDataSourceId)), header: 'Data Source ID'},
         {header: 'Type', key: 'datasetType'},
-        {get: (row) => row.statusInfo?.status ?? '', header: 'Status'},
+        {get: row => row.statusInfo?.status ?? '', header: 'Status'},
       ],
       this.flags.json,
     )

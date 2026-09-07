@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupEmptyConfig, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupEmptyConfig, setupTestConfig,
+} from '../../helpers.js'
 
 describe('auth validate', () => {
   afterEach(() => {
@@ -15,7 +17,7 @@ describe('auth validate', () => {
       {
         method: 'GET',
         path: '/v2/auth/validate-key',
-        response: {status: 'success', requestId: 'test', data: {}},
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
 
@@ -30,7 +32,7 @@ describe('auth validate', () => {
       {
         method: 'GET',
         path: '/v2/auth/validate-key',
-        response: {status: 'success', requestId: 'test', data: {}},
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
 

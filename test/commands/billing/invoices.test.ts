@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('billing invoices', () => {
   beforeEach(() => {
@@ -10,7 +12,13 @@ describe('billing invoices', () => {
       {
         method: 'GET',
         path: '/v2/billing/invoices',
-        response: {status: 'success', requestId: 'test', data: {items: [{id: 1, date: '2024-01-01', amount: 99.00, status: 'paid', downloadUrl: 'https://example.com/invoice.pdf'}], pagination: {page: 0, pageSize: 25, totalItems: 1}}},
+        response: {
+          data: {
+            items: [{
+              amount: 99, date: '2024-01-01', downloadUrl: 'https://example.com/invoice.pdf', id: 1, status: 'paid',
+            }], pagination: {page: 0, pageSize: 25, totalItems: 1},
+          }, requestId: 'test', status: 'success',
+        },
       },
     ])
   })

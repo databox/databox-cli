@@ -35,7 +35,7 @@ export default class DatasetData extends BaseCommand<typeof DatasetData> {
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
 
     const response = await this.apiClient.get<DataResponse>(
@@ -52,7 +52,7 @@ export default class DatasetData extends BaseCommand<typeof DatasetData> {
     const keys = response.items.length > 0 ? Object.keys(response.items[0]) : []
     formatOutput(
       response.items,
-      keys.map((k) => ({header: k, get: (row: Record<string, unknown>) => String(row[k] ?? '')})),
+      keys.map(k => ({get: (row: Record<string, unknown>) => String(row[k] ?? ''), header: k})),
       this.flags.json,
     )
 

@@ -51,6 +51,6 @@ export default class MetricDimensionValues extends BaseCommand<typeof MetricDime
       return
     }
 
-    formatOutput(values.map((value) => ({value})), [{header: 'Value', key: 'value'}], false)
+    formatOutput(values.map(value => ({value})), [{header: 'Value', key: 'value'}], false)
   }
 }

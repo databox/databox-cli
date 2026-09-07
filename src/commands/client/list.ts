@@ -1,7 +1,9 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, addSorting, paginationFlags, sortFlags} from '../../lib/flags.js'
+import {
+  addPagination, addSorting, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Client {
@@ -35,7 +37,7 @@ export default class ClientList extends BaseCommand<typeof ClientList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
     if (this.flags.search) query.search = this.flags.search
     addSorting(query, this.flags)
@@ -51,8 +53,8 @@ export default class ClientList extends BaseCommand<typeof ClientList> {
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {get: (row) => (row.isSelfManaged ? 'yes' : ''), header: 'Self Managed'},
-        {get: (row) => row.managedBy?.name ?? '', header: 'Managed By'},
+        {get: row => (row.isSelfManaged ? 'yes' : ''), header: 'Self Managed'},
+        {get: row => row.managedBy?.name ?? '', header: 'Managed By'},
       ],
       this.flags.json,
     )

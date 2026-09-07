@@ -222,7 +222,7 @@ describe('metric', () => {
     if (!metricId) this.skip()
 
     const end = Math.floor(Date.now() / 1000)
-    const start = end - 30 * 24 * 60 * 60
+    const start = end - (30 * 24 * 60 * 60)
     const result = await cliWithRetry([
       'metric', 'drilldown',
       '--metric-id', metricId!,

@@ -1,11 +1,13 @@
 import {expect} from 'chai'
 
-import {cli, cliWithRetry, expectField, expectKey, expectOk, json} from './helpers/cli.js'
+import {
+  cli, cliWithRetry, expectField, expectKey, expectOk, json,
+} from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
 interface Account {
   accountType: string
-  companyName: string | null
+  companyName: null | string
   id: number
   name: string
 }
@@ -37,7 +39,7 @@ describe('account', () => {
   // the interface is stale, though formatSingle prints whatever it is given, so
   // there is no user-visible symptom. Asserted here against the real contract.
   it('reports usage counts', async () => {
-    const usage = json<Record<string, {count: number; limit: number | null}>>(await cli(['account', 'usage', '--json']))
+    const usage = json<Record<string, {count: number; limit: null | number}>>(await cli(['account', 'usage', '--json']))
 
     for (const bucket of ['users', 'dataSources', 'clients']) {
       expectField(usage, bucket, 'object')
@@ -81,7 +83,7 @@ describe('account', () => {
   // rather than in the unit suite: @oclif/test's runCommand refuses an
   // empty-string flag value, while the real binary accepts it.
   it('clears a nullable field when given an empty string', async () => {
-    const original = json<{websiteUrl: string | null}>(await cli(['account', 'info', '--json'])).websiteUrl
+    const original = json<{websiteUrl: null | string}>(await cli(['account', 'info', '--json'])).websiteUrl
 
     await withRestore(
       'account.websiteUrl',

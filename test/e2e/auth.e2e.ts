@@ -1,6 +1,8 @@
 import {expect} from 'chai'
 
-import {cli, expectExit, expectOk, json} from './helpers/cli.js'
+import {
+  cli, expectExit, expectOk, json,
+} from './helpers/cli.js'
 import {getConfig} from './helpers/env.js'
 
 describe('auth', () => {

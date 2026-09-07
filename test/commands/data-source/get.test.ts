@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source get', () => {
   beforeEach(() => {
@@ -10,12 +12,19 @@ describe('data-source get', () => {
       {
         method: 'GET',
         path: '/v2/data-sources/42',
-        response: {status: 'success', requestId: 'test', data: {id: 42, title: 'My Source', integrationKey: 'DataboxAPI', timezone: 'UTC'}},
+        response: {
+          data: {
+            id: 42, integrationKey: 'DataboxAPI', timezone: 'UTC', title: 'My Source',
+          }, requestId: 'test', status: 'success',
+        },
       },
     ])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('gets data source details', async () => {
     const {stdout} = await runCommand(['data-source', 'get', '42'], {root: process.cwd()})

@@ -5,9 +5,9 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 interface Invoice {
   amount: number
   currency: string
-  date: string | null
+  date: null | string
   description: string
-  downloadUrl: string | null
+  downloadUrl: null | string
   status: string
 }
 
@@ -33,7 +33,7 @@ export default class BillingInvoices extends BaseCommand<typeof BillingInvoices>
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
 
     const response = await this.apiClient.get<InvoicesResponse>(
@@ -45,11 +45,11 @@ export default class BillingInvoices extends BaseCommand<typeof BillingInvoices>
     formatOutput(
       response.items,
       [
-        {get: (row) => row.date ?? '', header: 'Date'},
+        {get: row => row.date ?? '', header: 'Date'},
         {header: 'Description', key: 'description'},
-        {get: (row) => `${row.amount} ${row.currency}`, header: 'Amount'},
+        {get: row => `${row.amount} ${row.currency}`, header: 'Amount'},
         {header: 'Status', key: 'status'},
-        {header: 'Download URL', get: (row) => row.downloadUrl ?? ''},
+        {get: row => row.downloadUrl ?? '', header: 'Download URL'},
       ],
       this.flags.json,
     )

@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset purge', () => {
   beforeEach(() => {
@@ -10,7 +12,7 @@ describe('dataset purge', () => {
       {
         method: 'POST',
         path: '/v2/datasets/123/purge',
-        response: {status: 'success', requestId: 'test', data: {}},
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
   })

@@ -1,15 +1,17 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, addSorting, paginationFlags, sortFlags} from '../../lib/flags.js'
+import {
+  addPagination, addSorting, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface DataSource {
-  connectionId: number | null
+  connectionId: null | number
   id: number
-  integrationKey: string | null
-  timezone: string | null
-  name: string | null
+  integrationKey: null | string
+  name: null | string
+  timezone: null | string
 }
 
 interface DataSourceListResponse {
@@ -34,7 +36,7 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
     if (this.flags.search) query.search = this.flags.search
     if (this.flags['connection-id'] !== undefined) query.connectionId = this.flags['connection-id']
@@ -53,7 +55,7 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
         {header: 'Name', key: 'name'},
         {header: 'Integration', key: 'integrationKey'},
         {header: 'Timezone', key: 'timezone'},
-        {get: (row) => row.connectionId ? String(row.connectionId) : '', header: 'Connection ID'},
+        {get: row => row.connectionId ? String(row.connectionId) : '', header: 'Connection ID'},
       ],
       this.flags.json,
     )

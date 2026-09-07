@@ -6,8 +6,8 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Databoard {
   id: number
-  name: string
   integrationKeys: string[]
+  name: string
   tags: string[]
 }
 
@@ -35,7 +35,7 @@ export default class DataboardList extends BaseCommand<typeof DataboardList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
     addPagination(query, this.flags)
 
@@ -50,8 +50,8 @@ export default class DataboardList extends BaseCommand<typeof DataboardList> {
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {get: (row) => (row.tags ?? []).join(', '), header: 'Tags'},
-        {get: (row) => (row.integrationKeys ?? []).join(', '), header: 'Integrations'},
+        {get: row => (row.tags ?? []).join(', '), header: 'Tags'},
+        {get: row => (row.integrationKeys ?? []).join(', '), header: 'Integrations'},
       ],
       this.flags.json,
     )

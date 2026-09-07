@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset create', () => {
   beforeEach(() => {
@@ -11,9 +13,11 @@ describe('dataset create', () => {
         method: 'POST',
         path: '/v2/datasets',
         response: {
-          status: 'success',
+          data: {
+            datasetType: 'ingestion', id: 123, name: 'NewDataset', parentDataSourceId: 1, timezone: null,
+          },
           requestId: 'test',
-          data: {id: 123, parentDataSourceId: 1, name: 'NewDataset', timezone: null, datasetType: 'ingestion'},
+          status: 'success',
         },
       },
     ])

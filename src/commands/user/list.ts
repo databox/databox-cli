@@ -1,7 +1,9 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, addSorting, paginationFlags, sortFlags} from '../../lib/flags.js'
+import {
+  addPagination, addSorting, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface User {
@@ -36,7 +38,7 @@ export default class UserList extends BaseCommand<typeof UserList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
     if (this.flags.search) query.search = this.flags.search
     if (this.flags.role) query.role = this.flags.role

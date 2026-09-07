@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source set-timezone', () => {
   beforeEach(() => {
@@ -10,12 +12,15 @@ describe('data-source set-timezone', () => {
       {
         method: 'PUT',
         path: '/v2/data-sources/42/timezone',
-        response: {status: 'success', requestId: 'test', data: {}},
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('sets timezone', async () => {
     const {stdout} = await runCommand(['data-source', 'set-timezone', '42', '--timezone', 'US/Eastern'], {root: process.cwd()})

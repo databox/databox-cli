@@ -5,7 +5,7 @@ import {formatSingle} from '../../lib/output.js'
 
 interface AccountResponse {
   accountType: string
-  companyName: string | null
+  companyName: null | string
   id: number
   name: string
 }

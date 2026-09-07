@@ -3,7 +3,7 @@ import {formatSingle} from '../../lib/output.js'
 
 interface UsageBucket {
   count: number
-  limit: number | null
+  limit: null | number
 }
 
 interface AccountUsageResponse {

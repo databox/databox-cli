@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('connection permissions', () => {
   beforeEach(() => {
@@ -11,9 +13,9 @@ describe('connection permissions', () => {
         method: 'GET',
         path: '/v2/connections/1/permissions',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {accessLevel: 'everyone', users: []},
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

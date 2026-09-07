@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('metric drilldown', () => {
   beforeEach(() => {
@@ -10,14 +12,17 @@ describe('metric drilldown', () => {
       method: 'POST',
       path: '/v2/metrics/drilldown',
       response: {
-        status: 'success',
+        data: {items: [{date: '2024-01-01', value: 100}], pagination: {page: 0, pageSize: 25, totalItems: 1}, schema: {items: [{columnId: 'date'}]}},
         requestId: 'test',
-        data: {items: [{date: '2024-01-01', value: 100}], schema: {items: [{columnId: 'date'}]}, pagination: {page: 0, pageSize: 25, totalItems: 1}},
+        status: 'success',
       },
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('gets drilldown data', async () => {
     const {stdout} = await runCommand([

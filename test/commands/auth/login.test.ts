@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupEmptyConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupEmptyConfig,
+} from '../../helpers.js'
 
 describe('auth login', () => {
   // `auth login` calls saveConfig for real — without a throwaway HOME it writes the
@@ -20,7 +22,7 @@ describe('auth login', () => {
       {
         method: 'GET',
         path: '/v2/auth/validate-key',
-        response: {status: 'success', requestId: 'test', data: {}},
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
 
@@ -34,7 +36,7 @@ describe('auth login', () => {
       {
         method: 'GET',
         path: '/v2/auth/validate-key',
-        response: {status: 'error', requestId: 'test', errors: [{message: 'Invalid API key'}]},
+        response: {errors: [{message: 'Invalid API key'}], requestId: 'test', status: 'error'},
         status: 401,
       },
     ])

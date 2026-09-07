@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('metric dimension-values', () => {
   beforeEach(() => {
@@ -9,11 +11,14 @@ describe('metric dimension-values', () => {
     mockApi([{
       method: 'POST',
       path: '/v2/metrics/dimensions/values',
-      response: {status: 'success', requestId: 'test', data: {dimensionValues: ['US', 'UK']}},
+      response: {data: {dimensionValues: ['US', 'UK']}, requestId: 'test', status: 'success'},
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('gets dimension values', async () => {
     const {stdout} = await runCommand([

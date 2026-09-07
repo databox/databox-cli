@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source set-permissions', () => {
   beforeEach(() => {
@@ -10,12 +12,15 @@ describe('data-source set-permissions', () => {
       {
         method: 'PUT',
         path: '/v2/data-sources/42/permissions',
-        response: {status: 'success', requestId: 'test', data: {accessLevel: 'everyone'}},
+        response: {data: {accessLevel: 'everyone'}, requestId: 'test', status: 'success'},
       },
     ])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('sets permissions', async () => {
     const {stdout} = await runCommand(['data-source', 'set-permissions', '42', '--access-level', 'everyone'], {root: process.cwd()})

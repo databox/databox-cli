@@ -1,4 +1,6 @@
-import {E2eEnvironment, E2eTarget, KeySource, knownEnvironmentNames, resolveEnvironment, targetOf} from './environments.js'
+import {
+  E2eEnvironment, E2eTarget, KeySource, knownEnvironmentNames, resolveEnvironment, targetOf,
+} from './environments.js'
 
 export interface E2eConfig {
   /** Sent as x-account-id on every command. Optional. */
@@ -15,17 +17,17 @@ export interface E2eConfig {
  */
 function describeKeySource(source: KeySource): string {
   switch (source) {
-    case 'env': {
-      return 'from DATABOX_E2E_API_KEY'
-    }
+  case 'env': {
+    return 'from DATABOX_E2E_API_KEY'
+  }
 
-    case 'default': {
-      return 'from the environment default'
-    }
+  case 'default': {
+    return 'from the environment default'
+  }
 
-    case 'none': {
-      return 'not set'
-    }
+  case 'none': {
+    return 'not set'
+  }
   }
 }
 
@@ -103,8 +105,8 @@ export function preflight(): E2eConfig {
         `No API key for environment "${environment.name}" (${environment.baseUrl}).`,
         'Set DATABOX_E2E_API_KEY to a key valid for that environment.',
         `Environments with a built-in default key: ${knownEnvironmentNames()
-          .filter((name) => resolveEnvironment({DATABOX_E2E_ENV: name}).keySource === 'default')
-          .join(', ')}.`,
+        .filter(name => resolveEnvironment({DATABOX_E2E_ENV: name}).keySource === 'default')
+        .join(', ')}.`,
       ].join('\n'),
     )
   }

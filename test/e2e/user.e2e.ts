@@ -1,6 +1,8 @@
 import {expect} from 'chai'
 
-import {cli, cliWithRetry, expectField, expectOk, json, retryRead, serviceUnavailable} from './helpers/cli.js'
+import {
+  cli, cliWithRetry, expectField, expectOk, json, retryRead, serviceUnavailable,
+} from './helpers/cli.js'
 import {E2E_PREFIX, ResourceTracker} from './helpers/resources.js'
 
 interface User {
@@ -23,7 +25,7 @@ describe('user', () => {
     users = json<User[]>(await cliWithRetry(['user', 'list', '--page-size', '100', '--json']))
 
     // Sweep invites left by a previous interrupted run before adding another.
-    for (const orphan of users.filter((user) => E2E_EMAIL_PATTERN.test(user.email ?? ''))) {
+    for (const orphan of users.filter(user => E2E_EMAIL_PATTERN.test(user.email ?? ''))) {
       // eslint-disable-next-line no-await-in-loop
       const removed = await cliWithRetry(['user', 'delete', String(orphan.id), '--force'])
       console.log(
@@ -89,7 +91,7 @@ describe('user', () => {
     await retryRead(
       async () => {
         const listed = json<User[]>(await cli(['user', 'list', '--page-size', '100', '--json']))
-        if (!listed.some((user) => String(user.id) === invitedId)) {
+        if (!listed.some(user => String(user.id) === invitedId)) {
           throw new Error(`invited user ${invitedId} not listed yet`)
         }
       },

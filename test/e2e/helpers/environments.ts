@@ -61,7 +61,7 @@ export const DEFAULT_ENVIRONMENT = 'develop6'
 const PRODUCTION_HOSTNAMES = new Set(['api.databox.com'])
 
 /** Environment names we are willing to turn into a hostname. */
-const DYNAMIC_NAME_PATTERN = /^[a-z\d][a-z\d-]*$/
+const DYNAMIC_NAME_PATTERN = /^[\da-z][\da-z-]*$/
 
 export function knownEnvironmentNames(): string[] {
   return Object.keys(KNOWN_ENVIRONMENTS).sort()
@@ -114,8 +114,8 @@ export function resolveEnvironment(processEnv: NodeJS.ProcessEnv = process.env):
     } else {
       if (!DYNAMIC_NAME_PATTERN.test(name)) {
         throw new Error(
-          `Invalid DATABOX_E2E_ENV "${name}". Use one of: ${knownEnvironmentNames().join(', ')}, ` +
-            'a lowercase environment name, or set DATABOX_E2E_API_URL to a full URL.',
+          `Invalid DATABOX_E2E_ENV "${name}". Use one of: ${knownEnvironmentNames().join(', ')}, `
+            + 'a lowercase environment name, or set DATABOX_E2E_API_URL to a full URL.',
         )
       }
 
@@ -134,5 +134,7 @@ export function resolveEnvironment(processEnv: NodeJS.ProcessEnv = process.env):
     keySource = 'default'
   }
 
-  return {apiKey, baseUrl, isProduction: isProductionUrl(baseUrl), keySource, name}
+  return {
+    apiKey, baseUrl, isProduction: isProductionUrl(baseUrl), keySource, name,
+  }
 }

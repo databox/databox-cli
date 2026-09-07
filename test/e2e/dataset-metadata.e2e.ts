@@ -1,7 +1,11 @@
 import {expect} from 'chai'
 
-import {cli, expectExit, expectOk, json} from './helpers/cli.js'
-import {DEFAULT_SCHEMA, ResourceTracker, createDataSource, createDataset} from './helpers/resources.js'
+import {
+  cli, expectExit, expectOk, json,
+} from './helpers/cli.js'
+import {
+  DEFAULT_SCHEMA, ResourceTracker, createDataSource, createDataset,
+} from './helpers/resources.js'
 
 describe('dataset-metadata', () => {
   const tracker = new ResourceTracker()
@@ -45,7 +49,7 @@ describe('dataset-metadata', () => {
     const result = await cli(['dataset', 'set-metadata', datasetId, '--synonyms', '[not json'])
 
     expectExit(result, 2)
-    expect(result.stderr).to.match(/JSON/i)
+    expect(result.stderr).to.match(/json/i)
   })
 
   it('reads column metadata', async () => {
@@ -58,7 +62,7 @@ describe('dataset-metadata', () => {
   })
 
   it('sets column metadata and reads it back', async () => {
-    const columnId = DEFAULT_SCHEMA[1].columnId
+    const {columnId} = DEFAULT_SCHEMA[1]
     const columns = [{columnId, description: 'Set by the e2e suite'}]
 
     expectOk(await cli(['dataset', 'set-column-metadata', datasetId, '--columns', JSON.stringify(columns), '--json']))
@@ -67,7 +71,7 @@ describe('dataset-metadata', () => {
       await cli(['dataset', 'column-metadata', datasetId, '--json']),
     )
 
-    const updated = reread.find((column) => column.columnId === columnId)
+    const updated = reread.find(column => column.columnId === columnId)
     expect(updated, `column "${columnId}" missing from column-metadata`).to.not.equal(undefined)
     expect(updated!.description).to.equal('Set by the e2e suite')
   })
@@ -76,6 +80,6 @@ describe('dataset-metadata', () => {
     const result = await cli(['dataset', 'set-column-metadata', datasetId, '--columns', '{oops'])
 
     expectExit(result, 2)
-    expect(result.stderr).to.match(/JSON/i)
+    expect(result.stderr).to.match(/json/i)
   })
 })

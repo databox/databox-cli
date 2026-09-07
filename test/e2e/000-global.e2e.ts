@@ -1,8 +1,10 @@
 import * as fs from 'node:fs'
 
-import {CLI_ENTRYPOINT, cli, expectOk, retryRead} from './helpers/cli.js'
-import {preflight} from './helpers/env.js'
 import {sweepOrphans} from './helpers/cleanup.js'
+import {
+  CLI_ENTRYPOINT, cli, expectOk, retryRead,
+} from './helpers/cli.js'
+import {preflight} from './helpers/env.js'
 import {pendingRestores, runPendingRestores} from './helpers/restore.js'
 
 /**

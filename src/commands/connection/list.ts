@@ -6,7 +6,7 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Connection {
   id: number
-  integrationKey: string | null
+  integrationKey: null | string
   name: string
   sharedWithClients: boolean
   statusInfo: {status: string} | null
@@ -36,7 +36,7 @@ export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
     addPagination(query, this.flags)
 
@@ -52,8 +52,8 @@ export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
         {header: 'Integration', key: 'integrationKey'},
-        {get: (row) => row.statusInfo?.status ?? '', header: 'Status'},
-        {get: (row) => (row.sharedWithClients ? 'yes' : ''), header: 'Shared'},
+        {get: row => row.statusInfo?.status ?? '', header: 'Status'},
+        {get: row => (row.sharedWithClients ? 'yes' : ''), header: 'Shared'},
       ],
       this.flags.json,
     )

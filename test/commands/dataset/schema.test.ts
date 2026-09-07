@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset schema', () => {
   beforeEach(() => {
@@ -9,11 +11,14 @@ describe('dataset schema', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/datasets/123/schema',
-      response: {status: 'success', requestId: 'test', data: {items: [{columnId: 'date', dataType: 'datetime'}, {columnId: 'value', dataType: 'number'}]}},
+      response: {data: {items: [{columnId: 'date', dataType: 'datetime'}, {columnId: 'value', dataType: 'number'}]}, requestId: 'test', status: 'success'},
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('shows dataset schema', async () => {
     const {stdout} = await runCommand(['dataset', 'schema', '123'], {root: process.cwd()})

@@ -61,8 +61,8 @@ describe('validation: empty update bodies', () => {
 
     walk(commandsDir)
 
-    const covered = new Set(cases.map((argv) => argv.slice(0, 2).join(' ')))
-    const missing = guarded.filter((c) => !covered.has(c))
+    const covered = new Set(cases.map(argv => argv.slice(0, 2).join(' ')))
+    const missing = guarded.filter(c => !covered.has(c))
 
     expect(missing, `commands guarding an empty body but not covered above: ${missing.join(', ')}`).to.deep.equal([])
   })

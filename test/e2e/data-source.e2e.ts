@@ -1,14 +1,16 @@
 import {expect} from 'chai'
 
-import {cli, cliWithRetry, expectExit, expectField, expectKey, expectOk, json, retryRead} from './helpers/cli.js'
+import {
+  cli, cliWithRetry, expectExit, expectField, expectKey, expectOk, json, retryRead,
+} from './helpers/cli.js'
 import {ResourceTracker, createDataSource, e2eName} from './helpers/resources.js'
 
 interface DataSource {
-  connectionId: number | null
+  connectionId: null | number
   id: number
-  integrationKey: string | null
+  integrationKey: null | string
   name: string
-  timezone: string | null
+  timezone: null | string
 }
 
 describe('data-source', () => {
@@ -46,7 +48,7 @@ describe('data-source', () => {
     )
 
     expect(listed).to.be.an('array')
-    expect(listed.some((item) => String(item.id) === dataSourceId)).to.equal(
+    expect(listed.some(item => String(item.id) === dataSourceId)).to.equal(
       true,
       `data source ${dataSourceId} not returned by --search "${dataSourceName}"`,
     )
@@ -93,7 +95,7 @@ describe('data-source', () => {
     const offered = json<Array<{syncInterval: number}>>(
       await cli(['data-source', 'sync-frequencies', dataSourceId, '--json']),
     )
-    const interval = offered.find((f) => f.syncInterval === 1440)?.syncInterval ?? offered[0].syncInterval
+    const interval = offered.find(f => f.syncInterval === 1440)?.syncInterval ?? offered[0].syncInterval
 
     const result = expectOk(await cliWithRetry(['data-source', 'set-sync-frequency', dataSourceId, '--interval', String(interval)]))
     expect(result.stdout).to.include(`${interval} minutes`)
@@ -144,7 +146,7 @@ describe('data-source', () => {
           await cli(['data-source', 'list', '--search', dataSourceName, '--page-size', '50', '--json']),
         )
 
-        if (listed.some((item) => String(item.id) === dataSourceId)) {
+        if (listed.some(item => String(item.id) === dataSourceId)) {
           throw new Error(`deleted data source ${dataSourceId} is still listed`)
         }
       },

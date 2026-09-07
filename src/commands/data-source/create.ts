@@ -4,7 +4,7 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface DataSourceDetail {
-  connectionId: number | null
+  connectionId: null | number
   id: number
   integrationKey: string
   name: string

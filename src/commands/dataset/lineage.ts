@@ -4,9 +4,9 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface LineageResponse {
-  children: Array<{datasetType: string | null; id: number; name: string; type: string}>
+  children: Array<{datasetType: null | string; id: number; name: string; type: string}>
   id: number
-  parents: Array<{datasetType: string | null; id: number; name: string; type: string}>
+  parents: Array<{datasetType: null | string; id: number; name: string; type: string}>
 }
 
 export default class DatasetLineage extends BaseCommand<typeof DatasetLineage> {

@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('account countries', () => {
   beforeEach(() => {
@@ -9,13 +11,18 @@ describe('account countries', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/account/countries',
-      response: {status: 'success', requestId: 'test', data: {
-        items: [{name: 'Slovenia', code: 'SI'}, {name: 'United States', code: 'US'}],
-      }},
+      response: {
+        data: {
+          items: [{code: 'SI', name: 'Slovenia'}, {code: 'US', name: 'United States'}],
+        }, requestId: 'test', status: 'success',
+      },
     }])
   })
 
-  afterEach(() => { cleanupTestConfig(); restoreApi() })
+  afterEach(() => {
+    cleanupTestConfig()
+    restoreApi()
+  })
 
   it('lists countries', async () => {
     const {stdout} = await runCommand(['account', 'countries'])

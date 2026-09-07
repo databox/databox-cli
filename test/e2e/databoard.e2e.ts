@@ -1,6 +1,8 @@
 import {expect} from 'chai'
 
-import {cli, cliWithRetry, expectField, expectOk, json} from './helpers/cli.js'
+import {
+  cli, cliWithRetry, expectField, expectOk, json,
+} from './helpers/cli.js'
 
 interface Databoard {
   id: number

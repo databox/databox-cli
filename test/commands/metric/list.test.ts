@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('metric list', () => {
   beforeEach(() => {
@@ -10,17 +12,22 @@ describe('metric list', () => {
       method: 'GET',
       path: '/v2/metrics',
       response: {
-        status: 'success',
-        requestId: 'test',
         data: {
-          items: [{id: '42|custom_query_1', name: 'Revenue', sourceId: 42, dimensions: ['country'], supportsDrilldown: true, verificationInfo: {isVerified: true}}],
+          items: [{
+            dimensions: ['country'], id: '42|custom_query_1', name: 'Revenue', sourceId: 42, supportsDrilldown: true, verificationInfo: {isVerified: true},
+          }],
           pagination: {page: 0, pageSize: 25, totalItems: 1},
         },
+        requestId: 'test',
+        status: 'success',
       },
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('lists metrics', async () => {
     const {stdout} = await runCommand(['metric', 'list'], {root: process.cwd()})

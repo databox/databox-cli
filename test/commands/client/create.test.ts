@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('client create', () => {
   beforeEach(() => {
@@ -10,7 +12,7 @@ describe('client create', () => {
       {
         method: 'POST',
         path: '/v2/clients',
-        response: {status: 'success', requestId: 'test', data: {id: 2, name: 'NewClient'}},
+        response: {data: {id: 2, name: 'NewClient'}, requestId: 'test', status: 'success'},
       },
     ])
   })

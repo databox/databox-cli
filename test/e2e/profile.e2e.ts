@@ -1,12 +1,14 @@
 import {expect} from 'chai'
 
-import {cli, cliWithRetry, expectField, expectOk, json} from './helpers/cli.js'
+import {
+  cli, cliWithRetry, expectField, expectOk, json,
+} from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
 interface Profile {
   id?: number
-  name?: string | null
-  timezone?: string | null
+  name?: null | string
+  timezone?: null | string
 }
 
 describe('profile', () => {

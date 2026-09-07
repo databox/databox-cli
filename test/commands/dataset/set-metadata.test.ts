@@ -1,15 +1,20 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset set-metadata', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'PATCH', path: '/v2/datasets/123/metadata', response: {status: 'success', requestId: 'test', data: {description: 'Updated'}}}])
+    mockApi([{method: 'PATCH', path: '/v2/datasets/123/metadata', response: {data: {description: 'Updated'}, requestId: 'test', status: 'success'}}])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('updates metadata', async () => {
     const {stdout} = await runCommand(['dataset', 'set-metadata', '123', '--description', 'Updated'], {root: process.cwd()})

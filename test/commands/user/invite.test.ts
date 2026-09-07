@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('user invite', () => {
   beforeEach(() => {
@@ -10,7 +12,11 @@ describe('user invite', () => {
       {
         method: 'POST',
         path: '/v2/users',
-        response: {status: 'success', requestId: 'test', data: {id: 2, name: '', email: 'new@test.com', role: 'user'}},
+        response: {
+          data: {
+            email: 'new@test.com', id: 2, name: '', role: 'user',
+          }, requestId: 'test', status: 'success',
+        },
       },
     ])
   })
@@ -28,6 +34,6 @@ describe('user invite', () => {
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['user', 'invite', '--email', 'new@test.com', '--role', 'user', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
-    expect(parsed).to.deep.include({id: 2, email: 'new@test.com', role: 'user'})
+    expect(parsed).to.deep.include({email: 'new@test.com', id: 2, role: 'user'})
   })
 })

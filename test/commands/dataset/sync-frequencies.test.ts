@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset sync-frequencies', () => {
   beforeEach(() => {
@@ -9,11 +11,18 @@ describe('dataset sync-frequencies', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/datasets/123/available-sync-frequencies',
-      response: {status: 'success', requestId: 'test', data: [{availability: 'included', isDefault: true, isSelected: true, label: 'Hourly', syncInterval: 60}]},
+      response: {
+        data: [{
+          availability: 'included', isDefault: true, isSelected: true, label: 'Hourly', syncInterval: 60,
+        }], requestId: 'test', status: 'success',
+      },
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('lists sync frequencies', async () => {
     const {stdout} = await runCommand(['dataset', 'sync-frequencies', '123'], {root: process.cwd()})

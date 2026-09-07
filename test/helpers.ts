@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 import * as os from 'node:os'
+import * as path from 'node:path'
 
 let originalHome: string | undefined
 let tempHome: string | undefined
@@ -87,7 +87,7 @@ export function mockApi(routes: MockRoute[]): void {
   mockRoutes = routes
   capturedRequests = []
   originalFetch = global.fetch
-  global.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+  global.fetch = (async (input: Request | URL | string, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input.toString()
     const method = init?.method ?? 'GET'
     const parsed = new URL(url)
@@ -101,9 +101,11 @@ export function mockApi(routes: MockRoute[]): void {
       }
     }
 
-    capturedRequests.push({body, method, path: parsed.pathname, search: parsed.search})
+    capturedRequests.push({
+      body, method, path: parsed.pathname, search: parsed.search,
+    })
 
-    const route = mockRoutes.find((r) => {
+    const route = mockRoutes.find(r => {
       const urlPath = new URL(url).pathname
       return r.method === method && urlPath === r.path
     })

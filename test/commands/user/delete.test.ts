@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('user delete', () => {
   beforeEach(() => {
@@ -10,7 +12,7 @@ describe('user delete', () => {
       {
         method: 'DELETE',
         path: '/v2/users/2',
-        response: {status: 'success', requestId: 'test', data: {}},
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
   })

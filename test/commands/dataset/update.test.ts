@@ -1,15 +1,20 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset update', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'PATCH', path: '/v2/datasets/123', response: {status: 'success', requestId: 'test', data: {id: 123, name: 'Updated'}}}])
+    mockApi([{method: 'PATCH', path: '/v2/datasets/123', response: {data: {id: 123, name: 'Updated'}, requestId: 'test', status: 'success'}}])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('updates a dataset', async () => {
     const {stdout} = await runCommand(['dataset', 'update', '123', '--name', 'Updated'], {root: process.cwd()})

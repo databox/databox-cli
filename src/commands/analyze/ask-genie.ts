@@ -1,3 +1,4 @@
+/* eslint-disable camelcase -- the agentic service's wire format is snake_case */
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
@@ -24,7 +25,7 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
   ]
 
   static flags = {
-    json: Flags.boolean({description: 'Output as JSON', default: false}),
+    json: Flags.boolean({default: false, description: 'Output as JSON'}),
     'service-url': Flags.string({
       default: 'https://agentic-service.databox.com',
       description: 'Override the agentic service base URL',
@@ -51,7 +52,7 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
     const response = await fetch(url, {
       body: JSON.stringify(body),
       headers: {
-        'Accept': 'text/event-stream',
+        Accept: 'text/event-stream',
         'Content-Type': 'application/json',
         'x-api-key': this.apiClient.apiKey,
       },
@@ -111,18 +112,18 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
       }
     }
 
-    if (!flags.json) {
-      process.stdout.write('\n')
-      if (threadId) {
-        process.stderr.write(`thread_id: ${threadId}\n`)
-      }
-    } else {
+    if (flags.json) {
       console.log(JSON.stringify({
         answer: fullAnswer,
         dataset_id: args.datasetId,
         success: true,
         thread_id: threadId ?? null,
       }, null, 2))
+    } else {
+      process.stdout.write('\n')
+      if (threadId) {
+        process.stderr.write(`thread_id: ${threadId}\n`)
+      }
     }
   }
 }

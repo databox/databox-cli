@@ -38,9 +38,9 @@ export default class DatasetSyncFrequencies extends BaseCommand<typeof DatasetSy
     formatOutput(
       response,
       [
-        {get: (row) => String(row.syncInterval), header: 'Interval (min)'},
+        {get: row => String(row.syncInterval), header: 'Interval (min)'},
         {header: 'Label', key: 'label'},
-        {get: (row) => (row.isSelected ? 'yes' : ''), header: 'Selected'},
+        {get: row => (row.isSelected ? 'yes' : ''), header: 'Selected'},
         {header: 'Availability', key: 'availability'},
       ],
       this.flags.json,

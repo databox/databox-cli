@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset list', () => {
   beforeEach(() => {
@@ -11,18 +13,23 @@ describe('dataset list', () => {
         method: 'GET',
         path: '/v2/datasets',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
-            items: [{id: 123, parentDataSourceId: 42, name: 'My Dataset', timezone: null, datasetType: 'ingestion', statusInfo: {status: 'active'}, verificationInfo: {isVerified: false}, ingestionInfo: null}],
+            items: [{
+              datasetType: 'ingestion', id: 123, ingestionInfo: null, name: 'My Dataset', parentDataSourceId: 42, statusInfo: {status: 'active'}, timezone: null, verificationInfo: {isVerified: false},
+            }],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('lists datasets', async () => {
     const {stdout} = await runCommand(['dataset', 'list'], {root: process.cwd()})

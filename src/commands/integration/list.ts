@@ -1,7 +1,9 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, addSorting, paginationFlags, sortFlags} from '../../lib/flags.js'
+import {
+  addPagination, addSorting, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Integration {
@@ -36,7 +38,7 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
     addPagination(query, this.flags)
     addSorting(query, this.flags)
@@ -53,7 +55,7 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
         {header: 'ID', key: 'id'},
         {header: 'Key', key: 'key'},
         {header: 'Name', key: 'name'},
-        {get: (row) => String(row.supportsDatasets), header: 'Datasets'},
+        {get: row => String(row.supportsDatasets), header: 'Datasets'},
       ],
       this.flags.json,
     )

@@ -1,3 +1,6 @@
+/* eslint-disable n/no-process-exit, unicorn/no-process-exit, unicorn/prefer-top-level-await --
+   Standalone script (npm run test:e2e:cleanup): the exit code is the contract, and the entry
+   point is guarded so the module can still be imported. */
 import * as path from 'node:path'
 import {fileURLToPath} from 'node:url'
 
@@ -8,7 +11,7 @@ import {pendingRestores, runPendingRestores} from './restore.js'
 
 interface NamedResource {
   id: number | string
-  name?: string | null
+  name?: null | string
 }
 
 interface SweepTarget {
@@ -58,7 +61,7 @@ export async function sweepOrphans(): Promise<SweepResult> {
       continue
     }
 
-    const orphans = items.filter((item) => isE2eResource(item.name))
+    const orphans = items.filter(item => isE2eResource(item.name))
 
     for (const orphan of orphans) {
       // eslint-disable-next-line no-await-in-loop

@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('databoard list', () => {
   beforeEach(() => {
@@ -11,12 +13,14 @@ describe('databoard list', () => {
         method: 'GET',
         path: '/v2/databoards',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
-            items: [{id: 1, name: 'Marketing Dashboard', tags: ['marketing'], integrationKeys: ['GoogleAnalytics4']}],
+            items: [{
+              id: 1, integrationKeys: ['GoogleAnalytics4'], name: 'Marketing Dashboard', tags: ['marketing'],
+            }],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

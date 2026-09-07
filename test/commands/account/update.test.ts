@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('account update', () => {
   beforeEach(() => {
@@ -10,7 +12,7 @@ describe('account update', () => {
       {
         method: 'PATCH',
         path: '/v2/account',
-        response: {status: 'success', requestId: 'test', data: {id: 1, name: 'UpdatedName', accountType: 'standard'}},
+        response: {data: {accountType: 'standard', id: 1, name: 'UpdatedName'}, requestId: 'test', status: 'success'},
       },
     ])
   })
@@ -42,8 +44,8 @@ describe('account update', () => {
     ], {root: process.cwd()})
 
     expect(lastBody('PATCH', '/v2/account')).to.deep.equal({
-      name: 'N', companyName: 'C', websiteUrl: 'W', taxNumber: 'T', billingName: 'B',
-      address: {city: 'Boston'}, settings: {calendar: 'Gregorian'}, metadata: {companySize: '10'},
+      address: {city: 'Boston'}, billingName: 'B', companyName: 'C', metadata: {companySize: '10'}, name: 'N',
+      settings: {calendar: 'Gregorian'}, taxNumber: 'T', websiteUrl: 'W',
     })
   })
 })

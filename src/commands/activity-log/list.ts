@@ -9,8 +9,8 @@ interface ActivityLogEntry {
   createdAt: string
   id: number
   isSystem: boolean
-  resourceId: string | null
-  resourceType: string | null
+  resourceId: null | string
+  resourceType: null | string
   user: {id: number; name: string} | null
 }
 
@@ -43,7 +43,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     if (this.flags['resource-type']) query.resourceType = this.flags['resource-type']
     if (this.flags['user-id']) query.userId = this.flags['user-id']
     if (this.flags.search) query.search = this.flags.search
@@ -65,7 +65,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
         {header: 'Resource Type', key: 'resourceType'},
         {header: 'Resource ID', key: 'resourceId'},
         {header: 'Created At', key: 'createdAt'},
-        {get: (row) => (row.isSystem ? 'system' : (row.user?.name ?? '')), header: 'User'},
+        {get: row => (row.isSystem ? 'system' : (row.user?.name ?? '')), header: 'User'},
       ],
       this.flags.json,
     )

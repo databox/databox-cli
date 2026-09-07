@@ -7,7 +7,7 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 interface Dataset {
   datasetType: string
   id: number
-  name: string | null
+  name: null | string
   statusInfo: {status: string} | null
 }
 
@@ -40,7 +40,7 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
     const {args} = await this.parse(DataSourceDatasets)
     this.requireNumericId(args.dataSourceId, 'Data source ID')
 
-    const query: Record<string, string | number | undefined> = {
+    const query: Record<string, number | string | undefined> = {
       dataSourceId: args.dataSourceId,
     }
     addPagination(query, this.flags)
@@ -53,7 +53,7 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
         {header: 'Type', key: 'datasetType'},
-        {get: (row) => row.statusInfo?.status ?? '', header: 'Status'},
+        {get: row => row.statusInfo?.status ?? '', header: 'Status'},
       ],
       this.flags.json,
     )

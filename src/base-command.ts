@@ -3,7 +3,7 @@ import {Command, Flags, Interfaces} from '@oclif/core'
 import {ApiClient} from './lib/api-client.js'
 import {loadConfig} from './lib/config.js'
 
-export type Flags<T extends typeof Command> = Interfaces.InferredFlags<typeof BaseCommand['baseFlags'] & T['flags']>
+export type Flags<T extends typeof Command> = Interfaces.InferredFlags<T['flags'] & typeof BaseCommand['baseFlags']>
 
 export abstract class BaseCommand<T extends typeof Command = typeof Command> extends Command {
   static baseFlags = {
@@ -23,13 +23,24 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
       hidden: true,
     }),
     json: Flags.boolean({
-      description: 'Output as JSON',
       default: false,
+      description: 'Output as JSON',
     }),
   }
 
   protected flags!: Flags<T>
   private _apiClient?: ApiClient
+
+  protected get accountHeaders(): Record<string, string> {
+    const accountId = this.flags['account-id']
+    if (!accountId) return {}
+
+    if (!/^\d+$/.test(accountId)) {
+      this.error('--account-id must be a numeric value.', {exit: 2})
+    }
+
+    return {'x-account-id': accountId}
+  }
 
   protected get apiClient(): ApiClient {
     if (!this._apiClient) {
@@ -48,10 +59,10 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     return this._apiClient
   }
 
-  protected requireNumericId(value: string, name: string): void {
-    if (!/^\d+$/.test(value)) {
-      this.error(`${name} must be a numeric value.`, {exit: 2})
-    }
+  public async init(): Promise<void> {
+    await super.init()
+    const {flags} = await this.parse(this.constructor as typeof BaseCommand)
+    this.flags = flags as Flags<T>
   }
 
   /**
@@ -66,27 +77,16 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     }
   }
 
+  protected requireNumericId(value: string, name: string): void {
+    if (!/^\d+$/.test(value)) {
+      this.error(`${name} must be a numeric value.`, {exit: 2})
+    }
+  }
+
   /** For route segments the API constrains to a GUID, e.g. /ingestions/{id:guid}. */
   protected requireUuid(value: string, name: string): void {
-    if (!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(value)) {
+    if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(value)) {
       this.error(`${name} must be a UUID.`, {exit: 2})
     }
-  }
-
-  protected get accountHeaders(): Record<string, string> {
-    const accountId = this.flags['account-id']
-    if (!accountId) return {}
-
-    if (!/^\d+$/.test(accountId)) {
-      this.error('--account-id must be a numeric value.', {exit: 2})
-    }
-
-    return {'x-account-id': accountId}
-  }
-
-  public async init(): Promise<void> {
-    await super.init()
-    const {flags} = await this.parse(this.constructor as typeof BaseCommand)
-    this.flags = flags as Flags<T>
   }
 }

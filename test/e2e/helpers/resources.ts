@@ -1,4 +1,6 @@
-import {CliResult, cli, cliWithRetry, expectField, json, sleep} from './cli.js'
+import {
+  CliResult, cli, cliWithRetry, expectField, json, sleep,
+} from './cli.js'
 
 /**
  * Every resource this suite creates carries this prefix. It is deliberately
@@ -22,9 +24,15 @@ export const DEFAULT_SCHEMA: SchemaColumn[] = [
 ]
 
 export const DEFAULT_RECORDS = [
-  {amount: 100.5, date: new Date().toISOString(), id: 1, name: 'Alice'},
-  {amount: 200.75, date: new Date().toISOString(), id: 2, name: 'Bob'},
-  {amount: 50, date: new Date().toISOString(), id: 3, name: 'Charlie'},
+  {
+    amount: 100.5, date: new Date().toISOString(), id: 1, name: 'Alice',
+  },
+  {
+    amount: 200.75, date: new Date().toISOString(), id: 2, name: 'Bob',
+  },
+  {
+    amount: 50, date: new Date().toISOString(), id: 3, name: 'Charlie',
+  },
 ]
 
 /** Unique per call, so parallel or repeated runs never collide. */
@@ -51,16 +59,10 @@ interface TrackedResource {
 export class ResourceTracker {
   private readonly resources: TrackedResource[] = []
 
-  track(kind: TrackedKind, id: number | string): string {
-    const value = String(id)
-    this.resources.push({id: value, kind})
-    return value
-  }
-
   /** Marks a resource as already gone — for happy-path tests that delete their own fixture. */
   forget(kind: TrackedKind, id: number | string): void {
     const value = String(id)
-    const index = this.resources.findIndex((r) => r.kind === kind && r.id === value)
+    const index = this.resources.findIndex(r => r.kind === kind && r.id === value)
     if (index !== -1) this.resources.splice(index, 1)
   }
 
@@ -75,6 +77,12 @@ export class ResourceTracker {
     }
 
     this.resources.length = 0
+  }
+
+  track(kind: TrackedKind, id: number | string): string {
+    const value = String(id)
+    this.resources.push({id: value, kind})
+    return value
   }
 }
 
@@ -149,7 +157,7 @@ export async function waitForIngestion(
     if (result.code === 0) {
       const ingestion = JSON.parse(result.stdout) as Record<string, unknown>
       const status = String(ingestion.status ?? '').toLowerCase()
-      if (status && !['inprogress', 'in_progress', 'pending', 'processing', 'queued', 'running'].includes(status)) {
+      if (status && !['in_progress', 'inprogress', 'pending', 'processing', 'queued', 'running'].includes(status)) {
         return ingestion
       }
     }

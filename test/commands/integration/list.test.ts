@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('integration list', () => {
   beforeEach(() => {
@@ -11,12 +13,14 @@ describe('integration list', () => {
         method: 'GET',
         path: '/v2/integrations',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
-            items: [{id: 101, key: 'GoogleAnalytics4', name: 'Google Analytics 4', supportsDatasets: true}],
+            items: [{
+              id: 101, key: 'GoogleAnalytics4', name: 'Google Analytics 4', supportsDatasets: true,
+            }],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

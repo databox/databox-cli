@@ -16,8 +16,8 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
   ]
 
   static flags = {
-    description: Flags.string({description: 'Dataset description'}),
     'default-time-dimension': Flags.string({description: 'Column ID to use as the default time dimension'}),
+    description: Flags.string({description: 'Dataset description'}),
     synonyms: Flags.string({description: 'JSON array of synonyms'}),
   }
 

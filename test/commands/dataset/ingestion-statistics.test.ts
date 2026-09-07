@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset ingestion-statistics', () => {
   beforeEach(() => {
@@ -9,11 +11,14 @@ describe('dataset ingestion-statistics', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/datasets/123/ingestion-statistics',
-      response: {status: 'success', requestId: 'test', data: {totalIngestions: 10, successfulIngestions: 9, failedIngestions: 1}},
+      response: {data: {failedIngestions: 1, successfulIngestions: 9, totalIngestions: 10}, requestId: 'test', status: 'success'},
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('shows ingestion statistics', async () => {
     const {stdout} = await runCommand(['dataset', 'ingestion-statistics', '123'], {root: process.cwd()})

@@ -1,6 +1,8 @@
 import {expect} from 'chai'
 
-import {cli, cliWithRetry, errorText, expectExit, expectField, expectKey, expectOk, json, retryRead, serviceUnavailable} from './helpers/cli.js'
+import {
+  cli, cliWithRetry, errorText, expectExit, expectField, expectKey, expectOk, json, retryRead, serviceUnavailable,
+} from './helpers/cli.js'
 import {
   DEFAULT_RECORDS,
   DEFAULT_SCHEMA,
@@ -16,8 +18,8 @@ interface Dataset {
   datasetType: string
   id: number
   name: string
-  parentDataSourceId: number | null
-  timezone: string | null
+  parentDataSourceId: null | number
+  timezone: null | string
 }
 
 describe('dataset', () => {
@@ -57,8 +59,8 @@ describe('dataset', () => {
     )
 
     expect(schema).to.be.an('array').with.lengthOf(DEFAULT_SCHEMA.length)
-    expect(schema.map((column) => column.columnId).sort()).to.deep.equal(
-      DEFAULT_SCHEMA.map((column) => column.columnId).sort(),
+    expect(schema.map(column => column.columnId).sort()).to.deep.equal(
+      DEFAULT_SCHEMA.map(column => column.columnId).sort(),
     )
   })
 
@@ -67,7 +69,7 @@ describe('dataset', () => {
       await cli(['dataset', 'list', '--data-source-id', dataSourceId, '--page-size', '50', '--json']),
     )
 
-    const found = listed.find((item) => String(item.id) === datasetId)
+    const found = listed.find(item => String(item.id) === datasetId)
     expect(found, `dataset ${datasetId} not in the listing`).to.not.equal(undefined)
 
     // Pins the list contract: the API names this parentDataSourceId, not dataSourceId,
@@ -82,7 +84,7 @@ describe('dataset', () => {
   // see test/e2e/README.md); switch this to a filtered listing once that is deployed.
   it('renders the list table with a populated Data Source ID column', async () => {
     const listed = json<Dataset[]>(await cli(['dataset', 'list', '--page-size', '10', '--json']))
-    const withParent = listed.find((item) => item.parentDataSourceId !== null)
+    const withParent = listed.find(item => item.parentDataSourceId !== null)
     expect(withParent, 'no dataset in the first page has a parent data source').to.not.equal(undefined)
 
     const table = expectOk(await cli(['dataset', 'list', '--page-size', '10']))
@@ -95,7 +97,7 @@ describe('dataset', () => {
 
   it('lists the dataset under its data source', async () => {
     const listed = json<Dataset[]>(await cli(['data-source', 'datasets', dataSourceId, '--json']))
-    expect(listed.some((item) => String(item.id) === datasetId)).to.equal(true)
+    expect(listed.some(item => String(item.id) === datasetId)).to.equal(true)
   })
 
   it('updates the dataset name', async () => {
@@ -132,7 +134,7 @@ describe('dataset', () => {
           await cli(['dataset', 'ingestions', datasetId, '--json']),
         )
 
-        if (!ingestions.some((item) => item.ingestionId === ingestionId)) {
+        if (!ingestions.some(item => item.ingestionId === ingestionId)) {
           throw new Error(`ingestion ${ingestionId} not listed yet`)
         }
       },
@@ -155,9 +157,9 @@ describe('dataset', () => {
     // ingestion-api (GetIngestion now reads account-service directly).
     expectField(ingestion, 'startedAt', 'string')
 
-    const listed = json<Array<{duration?: number | null; ingestionId: string; startedAt?: string | null}>>(
+    const listed = json<Array<{duration?: null | number; ingestionId: string; startedAt?: null | string}>>(
       await cli(['dataset', 'ingestions', datasetId, '--json']),
-    ).find((item) => item.ingestionId === ingestionId)
+    ).find(item => item.ingestionId === ingestionId)
 
     expect(listed, 'the ingestion should still be listed').to.not.equal(undefined)
     expect(ingestion.startedAt, 'startedAt should agree with the list row').to.equal(listed!.startedAt)

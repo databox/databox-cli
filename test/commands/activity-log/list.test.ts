@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('activity-log list', () => {
   beforeEach(() => {
@@ -11,12 +13,14 @@ describe('activity-log list', () => {
         method: 'GET',
         path: '/v2/account/activity-log',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
-            items: [{id: 1, action: 'created', resourceType: 'dataset', resourceId: '123', timestamp: '2024-01-01T00:00:00Z', userName: 'Admin'}],
+            items: [{
+              action: 'created', id: 1, resourceId: '123', resourceType: 'dataset', timestamp: '2024-01-01T00:00:00Z', userName: 'Admin',
+            }],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

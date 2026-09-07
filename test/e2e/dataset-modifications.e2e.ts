@@ -1,6 +1,8 @@
 import {expect} from 'chai'
 
-import {cli, expectExit, expectField, expectOk, json, serviceUnavailable} from './helpers/cli.js'
+import {
+  cli, expectExit, expectField, expectOk, json, serviceUnavailable,
+} from './helpers/cli.js'
 import {ResourceTracker, createDataSource, createDataset} from './helpers/resources.js'
 
 /** Filters on "amount", which is in DEFAULT_SCHEMA. Shape mirrors ingestion-api's e2e script. */
@@ -129,7 +131,7 @@ describe('dataset-modifications', () => {
     const result = await cli(['dataset', 'add-modification', datasetId, '--data', '{nope'])
 
     expectExit(result, 2)
-    expect(result.stderr).to.match(/JSON/i)
+    expect(result.stderr).to.match(/json/i)
   })
 
   it('clears the modifications', async function () {

@@ -1,11 +1,12 @@
+import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 
-import {expect} from 'chai'
-import {runCommand} from '@oclif/test'
-
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset ingest', () => {
   let tempFilePath: string
@@ -17,13 +18,13 @@ describe('dataset ingest', () => {
         method: 'POST',
         path: '/v2/datasets/123/data',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
             ingestionId: 'ing-1',
-            status: 'accepted',
             message: 'Data ingestion queued',
+            status: 'accepted',
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

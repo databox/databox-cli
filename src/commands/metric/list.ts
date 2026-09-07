@@ -8,7 +8,7 @@ interface Metric {
   dimensions: string[]
   id: string
   name: string
-  sourceId: number | null
+  sourceId: null | number
   supportsDrilldown: boolean
   verificationInfo: {isVerified: boolean} | null
 }
@@ -39,7 +39,7 @@ export default class MetricList extends BaseCommand<typeof MetricList> {
   }
 
   async run(): Promise<void> {
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     if (this.flags['source-id']) query.sourceId = this.flags['source-id']
     if (this.flags.search) query.search = this.flags.search
     addPagination(query, this.flags)
@@ -55,9 +55,9 @@ export default class MetricList extends BaseCommand<typeof MetricList> {
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {get: (row) => (row.sourceId === null ? '' : String(row.sourceId)), header: 'Source ID'},
-        {get: (row) => row.dimensions.join(', '), header: 'Dimensions'},
-        {get: (row) => (row.verificationInfo?.isVerified ? 'yes' : ''), header: 'Verified'},
+        {get: row => (row.sourceId === null ? '' : String(row.sourceId)), header: 'Source ID'},
+        {get: row => row.dimensions.join(', '), header: 'Dimensions'},
+        {get: row => (row.verificationInfo?.isVerified ? 'yes' : ''), header: 'Verified'},
       ],
       this.flags.json,
     )

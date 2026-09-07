@@ -7,8 +7,8 @@ interface DatasetCreateResponse {
   datasetType: string
   id: number
   name: string
-  parentDataSourceId: number | null
-  timezone: string | null
+  parentDataSourceId: null | number
+  timezone: null | string
 }
 
 export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
@@ -26,16 +26,16 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
       description: 'ID of the data source to associate with',
       required: true,
     }),
+    name: Flags.string({
+      description: 'Name of the dataset',
+      required: true,
+    }),
     'primary-key': Flags.string({
       description: 'Primary key column names',
       multiple: true,
     }),
     schema: Flags.string({
       description: 'JSON string of schema columns (array of {columnId, dataType})',
-    }),
-    name: Flags.string({
-      description: 'Name of the dataset',
-      required: true,
     }),
   }
 

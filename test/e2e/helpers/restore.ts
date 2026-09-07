@@ -51,14 +51,16 @@ function write(entries: PendingRestore[]): void {
 
 /** Records how to undo a mutation. Call this BEFORE making it. */
 export function rememberRestore(key: string, argv: string[]): void {
-  const entries = read().filter((entry) => entry.key !== key)
-  entries.push({argv, key, recordedAt: new Date().toISOString(), target: getConfig().environment.baseUrl})
+  const entries = read().filter(entry => entry.key !== key)
+  entries.push({
+    argv, key, recordedAt: new Date().toISOString(), target: getConfig().environment.baseUrl,
+  })
   write(entries)
 }
 
 /** Drops a recorded undo, once the value is back. */
 export function forgetRestore(key: string): void {
-  write(read().filter((entry) => entry.key !== key))
+  write(read().filter(entry => entry.key !== key))
 }
 
 export function pendingRestores(): PendingRestore[] {

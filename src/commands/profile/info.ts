@@ -9,7 +9,7 @@ interface ProfileResponse {
   id: number
   isEmailVerified: boolean
   name: string
-  timezone: string | null
+  timezone: null | string
 }
 
 export default class ProfileInfo extends BaseCommand<typeof ProfileInfo> {

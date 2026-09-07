@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source update', () => {
   beforeEach(() => {
@@ -10,12 +12,15 @@ describe('data-source update', () => {
       {
         method: 'PATCH',
         path: '/v2/data-sources/42',
-        response: {status: 'success', requestId: 'test', data: {id: 42, name: 'Updated'}},
+        response: {data: {id: 42, name: 'Updated'}, requestId: 'test', status: 'success'},
       },
     ])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('updates a data source', async () => {
     const {stdout} = await runCommand(['data-source', 'update', '42', '--name', 'Updated'], {root: process.cwd()})

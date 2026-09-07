@@ -3,12 +3,12 @@ import {formatSingle} from '../../lib/output.js'
 
 interface AccountResponse {
   accountType: string
-  companyName: string | null
+  companyName: null | string
   id: number
   managedBy: {id: number; name: string} | null
   name: string
   settings: Record<string, unknown> | null
-  websiteUrl: string | null
+  websiteUrl: null | string
 }
 
 export default class AccountInfo extends BaseCommand<typeof AccountInfo> {

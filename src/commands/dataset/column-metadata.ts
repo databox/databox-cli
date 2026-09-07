@@ -5,8 +5,8 @@ import {formatOutput} from '../../lib/output.js'
 
 interface ColumnMeta {
   columnId: string
-  description: string | null
-  displayName: string | null
+  description: null | string
+  displayName: null | string
 }
 
 interface ColumnMetaResponse {
@@ -36,8 +36,8 @@ export default class DatasetColumnMetadata extends BaseCommand<typeof DatasetCol
       response.items,
       [
         {header: 'Column ID', key: 'columnId'},
-        {header: 'Display Name', get: (row) => row.displayName ?? ''},
-        {header: 'Description', get: (row) => row.description ?? ''},
+        {get: row => row.displayName ?? '', header: 'Display Name'},
+        {get: row => row.description ?? '', header: 'Description'},
       ],
       this.flags.json,
     )

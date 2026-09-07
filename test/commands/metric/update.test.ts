@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('metric update', () => {
   beforeEach(() => {
@@ -9,11 +11,14 @@ describe('metric update', () => {
     mockApi([{
       method: 'PATCH',
       path: '/v2/metrics/42%7Ccustom_query_1',
-      response: {status: 'success', requestId: 'test', data: {id: '42|custom_query_1', name: 'Updated'}},
+      response: {data: {id: '42|custom_query_1', name: 'Updated'}, requestId: 'test', status: 'success'},
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('updates a metric', async () => {
     const {stdout} = await runCommand(['metric', 'update', '42|custom_query_1', '--name', 'Updated'], {root: process.cwd()})

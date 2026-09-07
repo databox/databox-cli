@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('account info', () => {
   beforeEach(() => {
@@ -10,7 +12,11 @@ describe('account info', () => {
       {
         method: 'GET',
         path: '/v2/account',
-        response: {status: 'success', requestId: 'test', data: {id: 1, name: 'Test Account', accountType: 'standard', companyName: 'Test Co'}},
+        response: {
+          data: {
+            accountType: 'standard', companyName: 'Test Co', id: 1, name: 'Test Account',
+          }, requestId: 'test', status: 'success',
+        },
       },
     ])
   })
@@ -29,6 +35,6 @@ describe('account info', () => {
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['account', 'info', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
-    expect(parsed).to.deep.include({id: 1, name: 'Test Account', accountType: 'standard'})
+    expect(parsed).to.deep.include({accountType: 'standard', id: 1, name: 'Test Account'})
   })
 })

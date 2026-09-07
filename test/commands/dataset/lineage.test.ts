@@ -1,13 +1,27 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset lineage', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'GET', path: '/v2/datasets/123/lineage', response: {status: 'success', requestId: 'test', data: {id: 123, parents: [{id: 100, title: 'Parent DS', type: 'DataSource', datasetType: null}], children: []}}}])
+    mockApi([{
+      method: 'GET', path: '/v2/datasets/123/lineage', response: {
+        data: {
+          children: [], id: 123, parents: [{
+            datasetType: null, id: 100, title: 'Parent DS', type: 'DataSource',
+          }],
+        }, requestId: 'test', status: 'success',
+      },
+    }])
   })
-  afterEach(() => { cleanupTestConfig(); restoreApi() })
+  afterEach(() => {
+    cleanupTestConfig()
+    restoreApi()
+  })
 
   it('shows lineage for a dataset', async () => {
     const {stdout} = await runCommand(['dataset', 'lineage', '123'])

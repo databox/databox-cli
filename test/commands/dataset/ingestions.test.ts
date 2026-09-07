@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset ingestions', () => {
   beforeEach(() => {
@@ -11,12 +13,10 @@ describe('dataset ingestions', () => {
         method: 'GET',
         path: '/v2/datasets/123/ingestions',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
             items: [
-              {ingestionId: 'ing-1', timestamp: '2024-01-01T00:00:00Z', status: 'completed'},
-              {ingestionId: 'ing-2', timestamp: '2024-01-02T00:00:00Z', status: 'failed'},
+              {ingestionId: 'ing-1', status: 'completed', timestamp: '2024-01-01T00:00:00Z'},
+              {ingestionId: 'ing-2', status: 'failed', timestamp: '2024-01-02T00:00:00Z'},
             ],
             pagination: {
               page: 0,
@@ -24,6 +24,8 @@ describe('dataset ingestions', () => {
               totalItems: 2,
             },
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

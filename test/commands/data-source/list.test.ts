@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source list', () => {
   beforeEach(() => {
@@ -11,12 +13,14 @@ describe('data-source list', () => {
         method: 'GET',
         path: '/v2/data-sources',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
-            items: [{id: 42, name: 'My Source', integrationKey: 'Datadoo', timezone: 'UTC', statusInfo: {status: 'active'}, connectionId: null, createdAt: '2024-01-01', lastActivityAt: null}],
+            items: [{
+              connectionId: null, createdAt: '2024-01-01', id: 42, integrationKey: 'Datadoo', lastActivityAt: null, name: 'My Source', statusInfo: {status: 'active'}, timezone: 'UTC',
+            }],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

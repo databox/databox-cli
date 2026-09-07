@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('metric set-verification', () => {
   beforeEach(() => {
@@ -9,11 +11,14 @@ describe('metric set-verification', () => {
     mockApi([{
       method: 'PUT',
       path: '/v2/metrics/42%7Ccustom_query_1/verification',
-      response: {status: 'success', requestId: 'test', data: {isVerified: true}},
+      response: {data: {isVerified: true}, requestId: 'test', status: 'success'},
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('sets verification status', async () => {
     const {stdout} = await runCommand(['metric', 'set-verification', '42|custom_query_1', '--status', 'verified'], {root: process.cwd()})

@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset sync-history', () => {
   beforeEach(() => {
@@ -9,11 +11,14 @@ describe('dataset sync-history', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/datasets/123/sync-history',
-      response: {status: 'success', requestId: 'test', data: {items: [{id: 1, timestamp: '2024-01-01', status: 'success'}], pagination: {page: 0, pageSize: 25, totalItems: 1}}},
+      response: {data: {items: [{id: 1, status: 'success', timestamp: '2024-01-01'}], pagination: {page: 0, pageSize: 25, totalItems: 1}}, requestId: 'test', status: 'success'},
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('shows sync history', async () => {
     const {stdout} = await runCommand(['dataset', 'sync-history', '123'], {root: process.cwd()})

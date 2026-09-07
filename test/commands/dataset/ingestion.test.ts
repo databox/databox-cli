@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 const INGESTION_ID = '3c63e510-276f-4541-9c66-8c00161fda82'
 
@@ -13,18 +15,18 @@ describe('dataset ingestion', () => {
         method: 'GET',
         path: `/v2/datasets/123/ingestions/${INGESTION_ID}`,
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
-            ingestionId: INGESTION_ID,
-            startedAt: '2024-01-01T00:00:00Z',
-            finishedAt: '2024-01-01T00:00:05Z',
-            status: 'completed',
             duration: 5,
-            user: {id: 31, name: 'Ada'},
-            metrics: {recordsProcessed: 100},
             errors: null,
+            finishedAt: '2024-01-01T00:00:05Z',
+            ingestionId: INGESTION_ID,
+            metrics: {recordsProcessed: 100},
+            startedAt: '2024-01-01T00:00:00Z',
+            status: 'completed',
+            user: {id: 31, name: 'Ada'},
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

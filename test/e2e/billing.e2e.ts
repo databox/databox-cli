@@ -1,12 +1,14 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectKey, expectOk, json} from './helpers/cli.js'
+import {
+  cli, expectField, expectKey, expectOk, json,
+} from './helpers/cli.js'
 
 interface Invoice {
   amount: number
   currency: string
   date: string
-  downloadUrl: string | null
+  downloadUrl: null | string
   status: string
 }
 

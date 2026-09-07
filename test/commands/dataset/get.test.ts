@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset get', () => {
   beforeEach(() => {
@@ -11,19 +13,19 @@ describe('dataset get', () => {
         method: 'GET',
         path: '/v2/datasets/123',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
-            id: 123,
             createdAt: '2024-01-01T00:00:00Z',
             dataSourceId: 10,
-            timezone: 'UTC',
+            id: 123,
             primaryKey: ['date'],
             schema: [
               {columnId: 'date', dataType: 'datetime'},
               {columnId: 'value', dataType: 'number'},
             ],
+            timezone: 'UTC',
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

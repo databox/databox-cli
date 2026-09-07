@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('account usage', () => {
   beforeEach(() => {
@@ -10,7 +12,7 @@ describe('account usage', () => {
       {
         method: 'GET',
         path: '/v2/account/usage',
-        response: {status: 'success', requestId: 'test', data: {users: {current: 2, limit: 10}, dataSources: {current: 5, limit: 50}}},
+        response: {data: {dataSources: {current: 5, limit: 50}, users: {current: 2, limit: 10}}, requestId: 'test', status: 'success'},
       },
     ])
   })

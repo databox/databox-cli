@@ -5,11 +5,11 @@ import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface SyncHistoryItem {
-  affectedRows: number | null
-  finishedAt: string | null
-  startedAt: string | null
+  affectedRows: null | number
+  finishedAt: null | string
+  startedAt: null | string
   status: string
-  syncType: string | null
+  syncType: null | string
 }
 
 interface SyncHistoryResponse {
@@ -42,7 +42,7 @@ export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHi
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
 
     const response = await this.apiClient.get<SyncHistoryResponse>(
@@ -54,10 +54,10 @@ export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHi
     formatOutput(
       response.items,
       [
-        {get: (row) => row.startedAt ?? '', header: 'Started At'},
-        {get: (row) => row.finishedAt ?? 'N/A', header: 'Finished At'},
+        {get: row => row.startedAt ?? '', header: 'Started At'},
+        {get: row => row.finishedAt ?? 'N/A', header: 'Finished At'},
         {header: 'Status', key: 'status'},
-        {get: (row) => row.syncType ?? '', header: 'Type'},
+        {get: row => row.syncType ?? '', header: 'Type'},
       ],
       this.flags.json,
     )

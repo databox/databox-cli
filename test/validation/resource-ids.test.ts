@@ -84,7 +84,7 @@ describe('validation: non-numeric resource IDs', () => {
   })
 
   for (const argv of cases) {
-    it(`${argv.filter((a) => !a.startsWith('-')).slice(0, 2).join(' ')} rejects ${INVALID}`, async () => {
+    it(`${argv.filter(a => !a.startsWith('-')).slice(0, 2).join(' ')} rejects ${INVALID}`, async () => {
       // No --force needed: requireNumericId runs before any confirm() prompt.
       const {error} = await runCommand(argv, {root: process.cwd()})
 
@@ -102,18 +102,16 @@ describe('validation: non-numeric resource IDs', () => {
         const full = path.join(dir, entry.name)
         if (entry.isDirectory()) {
           walk(full)
-        } else if (entry.name.endsWith('.ts')) {
-          if (/requireNumericId\(args\./.test(fs.readFileSync(full, 'utf8'))) {
-            guarded.push(path.relative(commandsDir, full).replace(/\.ts$/, '').split(path.sep).join(' '))
-          }
+        } else if (entry.name.endsWith('.ts') && /requireNumericId\(args\./.test(fs.readFileSync(full, 'utf8'))) {
+          guarded.push(path.relative(commandsDir, full).replace(/\.ts$/, '').split(path.sep).join(' '))
         }
       }
     }
 
     walk(commandsDir)
 
-    const covered = new Set(cases.map((argv) => argv.filter((a) => !a.startsWith('-')).slice(0, 2).join(' ')))
-    const missing = guarded.filter((c) => !covered.has(c))
+    const covered = new Set(cases.map(argv => argv.filter(a => !a.startsWith('-')).slice(0, 2).join(' ')))
+    const missing = guarded.filter(c => !covered.has(c))
 
     expect(missing, `commands validating an ID but not covered above: ${missing.join(', ')}`).to.deep.equal([])
   })

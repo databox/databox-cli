@@ -3,9 +3,13 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 
-import {cli, errorText, expectExit, expectOk, json} from './helpers/cli.js'
+import {
+  cli, errorText, expectExit, expectOk, json,
+} from './helpers/cli.js'
 import {getConfig} from './helpers/env.js'
-import {DEFAULT_RECORDS, ResourceTracker, createDataSource, createDataset} from './helpers/resources.js'
+import {
+  DEFAULT_RECORDS, ResourceTracker, createDataSource, createDataset,
+} from './helpers/resources.js'
 
 /**
  * The contract that is uniquely the CLI's — exit codes, stream discipline, output

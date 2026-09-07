@@ -106,7 +106,9 @@ export function cli(argv: string[], options: CliOptions = {}): Promise<CliResult
       settled = true
       clearTimeout(timer)
       clearTimeout(killTimer)
-      resolve({argv, code, stderr, stdout, timedOut})
+      resolve({
+        argv, code, stderr, stdout, timedOut,
+      })
     }
 
     // Fires well before the mocha timeout so a hang reports as a failed assertion
@@ -123,7 +125,7 @@ export function cli(argv: string[], options: CliOptions = {}): Promise<CliResult
       }, 5000)
     }, timeoutMs)
 
-    child.on('error', (error) => {
+    child.on('error', error => {
       if (settled) return
       settled = true
       clearTimeout(timer)
@@ -131,7 +133,7 @@ export function cli(argv: string[], options: CliOptions = {}): Promise<CliResult
       reject(error)
     })
 
-    child.on('close', (code) => {
+    child.on('close', code => {
       settle(code ?? -1)
     })
 
@@ -241,13 +243,13 @@ export function serviceUnavailable(result: CliResult): string | undefined {
   if (result.code === 0) return undefined
 
   const message = errorText(result)
-  if (!SERVICE_OUTAGE_PATTERNS.some((pattern) => pattern.test(message))) return undefined
+  if (!SERVICE_OUTAGE_PATTERNS.some(pattern => pattern.test(message))) return undefined
 
   return `API reported a service-side failure for "databox ${result.argv.join(' ')}": ${message}`
 }
 
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(resolve, ms)
   })
 }
@@ -262,7 +264,7 @@ const TRANSIENT_PATTERNS = [...SERVICE_OUTAGE_PATTERNS, /authentication required
 function isTransient(result: CliResult): boolean {
   if (result.code === 0) return false
   if (result.timedOut) return true
-  return TRANSIENT_PATTERNS.some((pattern) => pattern.test(errorText(result)))
+  return TRANSIENT_PATTERNS.some(pattern => pattern.test(errorText(result)))
 }
 
 /**
@@ -276,7 +278,7 @@ function isTransient(result: CliResult): boolean {
  */
 export async function cliWithRetry(
   argv: string[],
-  {attempts = 3, delayMs = 3000, ...options}: CliOptions & {attempts?: number; delayMs?: number} = {},
+  {attempts = 3, delayMs = 3000, ...options}: {attempts?: number; delayMs?: number} & CliOptions = {},
 ): Promise<CliResult> {
   let result = await cli(argv, options)
 

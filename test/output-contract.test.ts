@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from './helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from './helpers.js'
 
 /**
  * Review S13: list tests asserted the rows but never the pagination line or the empty
@@ -16,7 +18,7 @@ function mockList(items: unknown[], pagination?: {page: number; pageSize: number
     {
       method: 'GET',
       path: PATH,
-      response: {status: 'success', requestId: 'test', data: {items, pagination}},
+      response: {data: {items, pagination}, requestId: 'test', status: 'success'},
     },
   ])
 }

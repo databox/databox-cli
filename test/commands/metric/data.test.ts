@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('metric data', () => {
   beforeEach(() => {
@@ -10,14 +12,17 @@ describe('metric data', () => {
       method: 'POST',
       path: '/v2/metrics/data',
       response: {
-        status: 'success',
+        data: {dataPoints: [{date: '2024-01-01', value: 100}], metric: {metricId: 'test', name: 'Revenue'}},
         requestId: 'test',
-        data: {metric: {metricId: 'test', name: 'Revenue'}, dataPoints: [{date: '2024-01-01', value: 100}]},
+        status: 'success',
       },
     }])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('loads metric data', async () => {
     const {stdout} = await runCommand([

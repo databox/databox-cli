@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('user update', () => {
   beforeEach(() => {
@@ -10,7 +12,7 @@ describe('user update', () => {
       {
         method: 'PATCH',
         path: '/v2/users/1',
-        response: {status: 'success', requestId: 'test', data: {id: 1, name: 'Admin', role: 'admin'}},
+        response: {data: {id: 1, name: 'Admin', role: 'admin'}, requestId: 'test', status: 'success'},
       },
     ])
   })

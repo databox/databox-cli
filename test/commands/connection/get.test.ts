@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('connection get', () => {
   beforeEach(() => {
@@ -11,9 +13,9 @@ describe('connection get', () => {
         method: 'GET',
         path: '/v2/connections/1',
         response: {
-          status: 'success',
+          data: {id: 1, integrationKey: 'GoogleAnalytics4', name: 'GA4 Connection'},
           requestId: 'test',
-          data: {id: 1, name: 'GA4 Connection', integrationKey: 'GoogleAnalytics4'},
+          status: 'success',
         },
       },
     ])

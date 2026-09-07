@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('account metadata-options', () => {
   beforeEach(() => {
@@ -9,16 +11,21 @@ describe('account metadata-options', () => {
     mockApi([{
       method: 'GET',
       path: '/v2/account/metadata-options',
-      response: {status: 'success', requestId: 'test', data: {
-        businessClassifications: [{value: 'B2B', label: 'B2B'}],
-        industries: [{value: 'Technology', label: 'Technology'}],
-        companySizes: [{value: '1-10', label: '1-10'}],
-        annualRevenues: [{value: '$0-$1M', label: '$0-$1M'}],
-      }},
+      response: {
+        data: {
+          annualRevenues: [{label: '$0-$1M', value: '$0-$1M'}],
+          businessClassifications: [{label: 'B2B', value: 'B2B'}],
+          companySizes: [{label: '1-10', value: '1-10'}],
+          industries: [{label: 'Technology', value: 'Technology'}],
+        }, requestId: 'test', status: 'success',
+      },
     }])
   })
 
-  afterEach(() => { cleanupTestConfig(); restoreApi() })
+  afterEach(() => {
+    cleanupTestConfig()
+    restoreApi()
+  })
 
   it('shows metadata options', async () => {
     const {stdout} = await runCommand(['account', 'metadata-options'])

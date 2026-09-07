@@ -1,6 +1,5 @@
-import * as fs from 'node:fs'
-
 import {Args, Flags} from '@oclif/core'
+import * as fs from 'node:fs'
 
 import {BaseCommand} from '../../base-command.js'
 import {UPLOAD_TIMEOUT_MS} from '../../lib/api-client.js'
@@ -60,13 +59,15 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
         this.error(`File not found: ${flags.file}`, {exit: 2})
       }
 
-      const fileContent = fs.readFileSync(flags.file, 'utf-8')
+      const fileContent = fs.readFileSync(flags.file, 'utf8')
       try {
         records = JSON.parse(fileContent) as unknown[]
       } catch {
         this.error(`Invalid JSON in file "${flags.file}". Expected a JSON array of records.`, {exit: 2})
       }
-    } else if (!process.stdin.isTTY) {
+    } else if (process.stdin.isTTY) {
+      this.error('Provide data via --records, --file, or stdin pipe.', {exit: 1})
+    } else {
       const chunks: Buffer[] = []
       let bytes = 0
       for await (const chunk of process.stdin) {
@@ -78,14 +79,12 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
         chunks.push(chunk as Buffer)
       }
 
-      const input = Buffer.concat(chunks).toString('utf-8')
+      const input = Buffer.concat(chunks).toString('utf8')
       try {
         records = JSON.parse(input) as unknown[]
       } catch {
         this.error('Invalid JSON from stdin. Expected a JSON array of records.', {exit: 2})
       }
-    } else {
-      this.error('Provide data via --records, --file, or stdin pipe.', {exit: 1})
     }
 
     if (!Array.isArray(records)) {
@@ -101,7 +100,7 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
       )
     }
 
-    const payloadBytes = Buffer.byteLength(JSON.stringify({records}), 'utf-8')
+    const payloadBytes = Buffer.byteLength(JSON.stringify({records}), 'utf8')
     if (payloadBytes > MAX_PAYLOAD_BYTES) {
       this.error(
         `Payload is ${Math.round(payloadBytes / 1024 / 1024)} MB, over the API limit of ${MAX_PAYLOAD_MB} MB. Split the payload.`,

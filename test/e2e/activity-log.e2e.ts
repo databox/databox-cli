@@ -1,11 +1,13 @@
 import {expect} from 'chai'
 
-import {cli, cliWithRetry, errorText, expectKey, expectOk, json, serviceUnavailable} from './helpers/cli.js'
+import {
+  cli, cliWithRetry, errorText, expectKey, expectOk, json, serviceUnavailable,
+} from './helpers/cli.js'
 
 interface ActivityLogEntry {
   action: string
   createdAt: string
-  resourceType: string | null
+  resourceType: null | string
   user: unknown
 }
 
@@ -61,7 +63,7 @@ describe('activity-log', () => {
   it('filters by resource type', async function () {
     if (!entries || entries.length === 0) this.skip()
 
-    const resourceType = entries!.find((entry) => entry.resourceType)?.resourceType
+    const resourceType = entries!.find(entry => entry.resourceType)?.resourceType
     if (!resourceType) this.skip()
 
     const filtered = json<ActivityLogEntry[]>(

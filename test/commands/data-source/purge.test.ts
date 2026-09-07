@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source purge', () => {
   beforeEach(() => {
@@ -10,12 +12,15 @@ describe('data-source purge', () => {
       {
         method: 'POST',
         path: '/v2/data-sources/42/purge',
-        response: {status: 'success', requestId: 'test', data: {}},
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('purges with --force', async () => {
     const {stdout} = await runCommand(['data-source', 'purge', '42', '--force'], {root: process.cwd()})

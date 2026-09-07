@@ -4,15 +4,15 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface DataSourceDetail {
-  connectionId: number | null
-  createdAt: string | null
+  connectionId: null | number
+  createdAt: null | string
   id: number
-  integrationKey: string | null
-  lastActivityAt: string | null
+  integrationKey: null | string
+  lastActivityAt: null | string
   name: string
   statusInfo: {status: string}
-  syncInterval: number | null
-  timezone: string | null
+  syncInterval: null | number
+  timezone: null | string
 }
 
 export default class DataSourceGet extends BaseCommand<typeof DataSourceGet> {

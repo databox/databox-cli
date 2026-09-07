@@ -21,9 +21,9 @@ export default class MetricData extends BaseCommand<typeof MetricData> {
       exclusive: ['data-source-id'],
     }),
     'date-from': Flags.string({description: 'Start date (YYYY-MM-DD)', required: true}),
+    'date-to': Flags.string({description: 'End date (YYYY-MM-DD)', required: true}),
     dimension: Flags.string({description: 'Dimension to break the data down by (repeat for several)', multiple: true}),
     filters: Flags.string({description: 'JSON object: {logicalOperator, groups}'}),
-    'date-to': Flags.string({description: 'End date (YYYY-MM-DD)', required: true}),
     granularity: Flags.string({description: 'Time granularity', options: ['hourly', 'daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'allTime'], required: true}),
     'metric-id': Flags.string({description: 'Metric ID', required: true}),
   }

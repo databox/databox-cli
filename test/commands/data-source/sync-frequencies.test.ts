@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source sync-frequencies', () => {
   beforeEach(() => {
@@ -11,15 +13,20 @@ describe('data-source sync-frequencies', () => {
         method: 'GET',
         path: '/v2/data-sources/42/available-sync-frequencies',
         response: {
-          status: 'success',
+          data: [{
+            availability: 'included', isDefault: true, isSelected: true, label: 'Hourly', syncInterval: 60,
+          }],
           requestId: 'test',
-          data: [{availability: 'included', isDefault: true, isSelected: true, label: 'Hourly', syncInterval: 60}],
+          status: 'success',
         },
       },
     ])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('lists available sync frequencies', async () => {
     const {stdout} = await runCommand(['data-source', 'sync-frequencies', '42'], {root: process.cwd()})

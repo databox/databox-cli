@@ -2,7 +2,7 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface BillingResponse {
-  billingEmail: string | null
+  billingEmail: null | string
   billingPeriod: string
   planName: string
   planStatus: string

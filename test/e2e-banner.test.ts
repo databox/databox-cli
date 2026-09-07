@@ -12,13 +12,13 @@ import {E2eEnvironment, resolveEnvironment, targetOf} from './e2e/helpers/enviro
  * CodeQL flags this path (js/clear-text-logging); these assertions are the guarantee
  * that does not depend on a scanner agreeing with us.
  */
+function bannerFor(processEnv: NodeJS.ProcessEnv): string {
+  const environment = resolveEnvironment(processEnv)
+  return describeTarget(targetOf(environment), {insecureTls: false}).join('\n')
+}
+
 describe('e2e preflight banner', () => {
   const SECRET = 'pak_11111111-2222-3333-4444-555555555555'
-
-  function bannerFor(processEnv: NodeJS.ProcessEnv): string {
-    const environment = resolveEnvironment(processEnv)
-    return describeTarget(targetOf(environment), {insecureTls: false}).join('\n')
-  }
 
   it('never prints a key supplied through the environment', () => {
     const banner = bannerFor({DATABOX_E2E_API_KEY: SECRET})

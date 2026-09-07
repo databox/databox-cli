@@ -11,12 +11,12 @@ describe('env var concurrency', () => {
     capturedKeys = []
     originalFetch = global.fetch
 
-    global.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    global.fetch = (async (_input: Request | URL | string, init?: RequestInit) => {
       const headers = init?.headers as Record<string, string> | undefined
       const apiKey = headers?.['x-api-key'] ?? 'unknown'
       capturedKeys.push(apiKey)
 
-      return new Response(JSON.stringify({status: 'success', requestId: 'test', data: {}}), {
+      return new Response(JSON.stringify({data: {}, requestId: 'test', status: 'success'}), {
         headers: {'Content-Type': 'application/json'},
         status: 200,
       })

@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('profile metadata-options', () => {
   beforeEach(() => {
@@ -11,13 +13,13 @@ describe('profile metadata-options', () => {
         method: 'GET',
         path: '/v2/profile/metadata-options',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
             departments: [
-              {value: 'engineering', label: 'Engineering', roles: [{value: 'software_engineer', label: 'Software Engineer'}]},
+              {label: 'Engineering', roles: [{label: 'Software Engineer', value: 'software_engineer'}], value: 'engineering'},
             ],
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

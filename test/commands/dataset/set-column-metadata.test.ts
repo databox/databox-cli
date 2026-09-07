@@ -1,15 +1,20 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset set-column-metadata', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'PATCH', path: '/v2/datasets/123/column-metadata', response: {status: 'success', requestId: 'test', data: {}}}])
+    mockApi([{method: 'PATCH', path: '/v2/datasets/123/column-metadata', response: {data: {}, requestId: 'test', status: 'success'}}])
   })
 
-  afterEach(() => { restoreApi(); cleanupTestConfig() })
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
 
   it('updates column metadata', async () => {
     const {stdout} = await runCommand(['dataset', 'set-column-metadata', '123', '--columns', '[{"columnId":"date","description":"Updated"}]'], {root: process.cwd()})

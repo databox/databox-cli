@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('databoard metrics', () => {
   beforeEach(() => {
@@ -11,9 +13,13 @@ describe('databoard metrics', () => {
         method: 'GET',
         path: '/v2/databoards/1/metrics',
         response: {
-          status: 'success',
+          data: {
+            blocks: [{
+              id: 10, metrics: [], name: 'Sessions', visualizationType: 'line',
+            }],
+          },
           requestId: 'test',
-          data: {blocks: [{id: 10, name: 'Sessions', visualizationType: 'line', metrics: []}]},
+          status: 'success',
         },
       },
     ])

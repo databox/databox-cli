@@ -40,7 +40,7 @@ export default class MetricUpdate extends BaseCommand<typeof MetricUpdate> {
     if (flags.measure) body.measure = this.parseJsonFlag(flags.measure, 'measure', REF)
     if (flags.date) body.date = this.parseJsonFlag(flags.date, 'date', REF)
     if (flags.dimension) {
-      body.dimensions = flags.dimension.map((value) => this.parseJsonFlag(value, 'dimension', REF))
+      body.dimensions = flags.dimension.map(value => this.parseJsonFlag(value, 'dimension', REF))
     }
 
     if (flags.filters) {

@@ -5,16 +5,16 @@ import {formatSingle} from '../../lib/output.js'
 
 interface DatasetGetResponse {
   columnCount: number
-  createdAt: string | null
+  createdAt: null | string
   datasetType: string
   id: number
   name: string
   // Column definitions are not on the detail payload — use `dataset schema ID`.
-  parentDataSourceId: number | null
-  primaryKey: string[] | null
+  parentDataSourceId: null | number
+  primaryKey: null | string[]
   rowCount: number
-  syncInterval: number | null
-  timezone: string | null
+  syncInterval: null | number
+  timezone: null | string
 }
 
 export default class DatasetGet extends BaseCommand<typeof DatasetGet> {

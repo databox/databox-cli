@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source datasets', () => {
   beforeEach(() => {
@@ -11,21 +13,21 @@ describe('data-source datasets', () => {
         method: 'GET',
         path: '/v2/datasets',
         response: {
-          status: 'success',
-          requestId: 'test',
           data: {
             items: [
               {
+                datasetType: 'ingestion',
                 id: 100,
                 name: 'Linked Dataset',
                 parentDataSourceId: 42,
-                timezone: null,
-                datasetType: 'ingestion',
                 statusInfo: {status: 'active'},
+                timezone: null,
               },
             ],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

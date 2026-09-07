@@ -1,14 +1,14 @@
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Ingestion {
-  duration: number | null
-  finishedAt: string | null
+  duration: null | number
+  finishedAt: null | string
   ingestionId: string
-  startedAt: string | null
+  startedAt: null | string
   status: string
 }
 
@@ -43,7 +43,7 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const query: Record<string, string | number | undefined> = {}
+    const query: Record<string, number | string | undefined> = {}
     addPagination(query, this.flags)
 
     const response = await this.apiClient.get<IngestionsResponse>(
@@ -56,8 +56,8 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
       response.items,
       [
         {header: 'Ingestion ID', key: 'ingestionId'},
-        {get: (row) => row.startedAt ?? '', header: 'Started At'},
-        {get: (row) => row.finishedAt ?? '', header: 'Finished At'},
+        {get: row => row.startedAt ?? '', header: 'Started At'},
+        {get: row => row.finishedAt ?? '', header: 'Finished At'},
         {header: 'Status', key: 'status'},
       ],
       this.flags.json,

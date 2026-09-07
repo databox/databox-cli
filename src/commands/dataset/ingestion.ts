@@ -4,12 +4,12 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface IngestionResponse {
-  duration?: number | null
+  duration?: null | number
   errors?: unknown
-  finishedAt: string | null
+  finishedAt: null | string
   ingestionId: string
   metrics?: unknown
-  startedAt: string | null
+  startedAt: null | string
   status: string
   user?: {id: number; name: string} | null
 }
