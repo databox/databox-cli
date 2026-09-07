@@ -58,6 +58,8 @@
     "prepack": "npm run build && oclif manifest",
     "test": "TS_NODE_PROJECT=tsconfig.test.json mocha --forbid-only \"test/**/*.test.ts\"",
     "test:watch": "TS_NODE_PROJECT=tsconfig.test.json mocha --watch \"test/**/*.test.ts\"",
+    "test:e2e": "npm run build && TS_NODE_PROJECT=tsconfig.test.json mocha --config .mocharc.e2e.yml",
+    "test:e2e:cleanup": "npm run build && TS_NODE_PROJECT=tsconfig.test.json node --loader ts-node/esm test/e2e/helpers/cleanup.ts",
     "test:coverage": "nyc npm test"
   },
   "dependencies": {
