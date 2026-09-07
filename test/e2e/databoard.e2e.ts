@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectOk, json} from './helpers/cli.js'
+import {cli, cliWithRetry, expectField, expectOk, json} from './helpers/cli.js'
 
 interface Databoard {
   id: number
@@ -11,7 +11,7 @@ describe('databoard', () => {
   let databoards: Databoard[]
 
   before(async () => {
-    databoards = json<Databoard[]>(await cli(['databoard', 'list', '--page-size', '10', '--json']))
+    databoards = json<Databoard[]>(await cliWithRetry(['databoard', 'list', '--page-size', '10', '--json']))
   })
 
   it('lists databoards', function () {

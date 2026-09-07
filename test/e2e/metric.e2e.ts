@@ -1,6 +1,15 @@
 import {expect} from 'chai'
 
-import {cli, errorText, expectExit, expectField, expectOk, json, serviceUnavailable} from './helpers/cli.js'
+import {
+  cli,
+  cliWithRetry,
+  errorText,
+  expectExit,
+  expectField,
+  expectOk,
+  json,
+  serviceUnavailable,
+} from './helpers/cli.js'
 import {
   ResourceTracker,
   createDataSource,
@@ -120,7 +129,7 @@ describe('metric', () => {
   it('returns the metric by id', async function () {
     if (!metricId) this.skip()
 
-    const metric = json<Metric>(await cli(['metric', 'get', metricId!, '--json']))
+    const metric = json<Metric>(await cliWithRetry(['metric', 'get', metricId!, '--json']))
     expect(metric.id).to.equal(metricId)
   })
 
@@ -128,7 +137,7 @@ describe('metric', () => {
     if (!metricId) this.skip()
 
     // Metric ids look like "500|custom_query_100"; the command encodes them.
-    const result = await cli(['metric', 'get', metricId!, '--json'])
+    const result = await cliWithRetry(['metric', 'get', metricId!, '--json'])
     expectOk(result)
     expect(result.stdout).to.include(metricId!.split('|').pop()!)
   })
@@ -139,7 +148,7 @@ describe('metric', () => {
     const renamed = e2eName('metric-renamed')
     expectOk(await cli(['metric', 'update', metricId!, '--name', renamed, '--json']))
 
-    const reread = json<Metric>(await cli(['metric', 'get', metricId!, '--json']))
+    const reread = json<Metric>(await cliWithRetry(['metric', 'get', metricId!, '--json']))
     expect(reread.name).to.equal(renamed)
   })
 
@@ -160,12 +169,12 @@ describe('metric', () => {
   it('sets verification status', async function () {
     if (!metricId) this.skip()
 
-    expectOk(await cli(['metric', 'set-verification', metricId!, '--status', 'verified', '--json']))
+    expectOk(await cliWithRetry(['metric', 'set-verification', metricId!, '--status', 'verified', '--json']))
 
     const verified = json<{isVerified: boolean}>(await cli(['metric', 'verification', metricId!, '--json']))
     expect(verified.isVerified).to.equal(true)
 
-    expectOk(await cli(['metric', 'set-verification', metricId!, '--status', 'unverified', '--json']))
+    expectOk(await cliWithRetry(['metric', 'set-verification', metricId!, '--status', 'unverified', '--json']))
   })
 
   it('loads metric data', async function () {

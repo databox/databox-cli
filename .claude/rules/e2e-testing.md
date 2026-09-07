@@ -28,9 +28,13 @@ Never rename an e2e file to `.test.ts`, and never add `test/e2e` to `.mocharc.ym
   interactive `confirm()` would hang until the mocha timeout.
 - **Match error text with `errorText(result)`**, never `result.stderr` directly — the
   CLI hard-wraps messages, so a phrase can be split across lines with padding.
-- **Never add mocha `--retries` or `--parallel`.** Retries would re-run resource-creating
-  tests; parallel suites would collide on shared account state. Retry belongs in
-  `retryRead` (reads only) and `cliWithRetry` (fixture setup only).
+- **Never add mocha `--retries` or `--parallel`.** Mocha retries re-run the whole test,
+  creating resources twice; parallel suites collide on shared account state. Retry belongs
+  in `retryRead` (poll a read until the API's cache catches up) and `cliWithRetry` (re-run
+  a command whose failure matches a transient environment fault). `cliWithRetry` is safe
+  for assertions too — a genuine failure does not match a transient pattern, and a matched
+  one is still returned once attempts run out. Shared dev environments do fail in bursts,
+  including spurious 401s on a valid key.
 - **No API key outside `helpers/environments.ts`**, and never a production key.
 - **Never mutate a resource the suite did not create without `withRestore()`.** It
   records the undo on disk before the change, so an interrupted run can be repaired

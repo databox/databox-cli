@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectOk, json} from './helpers/cli.js'
+import {cli, cliWithRetry, expectField, expectOk, json} from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
 interface Profile {
@@ -13,7 +13,7 @@ describe('profile', () => {
   let profile: Profile
 
   before(async () => {
-    profile = json<Profile>(await cli(['profile', 'info', '--json']))
+    profile = json<Profile>(await cliWithRetry(['profile', 'info', '--json']))
   })
 
   it('returns the current profile', () => {

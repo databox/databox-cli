@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectOk, json} from './helpers/cli.js'
+import {cli, cliWithRetry, expectField, expectOk, json} from './helpers/cli.js'
 
 interface Integration {
   id: number
@@ -12,7 +12,7 @@ describe('integration', () => {
   let integrations: Integration[]
 
   before(async () => {
-    integrations = json<Integration[]>(await cli(['integration', 'list', '--page-size', '20', '--json']))
+    integrations = json<Integration[]>(await cliWithRetry(['integration', 'list', '--page-size', '20', '--json']))
   })
 
   it('lists integrations', () => {

@@ -1,16 +1,6 @@
 import {expect} from 'chai'
 
-import {
-  cli,
-  errorText,
-  expectExit,
-  expectField,
-  expectKey,
-  expectOk,
-  json,
-  retryRead,
-  serviceUnavailable,
-} from './helpers/cli.js'
+import {cli, cliWithRetry, errorText, expectExit, expectField, expectKey, expectOk, json, retryRead, serviceUnavailable} from './helpers/cli.js'
 import {
   DEFAULT_RECORDS,
   DEFAULT_SCHEMA,
@@ -199,7 +189,7 @@ describe('dataset', () => {
     expectField(frequencies[0], 'syncInterval', 'number')
 
     expectOk(await cli(['dataset', 'sync-frequencies', datasetId]))
-    expectOk(await cli(['dataset', 'set-sync-frequency', datasetId, '--interval', '1440']))
+    expectOk(await cliWithRetry(['dataset', 'set-sync-frequency', datasetId, '--interval', '1440']))
   })
 
   it('returns sync history', async () => {
@@ -228,13 +218,13 @@ describe('dataset', () => {
   })
 
   it('sets verification status both ways', async () => {
-    const result = expectOk(await cli(['dataset', 'set-verification', datasetId, '--status', 'verified']))
+    const result = expectOk(await cliWithRetry(['dataset', 'set-verification', datasetId, '--status', 'verified']))
     expect(result.stdout).to.include('verified')
     expect(json<{isVerified: boolean}>(await cli(['dataset', 'verification', datasetId, '--json'])).isVerified).to.equal(
       true,
     )
 
-    expectOk(await cli(['dataset', 'set-verification', datasetId, '--status', 'unverified']))
+    expectOk(await cliWithRetry(['dataset', 'set-verification', datasetId, '--status', 'unverified']))
     expect(json<{isVerified: boolean}>(await cli(['dataset', 'verification', datasetId, '--json'])).isVerified).to.equal(
       false,
     )

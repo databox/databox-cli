@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectExit, expectField, expectKey, expectOk, json, retryRead} from './helpers/cli.js'
+import {cli, cliWithRetry, expectExit, expectField, expectKey, expectOk, json, retryRead} from './helpers/cli.js'
 import {ResourceTracker, createDataSource, e2eName} from './helpers/resources.js'
 
 interface DataSource {
@@ -95,7 +95,7 @@ describe('data-source', () => {
     )
     const interval = offered.find((f) => f.syncInterval === 1440)?.syncInterval ?? offered[0].syncInterval
 
-    const result = expectOk(await cli(['data-source', 'set-sync-frequency', dataSourceId, '--interval', String(interval)]))
+    const result = expectOk(await cliWithRetry(['data-source', 'set-sync-frequency', dataSourceId, '--interval', String(interval)]))
     expect(result.stdout).to.include(`${interval} minutes`)
 
     const reread = json<{syncInterval?: number}>(await cli(['data-source', 'get', dataSourceId, '--json']))
@@ -106,7 +106,7 @@ describe('data-source', () => {
     const timezones = json<Array<{timezone: string}>>(await cli(['account', 'timezones', '--json']))
     const {timezone} = timezones[0]
 
-    const result = expectOk(await cli(['data-source', 'set-timezone', dataSourceId, '--timezone', timezone]))
+    const result = expectOk(await cliWithRetry(['data-source', 'set-timezone', dataSourceId, '--timezone', timezone]))
     expect(result.stdout).to.include(timezone)
 
     const reread = json<DataSource>(await cli(['data-source', 'get', dataSourceId, '--json']))

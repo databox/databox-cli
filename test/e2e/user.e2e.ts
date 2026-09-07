@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectOk, json, retryRead, serviceUnavailable} from './helpers/cli.js'
+import {cli, cliWithRetry, expectField, expectOk, json, retryRead, serviceUnavailable} from './helpers/cli.js'
 import {E2E_PREFIX, ResourceTracker} from './helpers/resources.js'
 
 interface User {
@@ -20,12 +20,12 @@ describe('user', () => {
   before(async function () {
     this.timeout(120_000)
 
-    users = json<User[]>(await cli(['user', 'list', '--page-size', '100', '--json']))
+    users = json<User[]>(await cliWithRetry(['user', 'list', '--page-size', '100', '--json']))
 
     // Sweep invites left by a previous interrupted run before adding another.
     for (const orphan of users.filter((user) => E2E_EMAIL_PATTERN.test(user.email ?? ''))) {
       // eslint-disable-next-line no-await-in-loop
-      const removed = await cli(['user', 'delete', String(orphan.id), '--force'])
+      const removed = await cliWithRetry(['user', 'delete', String(orphan.id), '--force'])
       console.log(
         removed.code === 0
           ? `   pre-sweep: removed orphaned invite ${orphan.email}`

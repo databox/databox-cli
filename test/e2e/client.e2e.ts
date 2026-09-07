@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectOk, json} from './helpers/cli.js'
+import {cli, cliWithRetry, expectField, expectOk, json} from './helpers/cli.js'
 import {ResourceTracker, e2eName} from './helpers/resources.js'
 
 interface Client {
@@ -15,7 +15,7 @@ describe('client', () => {
 
   before(async () => {
     // Only agency accounts have clients; a non-agency account rejects the endpoint.
-    const probe = await cli(['client', 'list', '--page-size', '5', '--json'])
+    const probe = await cliWithRetry(['client', 'list', '--page-size', '5', '--json'])
     isAgency = probe.code === 0
     if (!isAgency) {
       console.log(`   note: account is not an agency (client list exited ${probe.code})`)

@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {cli, expectField, expectOk, json} from './helpers/cli.js'
+import {cli, cliWithRetry, expectField, expectOk, json} from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
 interface Connection {
@@ -18,7 +18,7 @@ describe('connection', () => {
   let connections: Connection[]
 
   before(async () => {
-    connections = json<Connection[]>(await cli(['connection', 'list', '--page-size', '20', '--json']))
+    connections = json<Connection[]>(await cliWithRetry(['connection', 'list', '--page-size', '20', '--json']))
   })
 
   it('lists connections', function () {

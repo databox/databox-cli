@@ -266,9 +266,13 @@ function isTransient(result: CliResult): boolean {
 }
 
 /**
- * Runs a command, retrying only transient environment failures. Note that a
- * create which succeeds server-side but reports a 5xx will be retried and leave an
- * orphan; the `cli-e2e-` sweeper is what makes that safe.
+ * Runs a command, retrying only failures whose output matches a transient
+ * environment fault. Safe for assertions as well as fixtures: a genuine failure
+ * does not match, and even a matched one is returned as-is once attempts run out,
+ * so nothing is ever retried into a pass.
+ *
+ * The one caveat is creates: one that succeeds server-side but reports a 5xx gets
+ * retried and leaves an orphan, which is what the `cli-e2e-` sweeper is for.
  */
 export async function cliWithRetry(
   argv: string[],
