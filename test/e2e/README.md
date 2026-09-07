@@ -194,6 +194,14 @@ documents. Verified with `curl` against the raw endpoints.
 - **`GET /v2/data-sources/{id}` and `GET /v2/datasets` serve stale reads after a
   delete** — a deleted resource keeps coming back for a short window, so the suite polls
   rather than reading once.
-- **`POST /v2/datasets/{id}/duplicate` rejects datasets on a DataboxAPI (ingestion) data
-  source** with "Data source type not found." — the only kind the CLI can create. Worth
-  confirming whether duplicate is meant to support them.
+- **`POST /v2/datasets/{id}/duplicate` cannot duplicate a dataset created through the
+  API** — the only kind the CLI can create. account-service refuses to duplicate a space
+  access with no `data_sources` row, and a pushed dataset has none, so it failed with the
+  opaque "Data source type not found."
+
+  This is a product limitation rather than only a bug: lifting the upstream guard would
+  not be enough, because the ingestion identity of a copy — its own token and push
+  endpoint, and which dataset data pushed to the original lands in — is undefined.
+  **Handled** in ingestion-api on `fix/v2-duplicate-ingestion-dataset-message`, which
+  rejects it with an actionable message instead. The e2e test asserts the refusal and
+  accepts either message until that is deployed.

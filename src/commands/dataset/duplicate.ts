@@ -8,7 +8,7 @@ export default class DatasetDuplicate extends BaseCommand<typeof DatasetDuplicat
     datasetId: Args.string({description: 'The dataset ID to duplicate', required: true}),
   }
 
-  static description = 'Duplicate a dataset'
+  static description = 'Duplicate a dataset (not supported for datasets created through the API)'
 
   static examples = [
     '<%= config.bin %> dataset duplicate 12345',

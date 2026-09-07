@@ -245,22 +245,29 @@ describe('dataset', () => {
     expect(permissions).to.be.an('object')
   })
 
-  // The API rejects this with "Data source type not found." for datasets under a
-  // DataboxAPI (ingestion) data source — the only kind the CLI can create. Verified
-  // against the raw endpoint, so it is an API-side limitation, not a CLI defect.
-  // Worth confirming with the API team whether duplicate is meant to support them.
-  it('duplicates the dataset', async function () {
+  // Datasets created through the API cannot be duplicated: a pushed dataset has no
+  // connector source to copy, and the ingestion identity of a copy is undefined. The API
+  // rejects it with exit 2 and an actionable message (see doc/v2/spec/datasets.md).
+  //
+  // Until that rejection is deployed, the upstream's opaque "Data source type not found."
+  // is still what comes back, so both are accepted here.
+  it('refuses to duplicate a dataset created through the API', async () => {
     const result = await cli(['dataset', 'duplicate', datasetId, '--json'])
 
-    if (result.code !== 0 && /data source type not found/i.test(errorText(result))) {
-      console.log('   skip: API does not support duplicating datasets on a DataboxAPI data source')
-      this.skip()
+    expect(result.code, 'duplicating a pushed dataset should fail').to.not.equal(0)
+
+    const message = errorText(result)
+    const isDeployedMessage = /cannot be duplicated/i.test(message)
+    const isUpstreamMessage = /data source type not found/i.test(message)
+
+    if (isUpstreamMessage && !isDeployedMessage) {
+      console.log('   note: environment predates the clearer rejection; got the upstream message')
     }
 
-    const duplicate = json<{id: number}>(result)
-    expectField(duplicate, 'id', 'number')
-    tracker.track('dataset', duplicate.id)
-    expect(String(duplicate.id)).to.not.equal(datasetId)
+    expect(
+      isDeployedMessage || isUpstreamMessage,
+      `unexpected failure for duplicate: ${message}`,
+    ).to.equal(true)
   })
 
   it('purges the dataset', async () => {
