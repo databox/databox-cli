@@ -183,11 +183,14 @@ though the API accepts both.
 These are `ingestion-api` bugs, not CLI ones — the CLI sends exactly what the contract
 documents. Verified with `curl` against the raw endpoints.
 
-- **`GET /v2/datasets?dataSourceId=…` filtering is unreliable, and `totalItems` ignores
-  the filter.** A filtered call can return `items: []` while `pagination.totalItems`
-  reports the *unfiltered* count (observed: 0 items, 227 total). The same call with a
-  different `pageSize` sometimes returns the rows. Because of this, e2e assertions about
-  list contents do not rely on this filter.
+- **`GET /v2/datasets?dataSourceId=…` filtering was unreliable, and `totalItems` ignored
+  the filter.** A filtered call could return `items: []` while `pagination.totalItems`
+  reported the *unfiltered* count (observed: 0 items, 227 total), and a different
+  `pageSize` returned the rows. Cause: `DatasetService.ListDatasets` paged upstream and
+  then filtered in memory. **Fixed** in ingestion-api on
+  `fix/v2-dataset-list-datasource-filter` — it now passes `parentId` to account-service,
+  which filters in the query. Until that is deployed, e2e assertions about list contents
+  deliberately do not rely on this filter.
 - **`GET /v2/data-sources/{id}` and `GET /v2/datasets` serve stale reads after a
   delete** — a deleted resource keeps coming back for a short window, so the suite polls
   rather than reading once.

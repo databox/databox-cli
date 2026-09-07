@@ -87,9 +87,9 @@ describe('dataset', () => {
     expect(String(found!.parentDataSourceId)).to.equal(dataSourceId)
   })
 
-  // Unfiltered on purpose: the API's dataSourceId filter is unreliable (see the
-  // note in test/e2e/README.md), and this asserts the CLI's column mapping, not
-  // the server's filtering.
+  // Unfiltered on purpose: this asserts the CLI's column mapping, not the server's
+  // filtering. The dataSourceId filter was broken upstream (fixed in ingestion-api,
+  // see test/e2e/README.md); switch this to a filtered listing once that is deployed.
   it('renders the list table with a populated Data Source ID column', async () => {
     const listed = json<Dataset[]>(await cli(['dataset', 'list', '--page-size', '10', '--json']))
     const withParent = listed.find((item) => item.parentDataSourceId !== null)
