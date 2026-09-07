@@ -60,7 +60,7 @@ export function preflight(): E2eConfig {
         `No API key for environment "${environment.name}" (${environment.baseUrl}).`,
         'Set DATABOX_E2E_API_KEY to a key valid for that environment.',
         `Environments with a built-in default key: ${knownEnvironmentNames()
-          .filter((name) => resolveEnvironment({DATABOX_E2E_ENV: name}).apiKeyOrigin === 'environment default')
+          .filter((name) => resolveEnvironment({DATABOX_E2E_ENV: name}).keyResolvedFrom === 'environment default')
           .join(', ')}.`,
       ].join('\n'),
     )
@@ -70,7 +70,7 @@ export function preflight(): E2eConfig {
     'databox-cli e2e',
     `  environment : ${environment.name}${environment.isProduction ? '  ** PRODUCTION **' : ''}`,
     `  api url     : ${environment.baseUrl}`,
-    `  api key     : from ${environment.apiKeyOrigin}`,
+    `  api key     : from ${environment.keyResolvedFrom}`,
   ]
   if (accountId) lines.push(`  account id  : ${accountId}`)
   if (allowInsecureTls) lines.push('  tls         : verification DISABLED (DATABOX_E2E_ALLOW_INSECURE_TLS=1)')

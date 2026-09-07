@@ -32,19 +32,9 @@ export default class MetricCreate extends BaseCommand<typeof MetricCreate> {
   async run(): Promise<void> {
     const {flags} = await this.parse(MetricCreate)
 
-    let date: unknown
-    try {
-      date = JSON.parse(flags.date) as unknown
-    } catch {
-      this.error('Invalid JSON for --date. Expected format: {"id":"...","name":"..."}', {exit: 2})
-    }
-
-    let measure: unknown
-    try {
-      measure = JSON.parse(flags.measure) as unknown
-    } catch {
-      this.error('Invalid JSON for --measure. Expected format: {"id":"...","name":"..."}', {exit: 2})
-    }
+    const REF = '{"id":"...","name":"..."}'
+    const date = this.parseJsonFlag(flags.date, 'date', REF)
+    const measure = this.parseJsonFlag(flags.measure, 'measure', REF)
 
     const body: Record<string, unknown> = {
       aggregationFunction: flags['aggregation-function'],
@@ -55,21 +45,15 @@ export default class MetricCreate extends BaseCommand<typeof MetricCreate> {
     }
 
     if (flags.dimension) {
-      body.dimensions = flags.dimension.map((value, index) => {
-        try {
-          return JSON.parse(value) as unknown
-        } catch {
-          this.error(`Invalid JSON for --dimension #${index + 1}. Expected format: {"id":"...","name":"..."}`, {exit: 2})
-        }
-      })
+      body.dimensions = flags.dimension.map((value) => this.parseJsonFlag(value, 'dimension', REF))
     }
 
     if (flags.filters) {
-      try {
-        body.filters = JSON.parse(flags.filters) as unknown
-      } catch {
-        this.error('Invalid JSON for --filters. Expected format: [{"field":"...","operator":"...","values":["..."]}]', {exit: 2})
-      }
+      body.filters = this.parseJsonFlag(
+        flags.filters,
+        'filters',
+        '[{"field":"...","operator":"...","values":["..."]}]',
+      )
     }
 
     const response = await this.apiClient.post<Record<string, unknown>>('/v2/metrics', body, this.accountHeaders)

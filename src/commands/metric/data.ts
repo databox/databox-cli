@@ -48,11 +48,7 @@ export default class MetricData extends BaseCommand<typeof MetricData> {
     if (flags['dataset-id']) body.datasetId = flags['dataset-id']
     if (flags.dimension) body.dimensions = flags.dimension
     if (flags.filters) {
-      try {
-        body.filters = JSON.parse(flags.filters) as unknown
-      } catch {
-        this.error('Invalid JSON for --filters. Expected format: {"logicalOperator":"AND","groups":[...]}', {exit: 2})
-      }
+      body.filters = this.parseJsonFlag(flags.filters, 'filters', '{"logicalOperator":"AND","groups":[...]}')
     }
 
     const response = await this.apiClient.post<Record<string, unknown>>('/v2/metrics/data', body, this.accountHeaders)
