@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatSingle} from '../../lib/output.js'
 
 export default class DatasetPreviewModification extends BaseCommand<typeof DatasetPreviewModification> {
@@ -20,8 +21,7 @@ export default class DatasetPreviewModification extends BaseCommand<typeof Datas
       description: 'JSON string with modification rules to preview',
       required: true,
     }),
-    page: Flags.integer({description: 'Page number', default: 0}),
-    'page-size': Flags.integer({description: 'Items per page', default: 25}),
+    ...paginationFlags,
   }
 
   async run(): Promise<void> {
@@ -34,7 +34,7 @@ export default class DatasetPreviewModification extends BaseCommand<typeof Datas
       `/v2/datasets/${args.datasetId}/modifications/preview`,
       body,
       this.accountHeaders,
-      {query: {page: this.flags.page, pageSize: this.flags['page-size']}},
+      {query: addPagination({}, this.flags)},
     )
 
     formatSingle(response, this.flags.json)

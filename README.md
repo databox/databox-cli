@@ -375,7 +375,7 @@ FLAGS
   --date-from=<value>      Only entries on or after this date (ISO 8601)
   --date-to=<value>        Only entries on or before this date (ISO 8601)
   --json                   Output as JSON
-  --page=<value>           Page number
+  --page=<value>           Page number (0-indexed)
   --page-size=<value>      Number of items per page
   --resource-type=<value>  Filter by resource type
   --search=<value>         Search the log text
@@ -498,7 +498,7 @@ USAGE
 
 FLAGS
   --json               Output as JSON
-  --page=<value>       Page number
+  --page=<value>       Page number (0-indexed)
   --page-size=<value>  Number of items per page
 
 DESCRIPTION
@@ -601,7 +601,7 @@ USAGE
 
 FLAGS
   --json                 Output as JSON
-  --page=<value>         Page number
+  --page=<value>         Page number (0-indexed)
   --page-size=<value>    Number of items per page
   --search=<value>       Search by name
   --sort-by=<value>      Field to sort by
@@ -710,7 +710,7 @@ USAGE
 
 FLAGS
   --json               Output as JSON
-  --page=<value>       Page number
+  --page=<value>       Page number (0-indexed)
   --page-size=<value>  Number of items per page
   --search=<value>     Search by connection name
 
@@ -1146,7 +1146,7 @@ USAGE
 
 FLAGS
   --json               Output as JSON
-  --page=<value>       Page number
+  --page=<value>       Page number (0-indexed)
   --page-size=<value>  Number of items per page
   --search=<value>     Search by databoard name
 
@@ -1497,7 +1497,7 @@ ARGUMENTS
 
 FLAGS
   --json               Output as JSON
-  --page=<value>       Page number
+  --page=<value>       Page number (0-indexed)
   --page-size=<value>  Number of items per page
 
 DESCRIPTION
@@ -1506,7 +1506,7 @@ DESCRIPTION
 EXAMPLES
   $ databox dataset ingestions 12345
 
-  $ databox dataset ingestions 12345 --page 1 --page-size 20
+  $ databox dataset ingestions 12345 --page 0 --page-size 20
 
   $ databox dataset ingestions 12345 --json
 ```
@@ -1705,8 +1705,8 @@ ARGUMENTS
 FLAGS
   --data=<value>       (required) JSON string with modification rules to preview
   --json               Output as JSON
-  --page=<value>       Page number
-  --page-size=<value>  [default: 25] Items per page
+  --page=<value>       Page number (0-indexed)
+  --page-size=<value>  Number of items per page
 
 DESCRIPTION
   Preview a dataset modification before applying
@@ -2143,7 +2143,7 @@ USAGE
 
 FLAGS
   --json                 Output as JSON
-  --page=<value>         Page number
+  --page=<value>         Page number (0-indexed)
   --page-size=<value>    Number of items per page
   --search=<value>       Search by integration name
   --sort-by=<value>      Field to sort by
@@ -2341,7 +2341,7 @@ USAGE
 
 FLAGS
   --json               Output as JSON
-  --page=<value>       Page number
+  --page=<value>       Page number (0-indexed)
   --page-size=<value>  Number of items per page
   --search=<value>     Search by metric name
   --source-id=<value>  Filter by source ID (data source or dataset)
@@ -2629,7 +2629,7 @@ USAGE
 
 FLAGS
   --json                 Output as JSON
-  --page=<value>         Page number
+  --page=<value>         Page number (0-indexed)
   --page-size=<value>    Number of items per page
   --role=<option>        Filter by role
                          <options: admin|user>

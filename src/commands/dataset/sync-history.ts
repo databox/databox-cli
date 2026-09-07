@@ -1,4 +1,4 @@
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {addPagination, paginationFlags} from '../../lib/flags.js'

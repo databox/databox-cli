@@ -1,5 +1,3 @@
-import {Flags} from '@oclif/core'
-
 import {BaseCommand} from '../../base-command.js'
 import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
