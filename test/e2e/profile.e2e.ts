@@ -1,6 +1,7 @@
 import {expect} from 'chai'
 
 import {cli, expectField, expectOk, json} from './helpers/cli.js'
+import {withRestore} from './helpers/restore.js'
 
 interface Profile {
   id?: number
@@ -36,14 +37,12 @@ describe('profile', () => {
 
     const renamed = `${original} (e2e)`
 
-    try {
+    await withRestore('profile.name', ['profile', 'update', '--name', original, '--json'], async () => {
       expectOk(await cli(['profile', 'update', '--name', renamed, '--json']))
 
       const reread = json<Profile>(await cli(['profile', 'info', '--json']))
       expect(reread.name).to.equal(renamed)
-    } finally {
-      expectOk(await cli(['profile', 'update', '--name', original, '--json']))
-    }
+    })
 
     const restored = json<Profile>(await cli(['profile', 'info', '--json']))
     expect(restored.name).to.equal(original)

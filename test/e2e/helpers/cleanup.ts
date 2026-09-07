@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url'
 import {cli, cliWithRetry, errorText} from './cli.js'
 import {preflight} from './env.js'
 import {E2E_PREFIX, isE2eResource} from './resources.js'
+import {pendingRestores, runPendingRestores} from './restore.js'
 
 interface NamedResource {
   id: number | string
@@ -77,6 +78,14 @@ export async function sweepOrphans(): Promise<SweepResult> {
 
 async function main(): Promise<void> {
   preflight()
+
+  const outstanding = pendingRestores()
+  if (outstanding.length > 0) {
+    console.log(`Putting back ${outstanding.length} change(s) to resources the suite does not own\n`)
+    const {failed: restoreFailed, restored, skipped} = await runPendingRestores()
+    console.log(`\nRestored ${restored}, failed ${restoreFailed}, skipped ${skipped} (recorded elsewhere)\n`)
+  }
+
   console.log(`Sweeping resources named "${E2E_PREFIX}*"\n`)
 
   const {deleted, failed, unchecked} = await sweepOrphans()

@@ -1,6 +1,7 @@
 import {expect} from 'chai'
 
 import {cli, expectField, expectOk, json} from './helpers/cli.js'
+import {withRestore} from './helpers/restore.js'
 
 interface Connection {
   id: number
@@ -59,14 +60,15 @@ describe('connection', () => {
     const original = connections[0].name ?? ''
     const renamed = `${original} (e2e)`
 
-    try {
-      expectOk(await cli(['connection', 'update', String(id), '--name', renamed, '--json']))
+    await withRestore(
+      `connection.${id}.name`,
+      ['connection', 'update', String(id), '--name', original, '--json'],
+      async () => {
+        expectOk(await cli(['connection', 'update', String(id), '--name', renamed, '--json']))
 
-      const reread = json<Connection>(await cli(['connection', 'get', String(id), '--json']))
-      expect(reread.name).to.equal(renamed)
-    } finally {
-      // Restore in a finally: this is a real connection the suite did not create.
-      expectOk(await cli(['connection', 'update', String(id), '--name', original, '--json']))
-    }
+        const reread = json<Connection>(await cli(['connection', 'get', String(id), '--json']))
+        expect(reread.name).to.equal(renamed)
+      },
+    )
   })
 })

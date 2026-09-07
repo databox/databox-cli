@@ -32,6 +32,9 @@ Never rename an e2e file to `.test.ts`, and never add `test/e2e` to `.mocharc.ym
   tests; parallel suites would collide on shared account state. Retry belongs in
   `retryRead` (reads only) and `cliWithRetry` (fixture setup only).
 - **No API key outside `helpers/environments.ts`**, and never a production key.
+- **Never mutate a resource the suite did not create without `withRestore()`.** It
+  records the undo on disk before the change, so an interrupted run can be repaired
+  with `npm run test:e2e:cleanup`. A bare `finally` does not survive Ctrl-C.
 
 ## Classifying a failure
 

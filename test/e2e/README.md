@@ -69,6 +69,35 @@ production key is ever committed.
   sets its own, so an exported `DATABOX_API_KEY` cannot silently redirect a run.
 - **Each child gets an empty `HOME`**, so `~/.config/databox-cli/config.json` can neither
   influence a run nor be modified by one.
+- **Every change to a resource the suite does not own is undone** — see below.
+
+## Undoing changes to shared resources
+
+Almost everything the suites touch is a `cli-e2e-*` fixture they created and delete.
+Three things are not: the **account**, the signed-in **profile**, and an existing
+**connection** — there is no way to exercise `account update`, `profile update` or
+`connection update` without changing something real.
+
+For those, `withRestore()` writes the undoing command to `.e2e-restore.json`
+**before** the mutation, and removes it only once the value is back:
+
+```typescript
+await withRestore('account.name', ['account', 'update', '--name', original, '--json'], async () => {
+  expectOk(await cli(['account', 'update', '--name', renamed, '--json']))
+  // ...assertions...
+})
+```
+
+A `finally` alone is not enough — it does not survive Ctrl-C, a crash, or a failed
+restore. Because the undo log is on disk, anything left in it is an outstanding change:
+
+- the root `before()` hook replays leftovers **before** the run, so suites read real values;
+- the root `after()` hook replays them again;
+- `npm run test:e2e:cleanup` replays whatever an interrupted run left behind.
+
+Entries record which environment they were taken against and are never replayed onto a
+different one. The file is gitignored. If a run is interrupted, the fix is always the
+same: `npm run test:e2e:cleanup`.
 
 ## Conventions
 

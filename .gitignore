@@ -6,3 +6,6 @@ oclif.manifest.json
 .agents/
 .claude/settings.json
 skills-lock.json
+
+# e2e undo log for mutations to shared resources
+.e2e-restore.json

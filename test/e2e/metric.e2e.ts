@@ -1,7 +1,14 @@
 import {expect} from 'chai'
 
 import {cli, errorText, expectExit, expectField, expectOk, json, serviceUnavailable} from './helpers/cli.js'
-import {ResourceTracker, createDataSource, createDataset, e2eName} from './helpers/resources.js'
+import {
+  ResourceTracker,
+  createDataSource,
+  createDataset,
+  e2eName,
+  tryIngestRecords,
+  waitForIngestion,
+} from './helpers/resources.js'
 
 interface Metric {
   id: string
@@ -16,14 +23,26 @@ const MEASURE_FIELD = JSON.stringify({id: 'amount', name: 'amount'})
 describe('metric', () => {
   const tracker = new ResourceTracker()
   let datasetId: string
+  let hasData = false
   let metricId: string | undefined
 
   before(async function () {
-    this.timeout(120_000)
+    this.timeout(180_000)
 
     const dataSource = await createDataSource(tracker, 'metric-src')
     const dataset = await createDataset(tracker, dataSource.id, {label: 'metric'})
     datasetId = dataset.id
+
+    // The metric service rejects a dataset that has never received data, so the
+    // fixture has to be populated before any metric can be built on it.
+    const ingested = await tryIngestRecords(datasetId)
+    if (ingested.code === 0) {
+      const {ingestionId} = JSON.parse(ingested.stdout) as {ingestionId: string}
+      await waitForIngestion(datasetId, ingestionId)
+      hasData = true
+    } else {
+      console.log(`   note: could not ingest fixture data — ${errorText(ingested)}`)
+    }
   })
 
   after(async function () {
@@ -46,8 +65,6 @@ describe('metric', () => {
     expect(result.stdout).to.include('Name')
   })
 
-  // Note: the API also accepts `aggregationFunction` and `dimensions` on create,
-  // but the CLI exposes neither — a metric made here always uses API defaults.
   it('creates a metric on the dataset', async function () {
     const name = e2eName('metric')
     const result = await cli([
@@ -70,11 +87,10 @@ describe('metric', () => {
       this.skip()
     }
 
-    // The metric service rejects a dataset that has never received data. Verified
-    // against the raw endpoint with and without aggregationFunction, so this tracks
-    // the environment's ingestion pipeline being down, not a CLI defect.
-    if (result.code !== 0 && /verify that datasetid references a valid dataset/i.test(errorText(result))) {
-      console.log('   skip: metric service rejects a dataset with no ingested data (ingestion pipeline unavailable)')
+    // Only reachable when the fixture could not be populated — the metric service
+    // rejects a dataset that has never received data.
+    if (!hasData && result.code !== 0 && /verify that datasetid references a valid dataset/i.test(errorText(result))) {
+      console.log('   skip: fixture dataset has no ingested data')
       this.skip()
     }
 
@@ -179,6 +195,67 @@ describe('metric', () => {
     }
 
     expect(json<unknown>(result)).to.not.equal(null)
+  })
+
+  it('returns dimension values', async function () {
+    if (!metricId) this.skip()
+
+    // Exercises the batch request shape {metrics:[{dataSourceId,metricId,dimensions}]}
+    // and the {dimensionValues} response — both were wrong before.
+    const values = json<string[]>(
+      await cli(['metric', 'dimension-values', '--metric-id', metricId!, '--source-id', datasetId, '--dimension', 'name', '--json']),
+    )
+
+    expect(values).to.be.an('array')
+  })
+
+  it('returns a drilldown for a period', async function () {
+    if (!metricId) this.skip()
+
+    const end = Math.floor(Date.now() / 1000)
+    const start = end - 30 * 24 * 60 * 60
+    const result = await cli([
+      'metric', 'drilldown',
+      '--metric-id', metricId!,
+      '--dataset-id', datasetId,
+      '--start-timestamp', String(start),
+      '--end-timestamp', String(end),
+      '--json',
+    ])
+
+    const outage = serviceUnavailable(result)
+    if (outage) {
+      console.log(`   skip: ${outage}`)
+      this.skip()
+    }
+
+    expect(json<unknown>(result)).to.not.equal(null)
+  })
+
+  it('creates a metric with an explicit aggregation and dimensions', async function () {
+    if (!hasData) this.skip()
+
+    const name = e2eName('metric-agg')
+    const created = json<Metric>(
+      await cli([
+        'metric', 'create',
+        '--name', name,
+        '--dataset-id', datasetId,
+        '--date', DATE_FIELD,
+        '--measure', MEASURE_FIELD,
+        '--aggregation-function', 'avg',
+        '--dimension', JSON.stringify({id: 'name', name: 'name'}),
+        '--json',
+      ]),
+    )
+
+    expectField(created, 'id', 'string')
+
+    // A metric created with dimensions comes back with a compound id
+    // ("<source>|<query>|attribute") that DELETE /v2/metrics/{id} rejects. It is
+    // removed when the fixture data source is torn down, so it is deliberately
+    // not tracked — the cli-e2e-* sweeper is the backstop if that ever changes.
+    expect(created.id).to.contain('|')
   })
 
   it('deletes the metric', async function () {

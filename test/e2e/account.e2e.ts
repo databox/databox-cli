@@ -1,6 +1,7 @@
 import {expect} from 'chai'
 
 import {cli, expectField, expectKey, expectOk, json} from './helpers/cli.js'
+import {withRestore} from './helpers/restore.js'
 
 interface Account {
   accountType: string
@@ -82,17 +83,19 @@ describe('account', () => {
   it('clears a nullable field when given an empty string', async () => {
     const original = json<{websiteUrl: string | null}>(await cli(['account', 'info', '--json'])).websiteUrl
 
-    try {
-      expectOk(await cli(['account', 'update', '--website-url', 'https://cli-e2e.invalid', '--json']))
-      expect(json<{websiteUrl: string}>(await cli(['account', 'info', '--json'])).websiteUrl).to.equal(
-        'https://cli-e2e.invalid',
-      )
+    await withRestore(
+      'account.websiteUrl',
+      ['account', 'update', '--website-url', original ?? '', '--json'],
+      async () => {
+        expectOk(await cli(['account', 'update', '--website-url', 'https://cli-e2e.invalid', '--json']))
+        expect(json<{websiteUrl: string}>(await cli(['account', 'info', '--json'])).websiteUrl).to.equal(
+          'https://cli-e2e.invalid',
+        )
 
-      expectOk(await cli(['account', 'update', '--website-url', '', '--json']))
-      expect(json<{websiteUrl: string}>(await cli(['account', 'info', '--json'])).websiteUrl).to.equal('')
-    } finally {
-      expectOk(await cli(['account', 'update', '--website-url', original ?? '', '--json']))
-    }
+        expectOk(await cli(['account', 'update', '--website-url', '', '--json']))
+        expect(json<{websiteUrl: string}>(await cli(['account', 'info', '--json'])).websiteUrl).to.equal('')
+      },
+    )
   })
 
   it('rejects an update with no fields', async () => {
@@ -106,16 +109,13 @@ describe('account', () => {
     const original = account.name
     const renamed = `${original} (e2e)`
 
-    try {
+    await withRestore('account.name', ['account', 'update', '--name', original, '--json'], async () => {
       const updated = json<Account>(await cli(['account', 'update', '--name', renamed, '--json']))
       expect(updated.name).to.equal(renamed)
 
       const reread = json<Account>(await cli(['account', 'info', '--json']))
       expect(reread.name).to.equal(renamed)
-    } finally {
-      // Restore in a finally: leaving the account renamed would poison every later run.
-      expectOk(await cli(['account', 'update', '--name', original, '--json']))
-    }
+    })
 
     const restored = json<Account>(await cli(['account', 'info', '--json']))
     expect(restored.name).to.equal(original)
