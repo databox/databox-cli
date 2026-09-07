@@ -149,7 +149,7 @@ export async function waitForIngestion(
     if (result.code === 0) {
       const ingestion = JSON.parse(result.stdout) as Record<string, unknown>
       const status = String(ingestion.status ?? '').toLowerCase()
-      if (status && !['pending', 'processing', 'queued', 'running'].includes(status)) {
+      if (status && !['inprogress', 'in_progress', 'pending', 'processing', 'queued', 'running'].includes(status)) {
         return ingestion
       }
     }

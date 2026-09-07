@@ -149,6 +149,19 @@ describe('dataset', () => {
 
     expectField(ingestion, 'status', 'string')
     expect(String(ingestion.status).toLowerCase()).to.not.equal('failed')
+
+    // The detail response must carry at least what a list row carries. It used to return only
+    // ingestionId + status, because the API read the ingest through its V1 contract — fixed in
+    // ingestion-api (GetIngestion now reads account-service directly).
+    expectField(ingestion, 'startedAt', 'string')
+
+    const listed = json<Array<{duration?: number | null; ingestionId: string; startedAt?: string | null}>>(
+      await cli(['dataset', 'ingestions', datasetId, '--json']),
+    ).find((item) => item.ingestionId === ingestionId)
+
+    expect(listed, 'the ingestion should still be listed').to.not.equal(undefined)
+    expect(ingestion.startedAt, 'startedAt should agree with the list row').to.equal(listed!.startedAt)
+    expect(ingestion.duration, 'duration should agree with the list row').to.equal(listed!.duration)
   })
 
   it('reports ingestion statistics', async () => {
