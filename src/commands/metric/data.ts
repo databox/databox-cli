@@ -12,8 +12,14 @@ export default class MetricData extends BaseCommand<typeof MetricData> {
   ]
 
   static flags = {
-    'data-source-id': Flags.integer({description: 'Data source ID (alternative to --dataset-id)'}),
-    'dataset-id': Flags.integer({description: 'Dataset ID (alternative to --data-source-id)'}),
+    'data-source-id': Flags.integer({
+      description: 'Data source ID (alternative to --dataset-id)',
+      exclusive: ['dataset-id'],
+    }),
+    'dataset-id': Flags.integer({
+      description: 'Dataset ID (alternative to --data-source-id)',
+      exclusive: ['data-source-id'],
+    }),
     'date-from': Flags.string({description: 'Start date (YYYY-MM-DD)', required: true}),
     dimension: Flags.string({description: 'Dimension to break the data down by (repeat for several)', multiple: true}),
     filters: Flags.string({description: 'JSON object: {logicalOperator, groups}'}),
@@ -49,7 +55,7 @@ export default class MetricData extends BaseCommand<typeof MetricData> {
       }
     }
 
-    const response = await this.apiClient.post('/v2/metrics/data', body, this.accountHeaders)
+    const response = await this.apiClient.post<Record<string, unknown>>('/v2/metrics/data', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

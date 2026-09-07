@@ -12,12 +12,13 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
 
   static examples = [
     '<%= config.bin %> dataset set-permissions 12345 --access-level everyone',
-    '<%= config.bin %> dataset set-permissions 12345 --access-level specific_users',
+    '<%= config.bin %> dataset set-permissions 12345 --access-level selectedUsers --access-list 31 --access-list 42',
   ]
 
   static flags = {
     'access-level': Flags.string({
-      description: 'Access level (e.g., everyone, specific_users)',
+      description: 'Access level',
+      options: ['everyone', 'selectedUsers'],
       required: true,
     }),
     'access-list': Flags.integer({description: 'User ID granted access (repeat for several)', multiple: true}),
@@ -27,6 +28,12 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
     const {args, flags} = await this.parse(DatasetSetPermissions)
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
+
+    // selectedUsers without an access list is rejected by the API, so catch it here
+    // rather than after a round trip.
+    if (flags['access-level'] === 'selectedUsers' && (flags['access-list'] ?? []).length === 0) {
+      this.error('--access-list is required when --access-level is selectedUsers.', {exit: 2})
+    }
 
     const response = await this.apiClient.put<Record<string, unknown>>(
       `/v2/datasets/${args.datasetId}/permissions`,

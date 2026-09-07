@@ -48,8 +48,16 @@ export function showPagination(
   json: boolean,
 ): void {
   if (!pagination || json) return
-  const totalPages = Math.ceil(pagination.totalItems / pagination.pageSize)
-  console.log(`Page ${pagination.page + 1} of ${totalPages} (${pagination.totalItems} total items)`)
+
+  // The API pages from 0; the display is 1-based. Guard the degenerate cases:
+  // totalItems 0 would read "Page 1 of 0", and pageSize 0 divides to Infinity.
+  // Nothing to say when there is nothing to page through — formatOutput has already
+  // printed "No results found."
+  const {page, pageSize, totalItems} = pagination
+  if (!totalItems) return
+
+  const totalPages = pageSize > 0 ? Math.ceil(totalItems / pageSize) : 1
+  console.log(`Page ${page + 1} of ${Math.max(totalPages, 1)} (${totalItems} total items)`)
 }
 
 export function formatSingle<T>(

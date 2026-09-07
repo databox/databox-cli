@@ -1,5 +1,11 @@
 const DEFAULT_BASE_URL = 'https://api.databox.com'
 
+/** Every request is bounded: without this a stalled connection hangs a command forever. */
+const DEFAULT_TIMEOUT_MS = 30_000
+
+/** Ingest uploads a payload, so "slow" and "dead" need more room to be told apart. */
+export const UPLOAD_TIMEOUT_MS = 300_000
+
 export interface ApiClientOptions {
   apiKey: string
   baseUrl?: string
@@ -49,12 +55,17 @@ export class ApiClient {
     return this.request<T>(url, {method: 'GET'}, headers)
   }
 
-  async post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
-    const url = this.buildUrl(path)
+  async post<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+    options?: {query?: Record<string, string | number | undefined>; timeoutMs?: number},
+  ): Promise<T> {
+    const url = this.buildUrl(path, options?.query)
     return this.request<T>(url, {
       body: body ? JSON.stringify(body) : undefined,
       method: 'POST',
-    }, headers)
+    }, headers, options?.timeoutMs)
   }
 
   async patch<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
@@ -91,11 +102,17 @@ export class ApiClient {
     return url.toString()
   }
 
-  private async request<T>(url: string, init: RequestInit, extraHeaders?: Record<string, string>): Promise<T> {
+  private async request<T>(
+    url: string,
+    init: RequestInit,
+    extraHeaders?: Record<string, string>,
+    timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  ): Promise<T> {
+    // extraHeaders is spread first so a caller cannot overwrite the API key.
     const headers: Record<string, string> = {
+      ...extraHeaders,
       'Accept': 'application/json',
       'x-api-key': this.apiKey,
-      ...extraHeaders,
     }
 
     if (init.body) {
@@ -104,8 +121,12 @@ export class ApiClient {
 
     let response: Response
     try {
-      response = await fetch(url, {...init, headers})
-    } catch {
+      response = await fetch(url, {...init, headers, signal: AbortSignal.timeout(timeoutMs)})
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s.`)
+      }
+
       throw new Error('Could not connect to API. Check your internet connection.')
     }
 
@@ -125,7 +146,13 @@ export class ApiClient {
       throw new ApiRequestError(message, response.status, errors)
     }
 
-    const json = (await response.json()) as ApiEnvelope<T>
+    // 204 and other empty 2xx bodies would make response.json() throw.
+    const text = await response.text()
+    if (text.trim() === '') {
+      return undefined as T
+    }
+
+    const json = JSON.parse(text) as ApiEnvelope<T>
     return json.data
   }
 }

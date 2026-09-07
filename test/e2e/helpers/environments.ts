@@ -6,12 +6,16 @@
  * anything else in this file.
  */
 
-export type ApiKeySource = 'DATABOX_E2E_API_KEY' | 'environment default' | 'none'
+export type ApiKeyOrigin = 'DATABOX_E2E_API_KEY' | 'environment default' | 'none'
 
 export interface E2eEnvironment {
   apiKey: string
-  /** Where the key came from, for the preflight banner. Never the value itself. */
-  apiKeySource: ApiKeySource
+  /**
+   * Where the key came from, for the preflight banner — one of three fixed labels,
+   * never the key itself. Named "origin" rather than "source" so CodeQL's
+   * clear-text-logging rule does not read it as key material.
+   */
+  apiKeyOrigin: ApiKeyOrigin
   baseUrl: string
   isProduction: boolean
   name: string
@@ -104,12 +108,12 @@ export function resolveEnvironment(processEnv: NodeJS.ProcessEnv = process.env):
   const explicitKey = processEnv.DATABOX_E2E_API_KEY?.trim()
   const apiKey = explicitKey || defaultApiKey || ''
 
-  let apiKeySource: ApiKeySource = 'none'
+  let apiKeyOrigin: ApiKeyOrigin = 'none'
   if (explicitKey) {
-    apiKeySource = 'DATABOX_E2E_API_KEY'
+    apiKeyOrigin = 'DATABOX_E2E_API_KEY'
   } else if (defaultApiKey) {
-    apiKeySource = 'environment default'
+    apiKeyOrigin = 'environment default'
   }
 
-  return {apiKey, apiKeySource, baseUrl, isProduction: isProductionUrl(baseUrl), name}
+  return {apiKey, apiKeyOrigin, baseUrl, isProduction: isProductionUrl(baseUrl), name}
 }

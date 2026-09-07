@@ -14,7 +14,7 @@ describe('e2e environment resolution', () => {
 
     expect(env.name).to.equal(DEFAULT_ENVIRONMENT)
     expect(env.baseUrl).to.equal('https://ingestion-api-develop6.databox.com')
-    expect(env.apiKeySource).to.equal('environment default')
+    expect(env.apiKeyOrigin).to.equal('environment default')
     expect(env.apiKey).to.not.be.empty
     expect(env.isProduction).to.be.false
   })
@@ -23,7 +23,7 @@ describe('e2e environment resolution', () => {
     const env = resolveEnvironment({DATABOX_E2E_ENV: 'develop10'})
 
     expect(env.baseUrl).to.equal('https://ingestion-api-develop10.databox.com')
-    expect(env.apiKeySource).to.equal('none')
+    expect(env.apiKeyOrigin).to.equal('none')
     expect(env.apiKey).to.be.empty
   })
 
@@ -32,7 +32,7 @@ describe('e2e environment resolution', () => {
 
     expect(env.name).to.equal('royal-salmon-marsh')
     expect(env.baseUrl).to.equal('https://ingestion-api-royal-salmon-marsh.databox.com')
-    expect(env.apiKeySource).to.equal('none')
+    expect(env.apiKeyOrigin).to.equal('none')
   })
 
   it('rejects an environment name that cannot be a hostname', () => {
@@ -53,7 +53,7 @@ describe('e2e environment resolution', () => {
     const env = resolveEnvironment({DATABOX_E2E_API_URL: 'http://localhost:5152'})
 
     expect(env.name).to.equal('local')
-    expect(env.apiKeySource).to.equal('environment default')
+    expect(env.apiKeyOrigin).to.equal('environment default')
   })
 
   it('lets DATABOX_E2E_API_KEY override a built-in default', () => {
@@ -61,7 +61,7 @@ describe('e2e environment resolution', () => {
 
     expect(env.name).to.equal(DEFAULT_ENVIRONMENT)
     expect(env.apiKey).to.equal('pak_override')
-    expect(env.apiKeySource).to.equal('DATABOX_E2E_API_KEY')
+    expect(env.apiKeyOrigin).to.equal('DATABOX_E2E_API_KEY')
   })
 
   it('flags production by resolved host, however it was selected', () => {

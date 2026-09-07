@@ -1,7 +1,7 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {cleanupTestConfig, mockApi, restoreApi, setupEmptyConfig, setupTestConfig} from '../../helpers.js'
 
 describe('auth validate', () => {
   afterEach(() => {
@@ -41,7 +41,7 @@ describe('auth validate', () => {
   })
 
   it('errors when not authenticated', async () => {
-    cleanupTestConfig()
+    setupEmptyConfig()
 
     const result = await runCommand(['auth', 'validate'], {root: process.cwd()})
 

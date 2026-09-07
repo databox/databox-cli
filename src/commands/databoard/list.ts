@@ -1,6 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Databoard {
@@ -29,16 +30,14 @@ export default class DataboardList extends BaseCommand<typeof DataboardList> {
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
     search: Flags.string({description: 'Search by databoard name'}),
   }
 
   async run(): Promise<void> {
     const query: Record<string, string | number | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
-    if (this.flags.page !== undefined) query.page = this.flags.page
-    if (this.flags['page-size'] !== undefined) query.pageSize = this.flags['page-size']
+    addPagination(query, this.flags)
 
     const response = await this.apiClient.get<DataboardsResponse>(
       '/v2/databoards',
@@ -51,8 +50,8 @@ export default class DataboardList extends BaseCommand<typeof DataboardList> {
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {get: (row) => row.tags.join(', '), header: 'Tags'},
-        {get: (row) => row.integrationKeys.join(', '), header: 'Integrations'},
+        {get: (row) => (row.tags ?? []).join(', '), header: 'Tags'},
+        {get: (row) => (row.integrationKeys ?? []).join(', '), header: 'Integrations'},
       ],
       this.flags.json,
     )

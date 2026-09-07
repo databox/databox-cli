@@ -2,27 +2,45 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'databox-cli')
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
+let originalHome: string | undefined
+let tempHome: string | undefined
 
-let originalConfig: string | null = null
-
+/**
+ * Points the CLI at a throwaway HOME and writes a config there.
+ *
+ * This used to read and overwrite the developer's real
+ * ~/.config/databox-cli/config.json, so an interrupted run could destroy their
+ * credentials. src/lib/config.ts resolves the path per call, so overriding HOME
+ * is enough to redirect it.
+ */
 export function setupTestConfig(apiKey = 'test-api-key'): void {
-  if (fs.existsSync(CONFIG_FILE)) {
-    originalConfig = fs.readFileSync(CONFIG_FILE, 'utf-8')
-  }
+  originalHome = process.env.HOME
+  tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'databox-cli-test-home-'))
+  process.env.HOME = tempHome
 
-  fs.mkdirSync(CONFIG_DIR, {recursive: true})
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({apiKey}))
+  const dir = path.join(tempHome, '.config', 'databox-cli')
+  fs.mkdirSync(dir, {recursive: true})
+  fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({apiKey}))
+}
+
+/** A throwaway HOME with no config at all — for the unauthenticated paths. */
+export function setupEmptyConfig(): void {
+  originalHome ??= process.env.HOME
+  tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'databox-cli-test-home-'))
+  process.env.HOME = tempHome
 }
 
 export function cleanupTestConfig(): void {
-  if (originalConfig !== null) {
-    fs.writeFileSync(CONFIG_FILE, originalConfig)
-    originalConfig = null
-  } else if (fs.existsSync(CONFIG_FILE)) {
-    fs.unlinkSync(CONFIG_FILE)
+  if (originalHome !== undefined) {
+    process.env.HOME = originalHome
   }
+
+  if (tempHome) {
+    fs.rmSync(tempHome, {force: true, recursive: true})
+    tempHome = undefined
+  }
+
+  originalHome = undefined
 }
 
 type MockRoute = {

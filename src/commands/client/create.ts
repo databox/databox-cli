@@ -22,10 +22,10 @@ export default class ClientCreate extends BaseCommand<typeof ClientCreate> {
     const {flags} = await this.parse(ClientCreate)
 
     const body: Record<string, unknown> = {name: flags.name}
-    if (flags['managed-by-id']) body.managedById = flags['managed-by-id']
+    if (flags['managed-by-id'] !== undefined) body.managedById = flags['managed-by-id']
     if (flags['website-url'] !== undefined) body.websiteUrl = flags['website-url']
 
-    const response = await this.apiClient.post('/v2/clients', body, this.accountHeaders)
+    const response = await this.apiClient.post<Record<string, unknown>>('/v2/clients', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

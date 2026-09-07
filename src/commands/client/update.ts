@@ -28,14 +28,14 @@ export default class ClientUpdate extends BaseCommand<typeof ClientUpdate> {
 
     const body: Record<string, unknown> = {}
     if (this.flags.name !== undefined) body.name = this.flags.name
-    if (this.flags['managed-by-id']) body.managedById = this.flags['managed-by-id']
+    if (this.flags['managed-by-id'] !== undefined) body.managedById = this.flags['managed-by-id']
     if (this.flags['website-url'] !== undefined) body.websiteUrl = this.flags['website-url']
 
     if (Object.keys(body).length === 0) {
       this.error('Provide at least one field to update (--name, --managed-by-id, --website-url).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch(`/v2/clients/${args.clientId}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/clients/${args.clientId}`, body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }
