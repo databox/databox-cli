@@ -1,16 +1,19 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Dataset {
-  created: string
-  id: string
-  title: string | null
+  datasetType: string
+  id: number
+  name: null | string
+  statusInfo: {status: string} | null
 }
 
 interface DatasetsResponse {
-  datasets: Dataset[]
+  items: Dataset[]
+  pagination?: {page: number; pageSize: number; totalItems: number}
 }
 
 export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDatasets> {
@@ -25,22 +28,36 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
 
   static examples = [
     '<%= config.bin %> data-source datasets 12345',
+    '<%= config.bin %> data-source datasets 12345 --page 0 --page-size 10',
     '<%= config.bin %> data-source datasets 12345 --json',
   ]
 
+  static flags = {
+    ...paginationFlags,
+  }
+
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceDatasets)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
-    const response = await this.apiClient.get<DatasetsResponse>(`/v1/data-sources/${args.dataSourceId}/datasets`)
+    const query: Record<string, number | string | undefined> = {
+      dataSourceId: args.dataSourceId,
+    }
+    addPagination(query, this.flags)
+
+    const response = await this.apiClient.get<DatasetsResponse>('/v2/datasets', query, this.accountHeaders)
 
     formatOutput(
-      response.datasets,
+      response.items,
       [
         {header: 'ID', key: 'id'},
-        {header: 'Title', key: 'title'},
-        {header: 'Created', key: 'created'},
+        {header: 'Name', key: 'name'},
+        {header: 'Type', key: 'datasetType'},
+        {get: row => row.statusInfo?.status ?? '', header: 'Status'},
       ],
       this.flags.json,
     )
+
+    showPagination(response.pagination, this.flags.json)
   }
 }

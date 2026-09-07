@@ -1,0 +1,29 @@
+name: Tests
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: [main]
+
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+      - name: "Setup Node"
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+      - name: "Installing dependencies"
+        run: npm ci
+      - name: "Typecheck"
+        run: |
+          npx tsc -b
+          npx tsc -p tsconfig.test.json --noEmit
+      # Runs the linter first via the pretest hook, then the unit suite.
+      # The e2e suite is deliberately not run here: it needs a live API and a key.
+      - name: "Lint and test"
+        run: npm test

@@ -1,7 +1,9 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source create', () => {
   beforeEach(() => {
@@ -9,14 +11,13 @@ describe('data-source create', () => {
     mockApi([
       {
         method: 'POST',
-        path: '/v1/data-sources',
+        path: '/v2/data-sources',
         response: {
-          id: 42,
-          title: 'NewSource',
-          created: '2024-01-01T00:00:00Z',
-          timezone: 'UTC',
-          key: 'ns_1',
-          ingestionSupported: true,
+          data: {
+            connectionId: null, id: 99, integrationKey: 'Datadoo', name: 'NewSource', statusInfo: {status: 'active'}, timezone: 'UTC',
+          },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])
@@ -28,14 +29,14 @@ describe('data-source create', () => {
   })
 
   it('creates a data source', async () => {
-    const {stdout} = await runCommand(['data-source', 'create', '--title', 'NewSource'], {root: process.cwd()})
+    const {stdout} = await runCommand(['data-source', 'create', '--name', 'NewSource'], {root: process.cwd()})
     expect(stdout).to.contain('NewSource')
-    expect(stdout).to.contain('42')
+    expect(stdout).to.contain('99')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['data-source', 'create', '--title', 'NewSource', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['data-source', 'create', '--name', 'NewSource', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
-    expect(parsed.id).to.equal(42)
+    expect(parsed.id).to.equal(99)
   })
 })

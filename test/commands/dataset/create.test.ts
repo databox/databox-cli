@@ -1,7 +1,9 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset create', () => {
   beforeEach(() => {
@@ -9,11 +11,13 @@ describe('dataset create', () => {
     mockApi([
       {
         method: 'POST',
-        path: '/v1/datasets',
+        path: '/v2/datasets',
         response: {
-          id: 'ds-new',
-          title: 'NewDataset',
-          created: '2024-01-01T00:00:00Z',
+          data: {
+            datasetType: 'ingestion', id: 123, name: 'NewDataset', parentDataSourceId: 1, timezone: null,
+          },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])
@@ -25,14 +29,14 @@ describe('dataset create', () => {
   })
 
   it('creates a dataset', async () => {
-    const {stdout} = await runCommand(['dataset', 'create', '--title', 'NewDataset', '--data-source-id', '1'], {root: process.cwd()})
+    const {stdout} = await runCommand(['dataset', 'create', '--name', 'NewDataset', '--data-source-id', '1'], {root: process.cwd()})
     expect(stdout).to.contain('NewDataset')
-    expect(stdout).to.contain('ds-new')
+    expect(stdout).to.contain('123')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['dataset', 'create', '--title', 'NewDataset', '--data-source-id', '1', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['dataset', 'create', '--name', 'NewDataset', '--data-source-id', '1', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
-    expect(parsed.id).to.equal('ds-new')
+    expect(parsed.id).to.equal(123)
   })
 })

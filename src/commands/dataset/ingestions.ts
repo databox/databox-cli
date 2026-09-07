@@ -1,17 +1,20 @@
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {addPagination, paginationFlags} from '../../lib/flags.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Ingestion {
+  duration: null | number
+  finishedAt: null | string
   ingestionId: string
+  startedAt: null | string
   status: string
-  timestamp: string
 }
 
 interface IngestionsResponse {
-  ingestions: Ingestion[]
-  pagination?: {
+  items: Ingestion[]
+  pagination: {
     page: number
     pageSize: number
     totalItems: number
@@ -26,42 +29,40 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
   static description = 'List ingestions for a dataset'
 
   static examples = [
-    '<%= config.bin %> dataset ingestions abc-123',
-    '<%= config.bin %> dataset ingestions abc-123 --page 1 --page-size 20',
-    '<%= config.bin %> dataset ingestions abc-123 --json',
+    '<%= config.bin %> dataset ingestions 12345',
+    '<%= config.bin %> dataset ingestions 12345 --page 0 --page-size 20',
+    '<%= config.bin %> dataset ingestions 12345 --json',
   ]
 
   static flags = {
-    page: Flags.integer({description: 'Page number'}),
-    'page-size': Flags.integer({description: 'Number of items per page'}),
+    ...paginationFlags,
   }
 
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetIngestions)
 
-    const query: Record<string, string> = {}
-    if (this.flags.page !== undefined) query.page = String(this.flags.page)
-    if (this.flags['page-size'] !== undefined) query.pageSize = String(this.flags['page-size'])
+    this.requireNumericId(args.datasetId, 'Dataset ID')
+
+    const query: Record<string, number | string | undefined> = {}
+    addPagination(query, this.flags)
 
     const response = await this.apiClient.get<IngestionsResponse>(
-      `/v1/datasets/${args.datasetId}/ingestions`,
+      `/v2/datasets/${args.datasetId}/ingestions`,
       Object.keys(query).length > 0 ? query : undefined,
+      this.accountHeaders,
     )
 
     formatOutput(
-      response.ingestions,
+      response.items,
       [
         {header: 'Ingestion ID', key: 'ingestionId'},
-        {header: 'Timestamp', key: 'timestamp'},
+        {get: row => row.startedAt ?? '', header: 'Started At'},
+        {get: row => row.finishedAt ?? '', header: 'Finished At'},
         {header: 'Status', key: 'status'},
       ],
       this.flags.json,
     )
 
-    if (response.pagination && !this.flags.json) {
-      const {page, pageSize, totalItems} = response.pagination
-      const totalPages = Math.ceil(totalItems / pageSize)
-      this.log(`Page ${page} of ${totalPages} (${totalItems} total items)`)
-    }
+    showPagination(response.pagination, this.flags.json)
   }
 }

@@ -3,57 +3,49 @@ import {Flags} from '@oclif/core'
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
-interface DataSource {
-  created: string
+interface DataSourceDetail {
+  connectionId: null | number
   id: number
-  ingestionSupported: boolean
-  key: string | null
-  timezone: string | null
-  title: string | null
+  integrationKey: string
+  name: string
+  timezone: string
 }
 
 export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreate> {
   static description = 'Create a new data source'
 
   static examples = [
-    '<%= config.bin %> data-source create --title "My Data Source"',
-    '<%= config.bin %> data-source create --title "My Data Source" --timezone "US/Eastern"',
-    '<%= config.bin %> data-source create --title "My Data Source" --account-id 12345 --key my_source --json',
+    '<%= config.bin %> data-source create --name "My Data Source"',
+    '<%= config.bin %> data-source create --name "My Data Source" --timezone "US/Eastern"',
+    '<%= config.bin %> data-source create --name "My Data Source" --integration-key Datadoo',
+    '<%= config.bin %> data-source create --name "My Data Source" --json',
   ]
 
   static flags = {
-    'account-id': Flags.string({
-      description: 'Account ID to create the data source in',
+    'integration-key': Flags.string({
+      description: 'Integration key for the data source (e.g., Datadoo)',
     }),
-    key: Flags.string({
-      description: 'Unique key for the data source',
+    name: Flags.string({
+      description: 'Name of the data source',
+      required: true,
     }),
     timezone: Flags.string({
       description: 'Timezone for the data source',
     }),
-    title: Flags.string({
-      description: 'Title of the data source',
-      required: true,
-    }),
   }
 
   async run(): Promise<void> {
-    const {flags} = await this.parse(DataSourceCreate)
+    const body: Record<string, unknown> = {name: this.flags.name}
 
-    const body: Record<string, unknown> = {title: flags.title}
-    if (flags['account-id']) {
-      body.accountId = Number(flags['account-id'])
+    if (this.flags.timezone) {
+      body.timezone = this.flags.timezone
     }
 
-    if (flags.timezone) {
-      body.timezone = flags.timezone
+    if (this.flags['integration-key']) {
+      body.integrationKey = this.flags['integration-key']
     }
 
-    if (flags.key) {
-      body.key = flags.key
-    }
-
-    const response = await this.apiClient.post<DataSource>('/v1/data-sources', body)
+    const response = await this.apiClient.post<DataSourceDetail>('/v2/data-sources', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

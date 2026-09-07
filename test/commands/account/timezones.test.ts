@@ -1,7 +1,9 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('account timezones', () => {
   beforeEach(() => {
@@ -9,8 +11,15 @@ describe('account timezones', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/accounts/timezones',
-        response: {timezones: [{offset: 'UTC+1', timezone: 'Europe/Berlin'}]},
+        path: '/v2/account/timezones',
+        response: {
+          data: {
+            items: [{offset: 'UTC+1', timezone: 'Europe/Berlin'}],
+            pagination: {page: 0, pageSize: 25, totalItems: 1},
+          },
+          requestId: 'test',
+          status: 'success',
+        },
       },
     ])
   })

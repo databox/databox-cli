@@ -4,19 +4,21 @@ import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
 
 interface DatasetCreateResponse {
-  created: string | null
-  id: string | null
-  title: string | null
+  datasetType: string
+  id: number
+  name: string
+  parentDataSourceId: null | number
+  timezone: null | string
 }
 
 export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
   static description = 'Create a new dataset'
 
   static examples = [
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123',
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123 --primary-keys date --primary-keys campaign',
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123 --schema \'[{"name":"date","dataType":"datetime"},{"name":"value","dataType":"number"}]\'',
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123 --json',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --primary-key date --primary-key campaign',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --schema \'[{"columnId":"date","dataType":"datetime"},{"columnId":"value","dataType":"number"}]\'',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --json',
   ]
 
   static flags = {
@@ -24,16 +26,16 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
       description: 'ID of the data source to associate with',
       required: true,
     }),
-    'primary-keys': Flags.string({
+    name: Flags.string({
+      description: 'Name of the dataset',
+      required: true,
+    }),
+    'primary-key': Flags.string({
       description: 'Primary key column names',
       multiple: true,
     }),
     schema: Flags.string({
-      description: 'JSON string of schema columns (array of {name, dataType})',
-    }),
-    title: Flags.string({
-      description: 'Title of the dataset',
-      required: true,
+      description: 'JSON string of schema columns (array of {columnId, dataType})',
     }),
   }
 
@@ -42,18 +44,22 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
 
     const body: Record<string, unknown> = {
       dataSourceId: Number(flags['data-source-id']),
-      title: flags.title,
+      name: flags.name,
     }
 
-    if (flags['primary-keys']) {
-      body.primaryKeys = flags['primary-keys']
+    if (flags['primary-key']) {
+      body.primaryKey = flags['primary-key']
     }
 
     if (flags.schema) {
-      body.schema = JSON.parse(flags.schema) as Array<{dataType: 'datetime' | 'number' | 'string'; name: string}>
+      body.schema = this.parseJsonFlag<Array<{columnId: string; dataType: 'datetime' | 'number' | 'string'}>>(
+        flags.schema,
+        'schema',
+        '[{"columnId":"...","dataType":"..."}]',
+      )
     }
 
-    const response = await this.apiClient.post<DatasetCreateResponse>('/v1/datasets', body)
+    const response = await this.apiClient.post<DatasetCreateResponse>('/v2/datasets', body, this.accountHeaders)
 
     formatSingle(response, this.flags.json)
   }

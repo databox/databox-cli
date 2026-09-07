@@ -1,7 +1,9 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source datasets', () => {
   beforeEach(() => {
@@ -9,15 +11,23 @@ describe('data-source datasets', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/data-sources/42/datasets',
+        path: '/v2/datasets',
         response: {
-          datasets: [
-            {
-              id: 'ds-abc',
-              title: 'Linked Dataset',
-              created: '2024-01-01T00:00:00Z',
-            },
-          ],
+          data: {
+            items: [
+              {
+                datasetType: 'ingestion',
+                id: 100,
+                name: 'Linked Dataset',
+                parentDataSourceId: 42,
+                statusInfo: {status: 'active'},
+                timezone: null,
+              },
+            ],
+            pagination: {page: 0, pageSize: 25, totalItems: 1},
+          },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])

@@ -7,7 +7,8 @@ interface Timezone {
 }
 
 interface TimezoneListResponse {
-  timezones: Timezone[]
+  items: Timezone[]
+  pagination?: {page: number; pageSize: number; totalItems: number}
 }
 
 export default class AccountTimezones extends BaseCommand<typeof AccountTimezones> {
@@ -19,10 +20,10 @@ export default class AccountTimezones extends BaseCommand<typeof AccountTimezone
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<TimezoneListResponse>('/v1/accounts/timezones')
+    const response = await this.apiClient.get<TimezoneListResponse>('/v2/account/timezones', undefined, this.accountHeaders)
 
     formatOutput(
-      response.timezones,
+      response.items,
       [
         {header: 'Offset', key: 'offset'},
         {header: 'Timezone', key: 'timezone'},

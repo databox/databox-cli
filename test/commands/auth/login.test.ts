@@ -1,9 +1,17 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupEmptyConfig,
+} from '../../helpers.js'
 
 describe('auth login', () => {
+  // `auth login` calls saveConfig for real — without a throwaway HOME it writes the
+  // developer's own ~/.config/databox-cli/config.json.
+  beforeEach(() => {
+    setupEmptyConfig()
+  })
+
   afterEach(() => {
     restoreApi()
     cleanupTestConfig()
@@ -13,8 +21,8 @@ describe('auth login', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/auth/validate-key',
-        response: {status: 'ok'},
+        path: '/v2/auth/validate-key',
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
 
@@ -27,8 +35,8 @@ describe('auth login', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/auth/validate-key',
-        response: {errors: [{message: 'Invalid API key'}]},
+        path: '/v2/auth/validate-key',
+        response: {errors: [{message: 'Invalid API key'}], requestId: 'test', status: 'error'},
         status: 401,
       },
     ])

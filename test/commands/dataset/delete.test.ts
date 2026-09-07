@@ -1,7 +1,9 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset delete', () => {
   beforeEach(() => {
@@ -9,10 +11,8 @@ describe('dataset delete', () => {
     mockApi([
       {
         method: 'DELETE',
-        path: '/v1/datasets/ds-abc',
-        response: {
-          message: 'Dataset deleted successfully',
-        },
+        path: '/v2/datasets/123',
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
   })
@@ -23,7 +23,7 @@ describe('dataset delete', () => {
   })
 
   it('deletes with --force', async () => {
-    const {stdout} = await runCommand(['dataset', 'delete', 'ds-abc', '--force'], {root: process.cwd()})
-    expect(stdout).to.contain('Dataset deleted successfully')
+    const {stdout} = await runCommand(['dataset', 'delete', '123', '--force'], {root: process.cwd()})
+    expect(stdout).to.contain('Dataset 123 deleted')
   })
 })

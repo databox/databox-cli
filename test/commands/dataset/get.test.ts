@@ -1,7 +1,9 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('dataset get', () => {
   beforeEach(() => {
@@ -9,17 +11,21 @@ describe('dataset get', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v1/datasets/ds-abc',
+        path: '/v2/datasets/123',
         response: {
-          id: 'ds-abc',
-          created: '2024-01-01T00:00:00Z',
-          dataSourceId: 10,
-          timezone: 'UTC',
-          primaryKeys: ['date'],
-          schema: [
-            {name: 'date', dataType: 'datetime'},
-            {name: 'value', dataType: 'number'},
-          ],
+          data: {
+            createdAt: '2024-01-01T00:00:00Z',
+            dataSourceId: 10,
+            id: 123,
+            primaryKey: ['date'],
+            schema: [
+              {columnId: 'date', dataType: 'datetime'},
+              {columnId: 'value', dataType: 'number'},
+            ],
+            timezone: 'UTC',
+          },
+          requestId: 'test',
+          status: 'success',
         },
       },
     ])
@@ -31,15 +37,20 @@ describe('dataset get', () => {
   })
 
   it('gets dataset details', async () => {
-    const {stdout} = await runCommand(['dataset', 'get', 'ds-abc'], {root: process.cwd()})
-    expect(stdout).to.contain('ds-abc')
+    const {stdout} = await runCommand(['dataset', 'get', '123'], {root: process.cwd()})
+    expect(stdout).to.contain('123')
     expect(stdout).to.contain('10')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['dataset', 'get', 'ds-abc', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['dataset', 'get', '123', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
     expect(parsed.schema).to.be.an('array')
     expect(parsed.schema).to.have.lengthOf(2)
+  })
+
+  it('rejects non-numeric dataset ID', async () => {
+    const {error} = await runCommand(['dataset', 'get', 'abc'], {root: process.cwd()})
+    expect(error?.message).to.include('must be a numeric value')
   })
 })
