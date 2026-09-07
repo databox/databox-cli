@@ -8,7 +8,7 @@ interface DataSource {
   id: number
   integrationKey: string | null
   timezone: string | null
-  title: string | null
+  name: string | null
 }
 
 interface DataSourceListResponse {
@@ -28,7 +28,7 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
   static flags = {
     page: Flags.integer({description: 'Page number (0-indexed)'}),
     'page-size': Flags.integer({description: 'Number of items per page'}),
-    search: Flags.string({description: 'Search by title'}),
+    search: Flags.string({description: 'Search by name'}),
   }
 
   async run(): Promise<void> {
@@ -47,7 +47,7 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
       response.items,
       [
         {header: 'ID', key: 'id'},
-        {header: 'Title', key: 'title'},
+        {header: 'Name', key: 'name'},
         {header: 'Integration', key: 'integrationKey'},
         {header: 'Timezone', key: 'timezone'},
         {get: (row) => row.connectionId ? String(row.connectionId) : '', header: 'Connection ID'},

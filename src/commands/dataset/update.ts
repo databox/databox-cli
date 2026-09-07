@@ -11,12 +11,12 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
   static description = 'Update a dataset'
 
   static examples = [
-    '<%= config.bin %> dataset update 12345 --title "New Title"',
-    '<%= config.bin %> dataset update 12345 --title "New Title" --json',
+    '<%= config.bin %> dataset update 12345 --name "New Name"',
+    '<%= config.bin %> dataset update 12345 --name "New Name" --json',
   ]
 
   static flags = {
-    title: Flags.string({description: 'New title for the dataset'}),
+    name: Flags.string({description: 'New name for the dataset'}),
   }
 
   async run(): Promise<void> {
@@ -25,10 +25,10 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const body: Record<string, unknown> = {}
-    if (flags.title) body.title = flags.title
+    if (flags.name) body.name = flags.name
 
     if (Object.keys(body).length === 0) {
-      this.error('Provide at least one field to update (--title).', {exit: 1})
+      this.error('Provide at least one field to update (--name).', {exit: 1})
     }
 
     const response = await this.apiClient.patch(`/v2/datasets/${args.datasetId}`, body, this.accountHeaders)

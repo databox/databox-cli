@@ -9,7 +9,7 @@ interface DataSource {
   integrationKey: string | null
   statusInfo: Record<string, unknown> | null
   timezone: string | null
-  title: string | null
+  name: string | null
 }
 
 interface DataSourceListResponse {
@@ -46,7 +46,7 @@ export default class AccountDataSources extends BaseCommand<typeof AccountDataSo
       response.items,
       [
         {header: 'ID', key: 'id'},
-        {header: 'Title', key: 'title'},
+        {header: 'Name', key: 'name'},
         {header: 'Integration', key: 'integrationKey'},
         {header: 'Timezone', key: 'timezone'},
       ],

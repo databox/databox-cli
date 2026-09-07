@@ -7,7 +7,7 @@ interface Dataset {
   createdAt: string
   dataSourceId: number
   id: number
-  title: string
+  name: string
 }
 
 interface DatasetListResponse {
@@ -45,7 +45,7 @@ export default class AccountDatasets extends BaseCommand<typeof AccountDatasets>
       [
         {header: 'ID', key: 'id'},
         {header: 'Data Source ID', key: 'dataSourceId'},
-        {header: 'Title', key: 'title'},
+        {header: 'Name', key: 'name'},
         {header: 'Created', key: 'createdAt'},
       ],
       this.flags.json,

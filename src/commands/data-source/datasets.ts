@@ -6,7 +6,7 @@ import {formatOutput, showPagination} from '../../lib/output.js'
 interface Dataset {
   createdAt: string
   id: number
-  title: string | null
+  name: string | null
 }
 
 interface DatasetsResponse {
@@ -51,7 +51,7 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
       response.items,
       [
         {header: 'ID', key: 'id'},
-        {header: 'Title', key: 'title'},
+        {header: 'Name', key: 'name'},
         {header: 'Created', key: 'createdAt'},
       ],
       this.flags.json,

@@ -7,42 +7,42 @@ interface DataSourceDetail {
   connectionId: number | null
   id: number
   integrationKey: string
+  name: string
   timezone: string
-  title: string
 }
 
 export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreate> {
   static description = 'Create a new data source'
 
   static examples = [
-    '<%= config.bin %> data-source create --title "My Data Source"',
-    '<%= config.bin %> data-source create --title "My Data Source" --timezone "US/Eastern"',
-    '<%= config.bin %> data-source create --title "My Data Source" --key Datadoo',
-    '<%= config.bin %> data-source create --title "My Data Source" --json',
+    '<%= config.bin %> data-source create --name "My Data Source"',
+    '<%= config.bin %> data-source create --name "My Data Source" --timezone "US/Eastern"',
+    '<%= config.bin %> data-source create --name "My Data Source" --integration-key Datadoo',
+    '<%= config.bin %> data-source create --name "My Data Source" --json',
   ]
 
   static flags = {
-    key: Flags.string({
+    'integration-key': Flags.string({
       description: 'Integration key for the data source (e.g., Datadoo)',
+    }),
+    name: Flags.string({
+      description: 'Name of the data source',
+      required: true,
     }),
     timezone: Flags.string({
       description: 'Timezone for the data source',
     }),
-    title: Flags.string({
-      description: 'Title of the data source',
-      required: true,
-    }),
   }
 
   async run(): Promise<void> {
-    const body: Record<string, unknown> = {title: this.flags.title}
+    const body: Record<string, unknown> = {name: this.flags.name}
 
     if (this.flags.timezone) {
       body.timezone = this.flags.timezone
     }
 
-    if (this.flags.key) {
-      body.key = this.flags.key
+    if (this.flags['integration-key']) {
+      body.integrationKey = this.flags['integration-key']
     }
 
     const response = await this.apiClient.post<DataSourceDetail>('/v2/data-sources', body, this.accountHeaders)

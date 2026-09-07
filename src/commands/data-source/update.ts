@@ -14,19 +14,19 @@ export default class DataSourceUpdate extends BaseCommand<typeof DataSourceUpdat
   static description = 'Update a data source'
 
   static examples = [
-    '<%= config.bin %> data-source update 12345 --title "New Title"',
-    '<%= config.bin %> data-source update 12345 --title "New Title" --json',
+    '<%= config.bin %> data-source update 12345 --name "New Name"',
+    '<%= config.bin %> data-source update 12345 --name "New Name" --json',
   ]
 
   static flags = {
-    title: Flags.string({description: 'New title for the data source', required: true}),
+    name: Flags.string({description: 'New name for the data source', required: true}),
   }
 
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceUpdate)
     this.requireNumericId(args.dataSourceId, 'Data source ID')
 
-    const body: Record<string, unknown> = {title: this.flags.title}
+    const body: Record<string, unknown> = {name: this.flags.name}
 
     const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/data-sources/${args.dataSourceId}`, body, this.accountHeaders)
 

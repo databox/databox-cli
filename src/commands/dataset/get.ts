@@ -10,7 +10,7 @@ interface DatasetGetResponse {
   primaryKey: string[] | null
   schema: Array<{columnId: string; dataType: string}> | null
   timezone: string | null
-  title: string
+  name: string
 }
 
 export default class DatasetGet extends BaseCommand<typeof DatasetGet> {

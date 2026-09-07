@@ -7,7 +7,7 @@ interface DatasetListItem {
   createdAt: string
   dataSourceId: number
   id: number
-  title: string
+  name: string
 }
 
 interface DatasetListResponse {
@@ -53,7 +53,7 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
       response.items,
       [
         {header: 'ID', key: 'id'},
-        {header: 'Title', key: 'title'},
+        {header: 'Name', key: 'name'},
         {header: 'Data Source ID', key: 'dataSourceId'},
         {header: 'Created', key: 'createdAt'},
       ],

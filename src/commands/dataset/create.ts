@@ -6,17 +6,17 @@ import {formatSingle} from '../../lib/output.js'
 interface DatasetCreateResponse {
   createdAt: string | null
   id: number | null
-  title: string | null
+  name: string | null
 }
 
 export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
   static description = 'Create a new dataset'
 
   static examples = [
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123',
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123 --primary-key date --primary-key campaign',
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123 --schema \'[{"columnId":"date","dataType":"datetime"},{"columnId":"value","dataType":"number"}]\'',
-    '<%= config.bin %> dataset create --title "My Dataset" --data-source-id 123 --json',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --primary-key date --primary-key campaign',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --schema \'[{"columnId":"date","dataType":"datetime"},{"columnId":"value","dataType":"number"}]\'',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --json',
   ]
 
   static flags = {
@@ -31,8 +31,8 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
     schema: Flags.string({
       description: 'JSON string of schema columns (array of {columnId, dataType})',
     }),
-    title: Flags.string({
-      description: 'Title of the dataset',
+    name: Flags.string({
+      description: 'Name of the dataset',
       required: true,
     }),
   }
@@ -42,7 +42,7 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
 
     const body: Record<string, unknown> = {
       dataSourceId: Number(flags['data-source-id']),
-      title: flags.title,
+      name: flags.name,
     }
 
     if (flags['primary-key']) {
