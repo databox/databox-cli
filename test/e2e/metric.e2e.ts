@@ -181,7 +181,7 @@ describe('metric', () => {
     if (!metricId) this.skip()
 
     const today = new Date().toISOString().slice(0, 10)
-    const result = await cli([
+    const result = await cliWithRetry([
       'metric',
       'data',
       '--metric-id',
@@ -212,7 +212,7 @@ describe('metric', () => {
     // Exercises the batch request shape {metrics:[{dataSourceId,metricId,dimensions}]}
     // and the {dimensionValues} response — both were wrong before.
     const values = json<string[]>(
-      await cli(['metric', 'dimension-values', '--metric-id', metricId!, '--source-id', datasetId, '--dimension', 'name', '--json']),
+      await cliWithRetry(['metric', 'dimension-values', '--metric-id', metricId!, '--source-id', datasetId, '--dimension', 'name', '--json']),
     )
 
     expect(values).to.be.an('array')
@@ -223,7 +223,7 @@ describe('metric', () => {
 
     const end = Math.floor(Date.now() / 1000)
     const start = end - 30 * 24 * 60 * 60
-    const result = await cli([
+    const result = await cliWithRetry([
       'metric', 'drilldown',
       '--metric-id', metricId!,
       '--dataset-id', datasetId,

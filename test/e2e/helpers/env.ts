@@ -1,4 +1,4 @@
-import {E2eEnvironment, knownEnvironmentNames, resolveEnvironment} from './environments.js'
+import {E2eEnvironment, E2eTarget, KeySource, knownEnvironmentNames, resolveEnvironment, targetOf} from './environments.js'
 
 export interface E2eConfig {
   /** Sent as x-account-id on every command. Optional. */
@@ -7,6 +7,49 @@ export interface E2eConfig {
   agenticUrl?: string
   allowInsecureTls: boolean
   environment: E2eEnvironment
+}
+
+/**
+ * Every branch returns a literal, so no value from the resolved config can reach the
+ * banner through this. Exhaustive over KeySource.
+ */
+function describeKeySource(source: KeySource): string {
+  switch (source) {
+    case 'env': {
+      return 'from DATABOX_E2E_API_KEY'
+    }
+
+    case 'default': {
+      return 'from the environment default'
+    }
+
+    case 'none': {
+      return 'not set'
+    }
+  }
+}
+
+/**
+ * Builds the preflight banner.
+ *
+ * Takes an E2eTarget, never an E2eEnvironment: the credential is not in scope here, so
+ * it cannot be printed — the guarantee is structural rather than a matter of care. The
+ * key's provenance arrives as a tag and is rendered to a literal above.
+ */
+export function describeTarget(target: E2eTarget, extras: {accountId?: string; insecureTls: boolean}): string[] {
+  const lines = [
+    'databox-cli e2e',
+    `  environment : ${target.name}${target.isProduction ? '  ** PRODUCTION **' : ''}`,
+    `  api url     : ${target.baseUrl}`,
+    `  api key     : ${describeKeySource(target.keySource)}`,
+  ]
+
+  if (extras.accountId) lines.push(`  account id  : ${extras.accountId}`)
+  if (extras.insecureTls) {
+    lines.push('  tls         : verification DISABLED (DATABOX_E2E_ALLOW_INSECURE_TLS=1)')
+  }
+
+  return lines
 }
 
 let cached: E2eConfig | undefined
@@ -60,21 +103,13 @@ export function preflight(): E2eConfig {
         `No API key for environment "${environment.name}" (${environment.baseUrl}).`,
         'Set DATABOX_E2E_API_KEY to a key valid for that environment.',
         `Environments with a built-in default key: ${knownEnvironmentNames()
-          .filter((name) => resolveEnvironment({DATABOX_E2E_ENV: name}).keyResolvedFrom === 'environment default')
+          .filter((name) => resolveEnvironment({DATABOX_E2E_ENV: name}).keySource === 'default')
           .join(', ')}.`,
       ].join('\n'),
     )
   }
 
-  const lines = [
-    'databox-cli e2e',
-    `  environment : ${environment.name}${environment.isProduction ? '  ** PRODUCTION **' : ''}`,
-    `  api url     : ${environment.baseUrl}`,
-    `  api key     : from ${environment.keyResolvedFrom}`,
-  ]
-  if (accountId) lines.push(`  account id  : ${accountId}`)
-  if (allowInsecureTls) lines.push('  tls         : verification DISABLED (DATABOX_E2E_ALLOW_INSECURE_TLS=1)')
-
+  const lines = describeTarget(targetOf(environment), {accountId, insecureTls: allowInsecureTls})
   console.log(`\n${lines.join('\n')}\n`)
 
   return config
