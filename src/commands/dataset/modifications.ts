@@ -1,20 +1,17 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
-
-interface Modification {
-  columnId: string
-  id: number
-  type: string
-}
+import {printModification} from '../../lib/modification-table.js'
+import {DatasetModification} from '../../lib/types.js'
 
 export default class DatasetModifications extends BaseCommand<typeof DatasetModifications> {
   static args = {
     datasetId: Args.string({description: 'The dataset ID', required: true}),
   }
 
-  static description = 'List modifications for a dataset'
+  static description = `Show a dataset's modification definition
+
+The table has one row per column, in the dataset's column order. --json returns the definition as the API does: {filters, formulas, displayNames, dataTypes, order, visibility}, the input "dataset update-modification" takes.`
 
   static examples = [
     '<%= config.bin %> dataset modifications 12345',
@@ -26,16 +23,8 @@ export default class DatasetModifications extends BaseCommand<typeof DatasetModi
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<Modification[]>(`/v2/datasets/${args.datasetId}/modifications`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<DatasetModification>(`/v2/datasets/${args.datasetId}/modifications`, undefined, this.accountHeaders)
 
-    formatOutput(
-      response,
-      [
-        {header: 'ID', key: 'id'},
-        {header: 'Column', key: 'columnId'},
-        {header: 'Type', key: 'type'},
-      ],
-      this.flags.json,
-    )
+    printModification(response, this.outputFormat)
   }
 }

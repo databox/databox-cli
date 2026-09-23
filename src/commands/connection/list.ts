@@ -1,19 +1,12 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, paginationFlags} from '../../lib/flags.js'
+import {fetchPaginated, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
-
-interface Connection {
-  id: number
-  integrationKey: null | string
-  name: string
-  sharedWithClients: boolean
-  statusInfo: {status: string} | null
-}
+import {ConnectionListItem} from '../../lib/types.js'
 
 interface ConnectionsResponse {
-  items: Connection[]
+  items: ConnectionListItem[]
   pagination?: {
     page: number
     pageSize: number
@@ -38,13 +31,9 @@ export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
   async run(): Promise<void> {
     const query: Record<string, number | string | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
-    addPagination(query, this.flags)
 
-    const response = await this.apiClient.get<ConnectionsResponse>(
-      '/v2/connections',
-      Object.keys(query).length > 0 ? query : undefined,
-      this.accountHeaders,
-    )
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<ConnectionsResponse>('/v2/connections', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
@@ -55,9 +44,9 @@ export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
         {get: row => row.statusInfo?.status ?? '', header: 'Status'},
         {get: row => (row.sharedWithClients ? 'yes' : ''), header: 'Shared'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

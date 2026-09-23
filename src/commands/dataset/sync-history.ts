@@ -1,24 +1,22 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, paginationFlags} from '../../lib/flags.js'
+import {Pagination, fetchPaginated, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
+/** DatasetResponse.cs `SyncHistoryItem`. */
 interface SyncHistoryItem {
-  affectedRows: null | number
-  finishedAt: null | string
-  startedAt: null | string
+  duration: null | number
+  error: {description: null | string; title: null | string} | null
+  id: string
+  initiatedAt: null | string
   status: string
-  syncType: null | string
+  type: null | string
 }
 
 interface SyncHistoryResponse {
   items: SyncHistoryItem[]
-  pagination: {
-    page: number
-    pageSize: number
-    totalItems: number
-  }
+  pagination: Pagination
 }
 
 export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHistory> {
@@ -31,6 +29,7 @@ export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHi
   static examples = [
     '<%= config.bin %> dataset sync-history 12345',
     '<%= config.bin %> dataset sync-history 12345 --page 0 --page-size 10',
+    '<%= config.bin %> dataset sync-history 12345 --json',
   ]
 
   static flags = {
@@ -43,25 +42,23 @@ export default class DatasetSyncHistory extends BaseCommand<typeof DatasetSyncHi
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const query: Record<string, number | string | undefined> = {}
-    addPagination(query, this.flags)
 
-    const response = await this.apiClient.get<SyncHistoryResponse>(
-      `/v2/datasets/${args.datasetId}/sync-history`,
-      Object.keys(query).length > 0 ? query : undefined,
-      this.accountHeaders,
-    )
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<SyncHistoryResponse>(`/v2/datasets/${args.datasetId}/sync-history`, pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
       [
-        {get: row => row.startedAt ?? '', header: 'Started At'},
-        {get: row => row.finishedAt ?? 'N/A', header: 'Finished At'},
+        {header: 'ID', key: 'id'},
+        {get: row => row.initiatedAt ?? '', header: 'Initiated At'},
         {header: 'Status', key: 'status'},
-        {get: row => row.syncType ?? '', header: 'Type'},
+        {get: row => row.type ?? '', header: 'Type'},
+        {get: row => (row.duration === null ? '' : String(row.duration)), header: 'Duration'},
+        {get: row => row.error?.title ?? '', header: 'Error'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

@@ -2,6 +2,15 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {DailyStatistic} from '../../lib/types.js'
+
+/** DatasetResponse.cs `IngestionStatisticsResponse`. */
+interface StatisticsResponse {
+  avgSuccessDuration: null | number
+  dailyStatistics: DailyStatistic[] | null
+  lastSuccessfulIngestionAt: null | string
+  successRate: null | number
+}
 
 export default class DatasetIngestionStatistics extends BaseCommand<typeof DatasetIngestionStatistics> {
   static args = {
@@ -20,8 +29,8 @@ export default class DatasetIngestionStatistics extends BaseCommand<typeof Datas
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/ingestion-statistics`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<StatisticsResponse>(`/v2/datasets/${args.datasetId}/ingestion-statistics`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

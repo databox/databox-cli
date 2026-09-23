@@ -1,6 +1,6 @@
 {
   "extends": ["oclif", "oclif-typescript"],
-  "ignorePatterns": ["lib", "node_modules", "bin"],
+  "ignorePatterns": ["/lib", "node_modules", "/bin"],
   "rules": {
     "array-bracket-newline": "off",
     "array-element-newline": "off",

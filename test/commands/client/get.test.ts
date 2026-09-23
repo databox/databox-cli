@@ -4,6 +4,7 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {clientDetail} from './fixtures.js'
 
 describe('client get', () => {
   beforeEach(() => {
@@ -12,7 +13,7 @@ describe('client get', () => {
       {
         method: 'GET',
         path: '/v2/clients/1',
-        response: {data: {accountType: 'client', id: 1, name: 'Client A'}, requestId: 'test', status: 'success'},
+        response: {data: clientDetail, requestId: 'test', status: 'success'},
       },
     ])
   })
@@ -29,7 +30,6 @@ describe('client get', () => {
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['client', 'get', '1', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed).to.deep.include({id: 1, name: 'Client A'})
+    expect(JSON.parse(stdout)).to.deep.equal(clientDetail)
   })
 })

@@ -1,15 +1,9 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {formatSingle} from '../../lib/output.js'
-
-interface DataSourceDetail {
-  connectionId: null | number
-  id: number
-  integrationKey: string
-  name: string
-  timezone: string
-}
+import {DataSourceDetail} from '../../lib/types.js'
 
 export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreate> {
   static description = 'Create a new data source'
@@ -22,6 +16,7 @@ export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreat
   ]
 
   static flags = {
+    ...idempotencyFlags,
     'integration-key': Flags.string({
       description: 'Integration key for the data source (e.g., Datadoo)',
     }),
@@ -35,6 +30,11 @@ export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreat
   }
 
   async run(): Promise<void> {
+    // The API rejects a blank name with a 400; catch it before the round trip.
+    if (this.flags.name.trim() === '') {
+      this.error('--name cannot be empty.', {exit: 2})
+    }
+
     const body: Record<string, unknown> = {name: this.flags.name}
 
     if (this.flags.timezone) {
@@ -45,8 +45,8 @@ export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreat
       body.integrationKey = this.flags['integration-key']
     }
 
-    const response = await this.apiClient.post<DataSourceDetail>('/v2/data-sources', body, this.accountHeaders)
+    const response = await this.apiClient.post<DataSourceDetail>('/v2/data-sources', body, {...this.accountHeaders, ...idempotencyHeaders(this.flags)})
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

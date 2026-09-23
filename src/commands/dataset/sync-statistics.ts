@@ -2,6 +2,15 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {DailyStatistic} from '../../lib/types.js'
+
+/** DatasetResponse.cs `SyncStatisticsResponse`. */
+interface StatisticsResponse {
+  avgSuccessDuration: null | number
+  dailyStatistics: DailyStatistic[] | null
+  lastSuccessfulUpdateAt: null | string
+  successRate: null | number
+}
 
 export default class DatasetSyncStatistics extends BaseCommand<typeof DatasetSyncStatistics> {
   static args = {
@@ -19,8 +28,8 @@ export default class DatasetSyncStatistics extends BaseCommand<typeof DatasetSyn
     const {args} = await this.parse(DatasetSyncStatistics)
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/sync-history/statistics`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<StatisticsResponse>(`/v2/datasets/${args.datasetId}/sync-history/statistics`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

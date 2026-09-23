@@ -2,6 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {ConnectionDetail} from '../../lib/types.js'
 
 export default class ConnectionGet extends BaseCommand<typeof ConnectionGet> {
   static args = {
@@ -19,8 +20,8 @@ export default class ConnectionGet extends BaseCommand<typeof ConnectionGet> {
     const {args} = await this.parse(ConnectionGet)
     this.requireNumericId(args.connectionId, 'Connection ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/connections/${args.connectionId}`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<ConnectionDetail>(`/v2/connections/${args.connectionId}`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

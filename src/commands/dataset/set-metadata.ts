@@ -2,6 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {DatasetMetadataResponse} from '../../lib/types.js'
 
 export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMetadata> {
   static args = {
@@ -13,10 +14,11 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
   static examples = [
     '<%= config.bin %> dataset set-metadata 12345 --description "Revenue tracking"',
     '<%= config.bin %> dataset set-metadata 12345 --synonyms \'["finance","quarterly"]\'',
+    '<%= config.bin %> dataset set-metadata 12345 --default-time-dimension order_date',
   ]
 
   static flags = {
-    'default-time-dimension': Flags.string({description: 'Column ID to use as the default time dimension'}),
+    'default-time-dimension': Flags.string({description: 'ID of a datetime column to use as the default time dimension'}),
     description: Flags.string({description: 'Dataset description'}),
     synonyms: Flags.string({description: 'JSON array of synonyms'}),
   }
@@ -43,8 +45,8 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
       )
     }
 
-    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/metadata`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<DatasetMetadataResponse>(`/v2/datasets/${args.datasetId}/metadata`, body, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

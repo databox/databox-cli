@@ -2,13 +2,14 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {datasetDetail, envelope} from './fixtures.js'
 
 describe('dataset update', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'PATCH', path: '/v2/datasets/123', response: {data: {id: 123, name: 'Updated'}, requestId: 'test', status: 'success'}}])
+    mockApi([{method: 'PATCH', path: '/v2/datasets/123', response: envelope({...datasetDetail, name: 'Updated'})}])
   })
 
   afterEach(() => {
@@ -19,6 +20,7 @@ describe('dataset update', () => {
   it('updates a dataset', async () => {
     const {stdout} = await runCommand(['dataset', 'update', '123', '--name', 'Updated'], {root: process.cwd()})
     expect(stdout).to.include('Updated')
+    expect(lastBody('PATCH', '/v2/datasets/123')).to.deep.equal({name: 'Updated'})
   })
 
   it('outputs JSON with --json', async () => {

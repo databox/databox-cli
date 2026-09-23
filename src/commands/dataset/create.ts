@@ -1,15 +1,9 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {formatSingle} from '../../lib/output.js'
-
-interface DatasetCreateResponse {
-  datasetType: string
-  id: number
-  name: string
-  parentDataSourceId: null | number
-  timezone: null | string
-}
+import {DatasetDetail} from '../../lib/types.js'
 
 export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
   static description = 'Create a new dataset'
@@ -17,7 +11,7 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
   static examples = [
     '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123',
     '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --primary-key date --primary-key campaign',
-    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --schema \'[{"columnId":"date","dataType":"datetime"},{"columnId":"value","dataType":"number"}]\'',
+    '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --schema \'[{"id":"date","dataType":"datetime"},{"id":"value","dataType":"number"}]\'',
     '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123 --json',
   ]
 
@@ -26,6 +20,7 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
       description: 'ID of the data source to associate with',
       required: true,
     }),
+    ...idempotencyFlags,
     name: Flags.string({
       description: 'Name of the dataset',
       required: true,
@@ -35,7 +30,7 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
       multiple: true,
     }),
     schema: Flags.string({
-      description: 'JSON string of schema columns (array of {columnId, dataType})',
+      description: 'JSON array of schema columns, each {id, dataType} with dataType one of string, number, datetime',
     }),
   }
 
@@ -52,15 +47,15 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
     }
 
     if (flags.schema) {
-      body.schema = this.parseJsonFlag<Array<{columnId: string; dataType: 'datetime' | 'number' | 'string'}>>(
+      body.schema = this.parseJsonFlag<Array<{dataType: 'datetime' | 'number' | 'string'; id: string}>>(
         flags.schema,
         'schema',
-        '[{"columnId":"...","dataType":"..."}]',
+        '[{"id":"date","dataType":"datetime"}]',
       )
     }
 
-    const response = await this.apiClient.post<DatasetCreateResponse>('/v2/datasets', body, this.accountHeaders)
+    const response = await this.apiClient.post<DatasetDetail>('/v2/datasets', body, {...this.accountHeaders, ...idempotencyHeaders(this.flags)})
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

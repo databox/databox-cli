@@ -2,13 +2,16 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {datasetDetail, envelope} from './fixtures.js'
+
+const duplicate = {...datasetDetail, id: 456, name: 'Orders (copy)'}
 
 describe('dataset duplicate', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'POST', path: '/v2/datasets/123/duplicate', response: {data: {id: 456, title: 'My Dataset (copy)'}, requestId: 'test', status: 'success'}}])
+    mockApi([{method: 'POST', path: '/v2/datasets/123/duplicate', response: envelope(duplicate)}])
   })
 
   afterEach(() => {
@@ -19,12 +22,16 @@ describe('dataset duplicate', () => {
   it('duplicates a dataset', async () => {
     const {stdout} = await runCommand(['dataset', 'duplicate', '123'], {root: process.cwd()})
     expect(stdout).to.include('456')
-    expect(stdout).to.include('My Dataset (copy)')
+    expect(stdout).to.include('Orders (copy)')
   })
 
-  it('outputs JSON with --json', async () => {
+  it('sends the name when given', async () => {
+    await runCommand(['dataset', 'duplicate', '123', '--name', 'Orders-copy'], {root: process.cwd()})
+    expect(lastBody('POST', '/v2/datasets/123/duplicate')).to.deep.equal({name: 'Orders-copy'})
+  })
+
+  it('outputs the new dataset with --json', async () => {
     const {stdout} = await runCommand(['dataset', 'duplicate', '123', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.id).to.equal(456)
+    expect(JSON.parse(stdout)).to.deep.equal(duplicate)
   })
 })

@@ -8,7 +8,7 @@ import {
 describe('dataset metadata', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'GET', path: '/v2/datasets/123/metadata', response: {data: {description: 'Test dataset', tags: ['tag1']}, requestId: 'test', status: 'success'}}])
+    mockApi([{method: 'GET', path: '/v2/datasets/123/metadata', response: {data: {defaultTimeDimension: 'orderDate', description: 'Test dataset', synonyms: ['sales']}, requestId: 'test', status: 'success'}}])
   })
 
   afterEach(() => {

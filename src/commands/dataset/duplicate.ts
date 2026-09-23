@@ -1,7 +1,9 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {formatSingle} from '../../lib/output.js'
+import {DatasetDetail} from '../../lib/types.js'
 
 export default class DatasetDuplicate extends BaseCommand<typeof DatasetDuplicate> {
   static args = {
@@ -16,6 +18,7 @@ export default class DatasetDuplicate extends BaseCommand<typeof DatasetDuplicat
   ]
 
   static flags = {
+    ...idempotencyFlags,
     name: Flags.string({description: 'Name for the duplicate (defaults to a server-generated name)'}),
   }
 
@@ -24,12 +27,12 @@ export default class DatasetDuplicate extends BaseCommand<typeof DatasetDuplicat
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.post<Record<string, unknown>>(
+    const response = await this.apiClient.post<DatasetDetail>(
       `/v2/datasets/${args.datasetId}/duplicate`,
       flags.name ? {name: flags.name} : undefined,
-      this.accountHeaders,
+      {...this.accountHeaders, ...idempotencyHeaders(this.flags)},
     )
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

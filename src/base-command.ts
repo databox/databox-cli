@@ -1,7 +1,12 @@
-import {Command, Flags, Interfaces} from '@oclif/core'
+import {
+  Command, Errors, Flags, Interfaces,
+} from '@oclif/core'
 
-import {ApiClient} from './lib/api-client.js'
+import {
+  ApiClient, ApiConnectionError, ApiRequestError, describeApiError,
+} from './lib/api-client.js'
 import {loadConfig} from './lib/config.js'
+import {OUTPUT_FORMATS, OutputFormat, colorEnabled} from './lib/output.js'
 
 export type Flags<T extends typeof Command> = Interfaces.InferredFlags<T['flags'] & typeof BaseCommand['baseFlags']>
 
@@ -24,7 +29,21 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     }),
     json: Flags.boolean({
       default: false,
-      description: 'Output as JSON',
+      description: 'Output as JSON (shorthand for --output json)',
+    }),
+    'no-color': Flags.boolean({
+      default: false,
+      description: 'Disable coloured output (a non-empty NO_COLOR environment variable does the same)',
+    }),
+    output: Flags.option({
+      default: 'table' as const,
+      description: 'Output format',
+      exclusive: ['json'],
+      options: OUTPUT_FORMATS,
+    })(),
+    verbose: Flags.boolean({
+      default: false,
+      description: 'Print each request and response (method, URL, status, duration, request ID) to stderr',
     }),
   }
 
@@ -53,16 +72,52 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
       this._apiClient = new ApiClient({
         apiKey,
         baseUrl: this.flags['api-url'] ?? config.apiUrl,
+        trace: this.flags.verbose ? line => this.logToStderr(line) : undefined,
       })
     }
 
     return this._apiClient
   }
 
+  /**
+   * Whether the CLI's own output may use colour. That output has none today, so this is the
+   * switch any colour added later must check. oclif colours its error marker separately; see
+   * colorEnabled().
+   */
+  protected get color(): boolean {
+    return colorEnabled(this.flags['no-color'])
+  }
+
+  /** --json is shorthand for --output json; the two are mutually exclusive. */
+  protected get outputFormat(): OutputFormat {
+    return this.flags.json ? 'json' : this.flags.output
+  }
+
+  /**
+   * Renders API failures with their code, field and request ID (exit 1), and failures to reach
+   * the API at all (exit 2), before oclif's own handler prints them.
+   */
+  protected async catch(error: Interfaces.CommandError): Promise<unknown> {
+    if (error instanceof ApiRequestError) {
+      return super.catch(new Errors.CLIError(describeApiError(error), {exit: 1}))
+    }
+
+    if (error instanceof ApiConnectionError) {
+      return super.catch(new Errors.CLIError(error.message, {exit: 2}))
+    }
+
+    return super.catch(error)
+  }
+
   public async init(): Promise<void> {
     await super.init()
     const {flags} = await this.parse(this.constructor as typeof BaseCommand)
     this.flags = flags as Flags<T>
+
+    // Checked here, before run(), so a bad key fails before any prompt or request. The API
+    // would reject it too, but only after a destructive command had asked for confirmation.
+    const idempotencyKey = (flags as {'idempotency-key'?: string})['idempotency-key']
+    if (idempotencyKey !== undefined) this.requireUuid(idempotencyKey, '--idempotency-key')
   }
 
   /**

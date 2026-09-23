@@ -2,7 +2,7 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
 describe('client list', () => {
@@ -12,7 +12,13 @@ describe('client list', () => {
       {
         method: 'GET',
         path: '/v2/clients',
-        response: {data: {items: [{accountType: 'client', id: 1, name: 'Client A'}], pagination: {page: 0, pageSize: 25, totalItems: 1}}, requestId: 'test', status: 'success'},
+        response: {
+          data: {
+            items: [{
+              id: 1, isSelfManaged: false, managedBy: {id: 31, name: 'Ada'}, name: 'Client A',
+            }], pagination: {page: 0, pageSize: 25, totalItems: 1},
+          }, requestId: 'test', status: 'success',
+        },
       },
     ])
   })
@@ -32,5 +38,11 @@ describe('client list', () => {
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
     expect(parsed[0]).to.deep.include({id: 1, name: 'Client A'})
+  })
+
+  // The API passes sortBy upstream unvalidated, so the CLI does not restrict it either.
+  it('passes any --sort-by through', async () => {
+    await runCommand(['client', 'list', '--sort-by', 'website', '--sort-order', 'asc'], {root: process.cwd()})
+    expect(requests()[0].search).to.equal('?sortBy=website&sortOrder=asc')
   })
 })

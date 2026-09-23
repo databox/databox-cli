@@ -19,7 +19,6 @@ const cases: Array<{argv: string[]; flag: string}> = [
   {argv: ['account', 'update', '--settings', BAD], flag: 'settings'},
   {argv: ['account', 'update', '--metadata', BAD], flag: 'metadata'},
   {argv: ['dataset', 'create', '--name', 'n', '--data-source-id', '1', '--schema', BAD], flag: 'schema'},
-  {argv: ['dataset', 'add-modification', '123', '--data', BAD], flag: 'data'},
   {argv: ['dataset', 'update-modification', '123', '--data', BAD], flag: 'data'},
   {argv: ['dataset', 'preview-modification', '123', '--data', BAD], flag: 'data'},
   {argv: ['dataset', 'set-column-metadata', '123', '--columns', BAD], flag: 'columns'},
@@ -40,9 +39,8 @@ const cases: Array<{argv: string[]; flag: string}> = [
   {argv: ['metric', 'update', '42|q', '--filters', BAD], flag: 'filters'},
   {
     argv: [
-      'metric', 'data', '--metric-id', '42|q', '--dataset-id', '1',
-      '--date-from', '2026-01-01', '--date-to', '2026-01-02',
-      '--granularity', 'daily', '--filters', BAD,
+      'metric', 'drilldown', '--metric-id', '42|q', '--source-id', '1',
+      '--start-timestamp', '1', '--end-timestamp', '2', '--filters', BAD,
     ],
     flag: 'filters',
   },

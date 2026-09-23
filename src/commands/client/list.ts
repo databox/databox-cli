@@ -2,7 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {
-  addPagination, addSorting, paginationFlags, sortFlags,
+  addSorting, fetchPaginated, paginationFlags, sortFlags,
 } from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
@@ -23,30 +23,29 @@ interface ClientsResponse {
 }
 
 export default class ClientList extends BaseCommand<typeof ClientList> {
-  static description = 'List client accounts'
+  static description = `List client accounts
+
+--sort-by takes name, website or managedBy. The CLI does not restrict it: the value is passed to the API as given.`
 
   static examples = [
     '<%= config.bin %> client list',
+    '<%= config.bin %> client list --sort-by name --sort-order asc',
     '<%= config.bin %> client list --json',
   ]
 
   static flags = {
     ...paginationFlags,
     search: Flags.string({description: 'Search by name'}),
-    ...sortFlags,
+    ...sortFlags(),
   }
 
   async run(): Promise<void> {
     const query: Record<string, number | string | undefined> = {}
-    addPagination(query, this.flags)
     if (this.flags.search) query.search = this.flags.search
     addSorting(query, this.flags)
 
-    const response = await this.apiClient.get<ClientsResponse>(
-      '/v2/clients',
-      Object.keys(query).length > 0 ? query : undefined,
-      this.accountHeaders,
-    )
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<ClientsResponse>('/v2/clients', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
@@ -56,9 +55,9 @@ export default class ClientList extends BaseCommand<typeof ClientList> {
         {get: row => (row.isSelfManaged ? 'yes' : ''), header: 'Self Managed'},
         {get: row => row.managedBy?.name ?? '', header: 'Managed By'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

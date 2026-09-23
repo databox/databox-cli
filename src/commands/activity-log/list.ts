@@ -1,17 +1,24 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, paginationFlags} from '../../lib/flags.js'
+import {fetchPaginated, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
+import {UserRef} from '../../lib/types.js'
 
+/**
+ * ActivityLogResponse.cs `ActivityLogEntry`. `details` is the event's own JSON payload, passed
+ * through from the tracking service (a top-level `spaceId` renamed to `accountId`); its shape
+ * varies by event, and it can be null.
+ */
 interface ActivityLogEntry {
   action: string
   createdAt: string
+  details: unknown
   id: number
   isSystem: boolean
   resourceId: null | string
   resourceType: null | string
-  user: {id: number; name: string} | null
+  user: UserRef | null
 }
 
 interface ActivityLogResponse {
@@ -28,7 +35,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
 
   static examples = [
     '<%= config.bin %> activity-log list',
-    '<%= config.bin %> activity-log list --resource-type data_source',
+    '<%= config.bin %> activity-log list --resource-type dataSource',
     '<%= config.bin %> activity-log list --user-id 123',
     '<%= config.bin %> activity-log list --json',
   ]
@@ -37,25 +44,24 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
     ...paginationFlags,
     'date-from': Flags.string({description: 'Only entries on or after this date (ISO 8601)'}),
     'date-to': Flags.string({description: 'Only entries on or before this date (ISO 8601)'}),
-    'resource-type': Flags.string({description: 'Filter by resource type'}),
+    'resource-type': Flags.string({
+      description: 'Filter by resource type',
+      options: ['dataSource', 'dataset', 'metric', 'user', 'account', 'client', 'billing', 'connection'],
+    }),
     search: Flags.string({description: 'Search the log text'}),
-    'user-id': Flags.string({description: 'Filter by user ID'}),
+    'user-id': Flags.integer({description: 'Filter by the ID of the user who acted'}),
   }
 
   async run(): Promise<void> {
     const query: Record<string, number | string | undefined> = {}
     if (this.flags['resource-type']) query.resourceType = this.flags['resource-type']
-    if (this.flags['user-id']) query.userId = this.flags['user-id']
+    if (this.flags['user-id'] !== undefined) query.userId = this.flags['user-id']
     if (this.flags.search) query.search = this.flags.search
     if (this.flags['date-from']) query.dateFrom = this.flags['date-from']
     if (this.flags['date-to']) query.dateTo = this.flags['date-to']
-    addPagination(query, this.flags)
 
-    const response = await this.apiClient.get<ActivityLogResponse>(
-      '/v2/account/activity-log',
-      Object.keys(query).length > 0 ? query : undefined,
-      this.accountHeaders,
-    )
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<ActivityLogResponse>('/v2/account/activity-log', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
@@ -67,9 +73,9 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
         {header: 'Created At', key: 'createdAt'},
         {get: row => (row.isSystem ? 'system' : (row.user?.name ?? '')), header: 'User'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

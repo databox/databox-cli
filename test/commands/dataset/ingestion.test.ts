@@ -4,32 +4,31 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {envelope} from './fixtures.js'
 
 const INGESTION_ID = '3c63e510-276f-4541-9c66-8c00161fda82'
+
+const detail = {
+  duration: 1200,
+  errors: [{
+    code: 'invalid_value', field: 'amount', message: 'Not a number', record: {amount: 'x'},
+  }],
+  id: INGESTION_ID,
+  initiatedAt: '2026-09-01T08:00:00+00:00',
+  initiatedBy: {id: 31, name: 'Ada'},
+  status: 'success',
+  summary: {
+    dataset: {columnCount: 3, rowCount: 1500, size: 204_800},
+    ingestion: {
+      appendedRecordCount: 9, overwrittenRecordCount: 0, receivedRecordCount: 10, rejectedRecordCount: 1,
+    },
+  },
+}
 
 describe('dataset ingestion', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([
-      {
-        method: 'GET',
-        path: `/v2/datasets/123/ingestions/${INGESTION_ID}`,
-        response: {
-          data: {
-            duration: 5,
-            errors: null,
-            finishedAt: '2024-01-01T00:00:05Z',
-            ingestionId: INGESTION_ID,
-            metrics: {recordsProcessed: 100},
-            startedAt: '2024-01-01T00:00:00Z',
-            status: 'completed',
-            user: {id: 31, name: 'Ada'},
-          },
-          requestId: 'test',
-          status: 'success',
-        },
-      },
-    ])
+    mockApi([{method: 'GET', path: `/v2/datasets/123/ingestions/${INGESTION_ID}`, response: envelope(detail)}])
   })
 
   afterEach(() => {
@@ -40,14 +39,13 @@ describe('dataset ingestion', () => {
   it('gets ingestion details', async () => {
     const {stdout} = await runCommand(['dataset', 'ingestion', '123', INGESTION_ID], {root: process.cwd()})
     expect(stdout).to.contain(INGESTION_ID)
-    expect(stdout).to.contain('completed')
+    expect(stdout).to.contain('success')
+    expect(stdout).to.contain('rejectedRecordCount')
   })
 
-  it('outputs JSON with --json', async () => {
+  it('outputs the detail whole with --json', async () => {
     const {stdout} = await runCommand(['dataset', 'ingestion', '123', INGESTION_ID, '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.metrics).to.exist
-    expect(parsed.startedAt).to.equal('2024-01-01T00:00:00Z')
+    expect(JSON.parse(stdout)).to.deep.equal(detail)
   })
 
   // The route constraint is {ingestionId:guid}; a non-GUID used to be interpolated

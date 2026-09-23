@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 
 import {BaseCommand} from '../../base-command.js'
 import {UPLOAD_TIMEOUT_MS} from '../../lib/api-client.js'
+import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {formatSingle} from '../../lib/output.js'
 
 /** Mirrors the API's IngestSettings (MaxRecords / MaxPayloadSizeMb). */
@@ -32,11 +33,12 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
 
   static flags = {
     file: Flags.string({
-      description: 'Path to a JSON file containing records array',
+      description: 'Path to a JSON file containing a records array (at least one record)',
       exclusive: ['records'],
     }),
+    ...idempotencyFlags,
     records: Flags.string({
-      description: 'Inline JSON array of records',
+      description: 'Inline JSON array of records (at least one record)',
       exclusive: ['file'],
     }),
   }
@@ -91,6 +93,10 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
       this.error('Records must be a JSON array of objects.', {exit: 2})
     }
 
+    if (records.length === 0) {
+      this.error('At least one record must be provided.', {exit: 2})
+    }
+
     // Checked before uploading: the server rejects these too, but only after the
     // whole payload has gone over the wire.
     if (records.length > MAX_RECORDS) {
@@ -111,10 +117,10 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
     const response = await this.apiClient.post<IngestResponse>(
       `/v2/datasets/${args.datasetId}/data`,
       {records},
-      this.accountHeaders,
+      {...this.accountHeaders, ...idempotencyHeaders(this.flags)},
       {timeoutMs: UPLOAD_TIMEOUT_MS},
     )
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

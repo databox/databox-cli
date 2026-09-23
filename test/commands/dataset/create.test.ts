@@ -2,25 +2,14 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {datasetDetail, envelope} from './fixtures.js'
 
 describe('dataset create', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([
-      {
-        method: 'POST',
-        path: '/v2/datasets',
-        response: {
-          data: {
-            datasetType: 'ingestion', id: 123, name: 'NewDataset', parentDataSourceId: 1, timezone: null,
-          },
-          requestId: 'test',
-          status: 'success',
-        },
-      },
-    ])
+    mockApi([{method: 'POST', path: '/v2/datasets', response: envelope(datasetDetail)}])
   })
 
   afterEach(() => {
@@ -29,14 +18,35 @@ describe('dataset create', () => {
   })
 
   it('creates a dataset', async () => {
-    const {stdout} = await runCommand(['dataset', 'create', '--name', 'NewDataset', '--data-source-id', '1'], {root: process.cwd()})
-    expect(stdout).to.contain('NewDataset')
+    const {stdout} = await runCommand(['dataset', 'create', '--name', 'Orders', '--data-source-id', '42'], {root: process.cwd()})
+    expect(stdout).to.contain('Orders')
     expect(stdout).to.contain('123')
   })
 
-  it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['dataset', 'create', '--name', 'NewDataset', '--data-source-id', '1', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.id).to.equal(123)
+  it('outputs the created dataset with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'create', '--name', 'Orders', '--data-source-id', '42', '--json'], {root: process.cwd()})
+    expect(JSON.parse(stdout)).to.deep.equal(datasetDetail)
+  })
+
+  // CreateDatasetSchemaColumn is {id, dataType}; `columnId` was rejected with a 400.
+  it('sends schema columns as {id, dataType}', async () => {
+    await runCommand([
+      'dataset', 'create', '--name', 'Orders', '--data-source-id', '42', '--primary-key', 'order_id',
+      '--schema', '[{"id":"order_id","dataType":"string"},{"id":"amount","dataType":"number"}]',
+    ], {root: process.cwd()})
+
+    expect(lastBody('POST', '/v2/datasets')).to.deep.equal({
+      dataSourceId: 42,
+      name: 'Orders',
+      primaryKey: ['order_id'],
+      schema: [{dataType: 'string', id: 'order_id'}, {dataType: 'number', id: 'amount'}],
+    })
+  })
+
+  it('names the expected schema shape when --schema is not JSON', async () => {
+    const {error} = await runCommand(['dataset', 'create', '--name', 'Orders', '--data-source-id', '42', '--schema', '{nope'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('"id"')
+    expect(error?.message).to.not.contain('columnId')
   })
 })

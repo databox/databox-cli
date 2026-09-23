@@ -1,24 +1,22 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, paginationFlags} from '../../lib/flags.js'
+import {Pagination, fetchPaginated, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
+import {UserRef} from '../../lib/types.js'
 
+/** DatasetResponse.cs `DatasetIngestionListItem`. */
 interface Ingestion {
   duration: null | number
-  finishedAt: null | string
-  ingestionId: string
-  startedAt: null | string
+  id: string
+  initiatedAt: null | string
+  initiatedBy: UserRef | null
   status: string
 }
 
 interface IngestionsResponse {
   items: Ingestion[]
-  pagination: {
-    page: number
-    pageSize: number
-    totalItems: number
-  }
+  pagination: Pagination
 }
 
 export default class DatasetIngestions extends BaseCommand<typeof DatasetIngestions> {
@@ -44,25 +42,22 @@ export default class DatasetIngestions extends BaseCommand<typeof DatasetIngesti
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
     const query: Record<string, number | string | undefined> = {}
-    addPagination(query, this.flags)
 
-    const response = await this.apiClient.get<IngestionsResponse>(
-      `/v2/datasets/${args.datasetId}/ingestions`,
-      Object.keys(query).length > 0 ? query : undefined,
-      this.accountHeaders,
-    )
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<IngestionsResponse>(`/v2/datasets/${args.datasetId}/ingestions`, pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
       [
-        {header: 'Ingestion ID', key: 'ingestionId'},
-        {get: row => row.startedAt ?? '', header: 'Started At'},
-        {get: row => row.finishedAt ?? '', header: 'Finished At'},
+        {header: 'Ingestion ID', key: 'id'},
+        {get: row => row.initiatedAt ?? '', header: 'Initiated At'},
         {header: 'Status', key: 'status'},
+        {get: row => (row.duration === null ? '' : String(row.duration)), header: 'Duration'},
+        {get: row => row.initiatedBy?.name ?? '', header: 'Initiated By'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

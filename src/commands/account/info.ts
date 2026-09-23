@@ -1,15 +1,6 @@
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
-
-interface AccountResponse {
-  accountType: string
-  companyName: null | string
-  id: number
-  managedBy: {id: number; name: string} | null
-  name: string
-  settings: Record<string, unknown> | null
-  websiteUrl: null | string
-}
+import {AccountResponse} from '../../lib/types.js'
 
 export default class AccountInfo extends BaseCommand<typeof AccountInfo> {
   static description = 'Show your account details'
@@ -22,6 +13,6 @@ export default class AccountInfo extends BaseCommand<typeof AccountInfo> {
   async run(): Promise<void> {
     const response = await this.apiClient.get<AccountResponse>('/v2/account', undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

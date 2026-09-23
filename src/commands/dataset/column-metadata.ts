@@ -2,16 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatOutput} from '../../lib/output.js'
-
-interface ColumnMeta {
-  columnId: string
-  description: null | string
-  displayName: null | string
-}
-
-interface ColumnMetaResponse {
-  items: ColumnMeta[]
-}
+import {ColumnMetadataItem} from '../../lib/types.js'
 
 export default class DatasetColumnMetadata extends BaseCommand<typeof DatasetColumnMetadata> {
   static args = {
@@ -30,16 +21,18 @@ export default class DatasetColumnMetadata extends BaseCommand<typeof DatasetCol
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<ColumnMetaResponse>(`/v2/datasets/${args.datasetId}/column-metadata`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<{items: ColumnMetadataItem[]}>(`/v2/datasets/${args.datasetId}/column-metadata`, undefined, this.accountHeaders)
 
     formatOutput(
       response.items,
       [
-        {header: 'Column ID', key: 'columnId'},
-        {get: row => row.displayName ?? '', header: 'Display Name'},
+        {header: 'Column ID', key: 'id'},
+        {header: 'Display Name', key: 'displayName'},
         {get: row => row.description ?? '', header: 'Description'},
+        {get: row => row.conceptType ?? '', header: 'Concept Type'},
+        {get: row => (row.synonyms ?? []).join(', '), header: 'Synonyms'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
   }
 }

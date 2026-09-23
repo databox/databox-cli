@@ -5,16 +5,23 @@ import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
+/** AccountResponse.cs `AccountUsageResponse`: buckets are {count, limit}, limit null when unlimited. */
+const usage = {
+  aiCredits: {
+    limit: 100, remaining: 87.5, resetsAt: '2026-10-01T00:00:00+00:00', state: 'ok', used: 12.5,
+  },
+  clients: {count: 0, limit: null},
+  dataSources: {count: 5, limit: 50},
+  users: {count: 2, limit: 10},
+}
+
+function mockUsage(data: unknown): void {
+  mockApi([{method: 'GET', path: '/v2/account/usage', response: {data, requestId: 'test', status: 'success'}}])
+}
+
 describe('account usage', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([
-      {
-        method: 'GET',
-        path: '/v2/account/usage',
-        response: {data: {dataSources: {current: 5, limit: 50}, users: {current: 2, limit: 10}}, requestId: 'test', status: 'success'},
-      },
-    ])
   })
 
   afterEach(() => {
@@ -22,15 +29,51 @@ describe('account usage', () => {
     cleanupTestConfig()
   })
 
-  it('shows usage stats', async () => {
+  it('renders each figure on a readable line', async () => {
+    mockUsage(usage)
     const {stdout} = await runCommand(['account', 'usage'], {root: process.cwd()})
-    expect(stdout).to.contain('Users')
-    expect(stdout).to.contain('Data Sources')
+    expect(stdout.trim().split('\n')).to.deep.equal([
+      'Users: 2 of 10',
+      'Data sources: 5 of 50',
+      'Clients: 0 of unlimited',
+      'AI credits used: 12.5',
+      'AI credits limit: 100',
+      'AI credits remaining: 87.5',
+      'AI credits state: ok',
+      'AI credits reset at: 2026-10-01T00:00:00+00:00',
+    ])
   })
 
-  it('outputs JSON with --json', async () => {
+  it('reports unlimited AI credits', async () => {
+    mockUsage({
+      ...usage,
+      aiCredits: {
+        limit: null, remaining: null, resetsAt: null, state: 'ok', used: 3,
+      },
+    })
+    const {stdout} = await runCommand(['account', 'usage'], {root: process.cwd()})
+    expect(stdout).to.contain('AI credits limit: unlimited')
+    expect(stdout).to.contain('AI credits remaining: unlimited')
+  })
+
+  // Null means the credits read failed, not that none were used.
+  it('says the AI credits are unavailable when aiCredits is null', async () => {
+    mockUsage({...usage, aiCredits: null})
+    const {stdout} = await runCommand(['account', 'usage'], {root: process.cwd()})
+    expect(stdout).to.contain('Users: 2 of 10')
+    expect(stdout).to.contain('AI credits: unavailable')
+    expect(stdout).to.not.contain('AI credits used')
+  })
+
+  it('outputs the whole response with --json', async () => {
+    mockUsage(usage)
     const {stdout} = await runCommand(['account', 'usage', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.users).to.deep.include({current: 2, limit: 10})
+    expect(JSON.parse(stdout)).to.deep.equal(usage)
+  })
+
+  it('keeps a null aiCredits under --json', async () => {
+    mockUsage({...usage, aiCredits: null})
+    const {stdout} = await runCommand(['account', 'usage', '--json'], {root: process.cwd()})
+    expect(JSON.parse(stdout).aiCredits).to.equal(null)
   })
 })

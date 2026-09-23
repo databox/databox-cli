@@ -11,7 +11,7 @@ describe('metric delete', () => {
     mockApi([{
       method: 'DELETE',
       path: '/v2/metrics/42%7Ccustom_query_1',
-      response: {data: {}, requestId: 'test', status: 'success'},
+      response: {data: {message: 'Metric deleted successfully'}, requestId: 'test', status: 'success'},
     }])
   })
 

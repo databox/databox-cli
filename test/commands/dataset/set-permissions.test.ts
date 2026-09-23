@@ -2,13 +2,14 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, lastBody, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {envelope} from './fixtures.js'
 
 describe('dataset set-permissions', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'PUT', path: '/v2/datasets/123/permissions', response: {data: {accessLevel: 'everyone'}, requestId: 'test', status: 'success'}}])
+    mockApi([{method: 'PUT', path: '/v2/datasets/123/permissions', response: envelope({accessLevel: 'everyone', accessList: null})}])
   })
 
   afterEach(() => {
@@ -23,7 +24,38 @@ describe('dataset set-permissions', () => {
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['dataset', 'set-permissions', '123', '--access-level', 'everyone', '--json'], {root: process.cwd()})
-    const json = JSON.parse(stdout)
-    expect(json).to.have.property('accessLevel')
+    expect(JSON.parse(stdout)).to.deep.equal({accessLevel: 'everyone', accessList: null})
+  })
+
+  it('sends private with no access list', async () => {
+    await runCommand(['dataset', 'set-permissions', '123', '--access-level', 'private'], {root: process.cwd()})
+    expect(lastBody('PUT', '/v2/datasets/123/permissions')).to.deep.equal({accessLevel: 'private'})
+  })
+
+  it('sends selectedUsers with the access list', async () => {
+    await runCommand([
+      'dataset', 'set-permissions', '123', '--access-level', 'selectedUsers', '--access-list', '31', '--access-list', '42',
+    ], {root: process.cwd()})
+    expect(lastBody('PUT', '/v2/datasets/123/permissions')).to.deep.equal({accessLevel: 'selectedUsers', accessList: [31, 42]})
+  })
+
+  it('requires --access-list with selectedUsers (exit 2)', async () => {
+    const {error} = await runCommand(['dataset', 'set-permissions', '123', '--access-level', 'selectedUsers'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(requests()).to.have.length(0)
+  })
+
+  it('rejects --access-list without selectedUsers (exit 2)', async () => {
+    const {error} = await runCommand([
+      'dataset', 'set-permissions', '123', '--access-level', 'everyone', '--access-list', '31',
+    ], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--access-list')
+    expect(requests()).to.have.length(0)
+  })
+
+  it('rejects an unknown access level with exit 2', async () => {
+    const {error} = await runCommand(['dataset', 'set-permissions', '123', '--access-level', 'nobody'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
   })
 })

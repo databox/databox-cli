@@ -1,17 +1,21 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {formatSingle} from '../../lib/output.js'
+import {DatasetDetail} from '../../lib/types.js'
 
 export default class DatasetSetTimezone extends BaseCommand<typeof DatasetSetTimezone> {
   static args = {
     datasetId: Args.string({description: 'The dataset ID', required: true}),
   }
 
-  static description = 'Set the timezone for a dataset'
+  static description = `Set the timezone for a dataset
+
+Prints a confirmation; --json or --output csv prints the updated dataset instead.`
 
   static examples = [
     '<%= config.bin %> dataset set-timezone 12345 --timezone "US/Eastern"',
-    '<%= config.bin %> dataset set-timezone 12345 --timezone "Europe/London"',
+    '<%= config.bin %> dataset set-timezone 12345 --timezone "Europe/London" --json',
   ]
 
   static flags = {
@@ -24,11 +28,16 @@ export default class DatasetSetTimezone extends BaseCommand<typeof DatasetSetTim
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    await this.apiClient.put(`/v2/datasets/${args.datasetId}/timezone`, {
+    const response = await this.apiClient.put<DatasetDetail>(`/v2/datasets/${args.datasetId}/timezone`, {
       purgeData: flags['purge-data'],
       timezone: flags.timezone,
     }, this.accountHeaders)
 
-    this.log(`Timezone set to ${flags.timezone} for dataset ${args.datasetId}.`)
+    if (this.outputFormat === 'table') {
+      this.log(`Timezone set to ${flags.timezone} for dataset ${args.datasetId}.`)
+      return
+    }
+
+    formatSingle(response, this.outputFormat)
   }
 }

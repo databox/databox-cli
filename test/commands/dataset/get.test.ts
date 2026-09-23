@@ -4,31 +4,12 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {datasetDetail, envelope} from './fixtures.js'
 
 describe('dataset get', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([
-      {
-        method: 'GET',
-        path: '/v2/datasets/123',
-        response: {
-          data: {
-            createdAt: '2024-01-01T00:00:00Z',
-            dataSourceId: 10,
-            id: 123,
-            primaryKey: ['date'],
-            schema: [
-              {columnId: 'date', dataType: 'datetime'},
-              {columnId: 'value', dataType: 'number'},
-            ],
-            timezone: 'UTC',
-          },
-          requestId: 'test',
-          status: 'success',
-        },
-      },
-    ])
+    mockApi([{method: 'GET', path: '/v2/datasets/123', response: envelope(datasetDetail)}])
   })
 
   afterEach(() => {
@@ -38,15 +19,14 @@ describe('dataset get', () => {
 
   it('gets dataset details', async () => {
     const {stdout} = await runCommand(['dataset', 'get', '123'], {root: process.cwd()})
-    expect(stdout).to.contain('123')
-    expect(stdout).to.contain('10')
+    expect(stdout).to.contain('Orders')
+    expect(stdout).to.contain('Row Count: 1500')
+    expect(stdout).to.contain('Sync Interval: 60')
   })
 
-  it('outputs JSON with --json', async () => {
+  it('outputs the detail whole with --json', async () => {
     const {stdout} = await runCommand(['dataset', 'get', '123', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.schema).to.be.an('array')
-    expect(parsed.schema).to.have.lengthOf(2)
+    expect(JSON.parse(stdout)).to.deep.equal(datasetDetail)
   })
 
   it('rejects non-numeric dataset ID', async () => {

@@ -2,6 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {ClientDetail} from '../../lib/types.js'
 
 export default class ClientUpdate extends BaseCommand<typeof ClientUpdate> {
   static args = {
@@ -26,6 +27,11 @@ export default class ClientUpdate extends BaseCommand<typeof ClientUpdate> {
     const {args} = await this.parse(ClientUpdate)
     this.requireNumericId(args.clientId, 'Client ID')
 
+    // The API rejects a blank name with a 400; catch it before the round trip.
+    if (this.flags.name !== undefined && this.flags.name.trim() === '') {
+      this.error('--name cannot be empty.', {exit: 2})
+    }
+
     const body: Record<string, unknown> = {}
     if (this.flags.name !== undefined) body.name = this.flags.name
     if (this.flags['managed-by-id'] !== undefined) body.managedById = this.flags['managed-by-id']
@@ -35,8 +41,8 @@ export default class ClientUpdate extends BaseCommand<typeof ClientUpdate> {
       this.error('Provide at least one field to update (--name, --managed-by-id, --website-url).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/clients/${args.clientId}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<ClientDetail>(`/v2/clients/${args.clientId}`, body, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

@@ -4,6 +4,7 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {profile} from './fixtures.js'
 
 describe('profile info', () => {
   beforeEach(() => {
@@ -12,11 +13,7 @@ describe('profile info', () => {
       {
         method: 'GET',
         path: '/v2/profile',
-        response: {
-          data: {
-            accountId: 100, accountType: 'standard', createdAt: '2024-01-01', email: 'test@example.com', id: 1, isEmailVerified: true, name: 'Test User', role: 'admin', timezone: 'UTC',
-          }, requestId: 'test', status: 'success',
-        },
+        response: {data: profile, requestId: 'test', status: 'success'},
       },
     ])
   })
@@ -34,7 +31,6 @@ describe('profile info', () => {
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['profile', 'info', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed).to.deep.include({email: 'test@example.com', id: 1, name: 'Test User'})
+    expect(JSON.parse(stdout)).to.deep.equal(profile)
   })
 })

@@ -2,18 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
-
-interface DataSourceDetail {
-  connectionId: null | number
-  createdAt: null | string
-  id: number
-  integrationKey: null | string
-  lastActivityAt: null | string
-  name: string
-  statusInfo: {status: string}
-  syncInterval: null | number
-  timezone: null | string
-}
+import {DataSourceDetail} from '../../lib/types.js'
 
 export default class DataSourceGet extends BaseCommand<typeof DataSourceGet> {
   static args = {
@@ -36,6 +25,6 @@ export default class DataSourceGet extends BaseCommand<typeof DataSourceGet> {
 
     const response = await this.apiClient.get<DataSourceDetail>(`/v2/data-sources/${args.dataSourceId}`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

@@ -2,6 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {IntegrationDetail} from '../../lib/types.js'
 
 export default class IntegrationGet extends BaseCommand<typeof IntegrationGet> {
   static args = {
@@ -19,8 +20,8 @@ export default class IntegrationGet extends BaseCommand<typeof IntegrationGet> {
     const {args} = await this.parse(IntegrationGet)
     this.requireNumericId(args.integrationId, 'Integration ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/integrations/${args.integrationId}`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<IntegrationDetail>(`/v2/integrations/${args.integrationId}`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

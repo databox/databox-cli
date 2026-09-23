@@ -2,20 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
-
-interface DatasetGetResponse {
-  columnCount: number
-  createdAt: null | string
-  datasetType: string
-  id: number
-  name: string
-  // Column definitions are not on the detail payload — use `dataset schema ID`.
-  parentDataSourceId: null | number
-  primaryKey: null | string[]
-  rowCount: number
-  syncInterval: null | number
-  timezone: null | string
-}
+import {DatasetDetail} from '../../lib/types.js'
 
 export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
   static args = {
@@ -34,8 +21,8 @@ export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<DatasetGetResponse>(`/v2/datasets/${args.datasetId}`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<DatasetDetail>(`/v2/datasets/${args.datasetId}`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

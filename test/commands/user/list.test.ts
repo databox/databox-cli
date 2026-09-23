@@ -2,7 +2,7 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
 describe('user list', () => {
@@ -39,5 +39,16 @@ describe('user list', () => {
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
     expect(parsed[0]).to.deep.include({id: 1, name: 'Admin'})
+  })
+
+  it('sends the role filter, which includes viewer', async () => {
+    await runCommand(['user', 'list', '--role', 'viewer'], {root: process.cwd()})
+    expect(requests()[0].search).to.equal('?role=viewer')
+  })
+
+  it('rejects a role the API does not know with exit 2', async () => {
+    const {error} = await runCommand(['user', 'list', '--role', 'owner'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(requests()).to.have.length(0)
   })
 })

@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {confirm} from '../../lib/prompt.js'
 
 export default class DataSourcePurge extends BaseCommand<typeof DataSourcePurge> {
@@ -23,6 +24,7 @@ export default class DataSourcePurge extends BaseCommand<typeof DataSourcePurge>
       default: false,
       description: 'Skip confirmation prompt',
     }),
+    ...idempotencyFlags,
   }
 
   async run(): Promise<void> {
@@ -37,7 +39,7 @@ export default class DataSourcePurge extends BaseCommand<typeof DataSourcePurge>
       }
     }
 
-    await this.apiClient.post(`/v2/data-sources/${args.dataSourceId}/purge`, undefined, this.accountHeaders)
+    await this.apiClient.post(`/v2/data-sources/${args.dataSourceId}/purge`, undefined, {...this.accountHeaders, ...idempotencyHeaders(this.flags)})
 
     this.log(`Data source ${args.dataSourceId} purged.`)
   }

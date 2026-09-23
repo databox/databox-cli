@@ -6,9 +6,9 @@ interface Timezone {
   timezone: string
 }
 
+/** AccountResponse.cs `TimezoneListResponse`: every timezone at once, with no pagination. */
 interface TimezoneListResponse {
   items: Timezone[]
-  pagination?: {page: number; pageSize: number; totalItems: number}
 }
 
 export default class AccountTimezones extends BaseCommand<typeof AccountTimezones> {
@@ -28,7 +28,7 @@ export default class AccountTimezones extends BaseCommand<typeof AccountTimezone
         {header: 'Offset', key: 'offset'},
         {header: 'Timezone', key: 'timezone'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
   }
 }

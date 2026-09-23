@@ -13,10 +13,7 @@ describe('account timezones', () => {
         method: 'GET',
         path: '/v2/account/timezones',
         response: {
-          data: {
-            items: [{offset: 'UTC+1', timezone: 'Europe/Berlin'}],
-            pagination: {page: 0, pageSize: 25, totalItems: 1},
-          },
+          data: {items: [{offset: 'UTC+1', timezone: 'Europe/Berlin'}]},
           requestId: 'test',
           status: 'success',
         },

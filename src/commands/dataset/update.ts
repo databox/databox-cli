@@ -2,6 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {DatasetDetail} from '../../lib/types.js'
 
 export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
   static args = {
@@ -31,8 +32,8 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
       this.error('Provide at least one field to update (--name).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/datasets/${args.datasetId}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<DatasetDetail>(`/v2/datasets/${args.datasetId}`, body, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

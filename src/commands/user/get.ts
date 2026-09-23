@@ -2,6 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {UserDetail} from '../../lib/types.js'
 
 export default class UserGet extends BaseCommand<typeof UserGet> {
   static args = {
@@ -19,8 +20,8 @@ export default class UserGet extends BaseCommand<typeof UserGet> {
     const {args} = await this.parse(UserGet)
     this.requireNumericId(args.userId, 'User ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/users/${args.userId}`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<UserDetail>(`/v2/users/${args.userId}`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

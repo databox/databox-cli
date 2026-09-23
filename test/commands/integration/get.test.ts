@@ -5,6 +5,18 @@ import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
+/** IntegrationResponse.cs `IntegrationDetail`. */
+const integration = {
+  avatar: 'https://cdn.example.com/ga4.png',
+  categories: ['Analytics'],
+  description: 'Connect to GA4',
+  id: 101,
+  key: 'GoogleAnalytics4',
+  name: 'Google Analytics 4',
+  supportsDatasets: true,
+  supportsMetricBuilder: true,
+}
+
 describe('integration get', () => {
   beforeEach(() => {
     setupTestConfig()
@@ -13,9 +25,7 @@ describe('integration get', () => {
         method: 'GET',
         path: '/v2/integrations/101',
         response: {
-          data: {
-            description: 'Connect to GA4', id: 101, key: 'GoogleAnalytics4', name: 'Google Analytics 4', supportsDatasets: true,
-          },
+          data: integration,
           requestId: 'test',
           status: 'success',
         },
@@ -36,8 +46,6 @@ describe('integration get', () => {
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['integration', 'get', '101', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.id).to.equal(101)
-    expect(parsed.key).to.equal('GoogleAnalytics4')
+    expect(JSON.parse(stdout)).to.deep.equal(integration)
   })
 })

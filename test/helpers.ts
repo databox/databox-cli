@@ -48,11 +48,14 @@ type MockRoute = {
   method: string
   path: string
   response: unknown
+  /** When set, the route only answers this exact query string (e.g. '?page=1&pageSize=100'). */
+  search?: string
   status?: number
 }
 
 export type CapturedRequest = {
   body: unknown
+  headers: Record<string, string>
   method: string
   path: string
   search: string
@@ -102,13 +105,11 @@ export function mockApi(routes: MockRoute[]): void {
     }
 
     capturedRequests.push({
-      body, method, path: parsed.pathname, search: parsed.search,
+      body, headers: {...init?.headers as Record<string, string>}, method, path: parsed.pathname, search: parsed.search,
     })
 
-    const route = mockRoutes.find(r => {
-      const urlPath = new URL(url).pathname
-      return r.method === method && urlPath === r.path
-    })
+    const route = mockRoutes.find(r => r.method === method && parsed.pathname === r.path
+      && (r.search === undefined || r.search === parsed.search))
 
     if (!route) {
       return new Response(JSON.stringify({errors: [{message: `No mock for ${method} ${url}`}]}), {

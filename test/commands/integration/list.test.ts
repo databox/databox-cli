@@ -2,7 +2,7 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
 describe('integration list', () => {
@@ -40,5 +40,16 @@ describe('integration list', () => {
     const {stdout} = await runCommand(['integration', 'list', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
+  })
+
+  it('sorts by name', async () => {
+    await runCommand(['integration', 'list', '--sort-by', 'name', '--sort-order', 'desc'], {root: process.cwd()})
+    expect(requests()[0].search).to.equal('?sortBy=name&sortOrder=desc')
+  })
+
+  it('rejects a sort field the API does not know with exit 2', async () => {
+    const {error} = await runCommand(['integration', 'list', '--sort-by', 'key'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(requests()).to.have.length(0)
   })
 })

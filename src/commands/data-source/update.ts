@@ -2,6 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {DataSourceDetail} from '../../lib/types.js'
 
 export default class DataSourceUpdate extends BaseCommand<typeof DataSourceUpdate> {
   static args = {
@@ -26,10 +27,15 @@ export default class DataSourceUpdate extends BaseCommand<typeof DataSourceUpdat
     const {args} = await this.parse(DataSourceUpdate)
     this.requireNumericId(args.dataSourceId, 'Data source ID')
 
+    // The API rejects a blank name with a 400; catch it before the round trip.
+    if (this.flags.name.trim() === '') {
+      this.error('--name cannot be empty.', {exit: 2})
+    }
+
     const body: Record<string, unknown> = {name: this.flags.name}
 
-    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/data-sources/${args.dataSourceId}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<DataSourceDetail>(`/v2/data-sources/${args.dataSourceId}`, body, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

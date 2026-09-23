@@ -1,16 +1,6 @@
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
-
-interface ProfileResponse {
-  accountId: number
-  accountType: string
-  createdAt: string
-  email: string
-  id: number
-  isEmailVerified: boolean
-  name: string
-  timezone: null | string
-}
+import {ProfileResponse} from '../../lib/types.js'
 
 export default class ProfileInfo extends BaseCommand<typeof ProfileInfo> {
   static description = 'Show your profile'
@@ -23,6 +13,6 @@ export default class ProfileInfo extends BaseCommand<typeof ProfileInfo> {
   async run(): Promise<void> {
     const response = await this.apiClient.get<ProfileResponse>('/v2/profile', undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

@@ -2,16 +2,28 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {UserRef} from '../../lib/types.js'
 
+/**
+ * DatasetResponse.cs `DatasetIngestionDetailResponse`. `summary` is null when the run reported no
+ * counts, and `errors` is null when it reported no error detail.
+ */
 interface IngestionResponse {
-  duration?: null | number
-  errors?: unknown
-  finishedAt: null | string
-  ingestionId: string
-  metrics?: unknown
-  startedAt: null | string
+  duration: null | number
+  errors: Array<{code: null | string; field: null | string; message: null | string; record: unknown}> | null
+  id: string
+  initiatedAt: null | string
+  initiatedBy: UserRef | null
   status: string
-  user?: {id: number; name: string} | null
+  summary: {
+    dataset: {columnCount: number; rowCount: number; size: number} | null
+    ingestion: {
+      appendedRecordCount: number
+      overwrittenRecordCount: number
+      receivedRecordCount: number
+      rejectedRecordCount: number
+    } | null
+  } | null
 }
 
 export default class DatasetIngestion extends BaseCommand<typeof DatasetIngestion> {
@@ -39,6 +51,6 @@ export default class DatasetIngestion extends BaseCommand<typeof DatasetIngestio
       this.accountHeaders,
     )
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

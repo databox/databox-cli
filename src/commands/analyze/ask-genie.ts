@@ -101,7 +101,7 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
 
         if (chunk.content) {
           fullAnswer += chunk.content
-          if (!flags.json) {
+          if (this.outputFormat !== 'json') {
             process.stdout.write(chunk.content)
           }
         }
@@ -112,7 +112,7 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
       }
     }
 
-    if (flags.json) {
+    if (this.outputFormat === 'json') {
       console.log(JSON.stringify({
         answer: fullAnswer,
         dataset_id: args.datasetId,

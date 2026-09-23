@@ -5,6 +5,26 @@ import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
+/** BillingResponse.cs `InvoiceItem`: no currency (always USD) and no description. */
+const invoices = [
+  {
+    amount: 99.5,
+    date: '2026-08-01T00:00:00.0000000+00:00',
+    downloadUrl: 'https://example.com/invoice.pdf',
+    invoiceId: 'in_1PabcXYZ',
+    receiptNumber: '2081-4432',
+    status: 'paid',
+  },
+  {
+    amount: 0,
+    date: null,
+    downloadUrl: null,
+    invoiceId: null,
+    receiptNumber: null,
+    status: 'open',
+  },
+]
+
 describe('billing invoices', () => {
   beforeEach(() => {
     setupTestConfig()
@@ -13,11 +33,7 @@ describe('billing invoices', () => {
         method: 'GET',
         path: '/v2/billing/invoices',
         response: {
-          data: {
-            items: [{
-              amount: 99, date: '2024-01-01', downloadUrl: 'https://example.com/invoice.pdf', id: 1, status: 'paid',
-            }], pagination: {page: 0, pageSize: 25, totalItems: 1},
-          }, requestId: 'test', status: 'success',
+          data: {items: invoices, pagination: {page: 0, pageSize: 25, totalItems: 2}}, requestId: 'test', status: 'success',
         },
       },
     ])
@@ -28,16 +44,19 @@ describe('billing invoices', () => {
     cleanupTestConfig()
   })
 
-  it('lists invoices', async () => {
+  it('lists invoices with the USD amount and receipt number', async () => {
     const {stdout} = await runCommand(['billing', 'invoices'], {root: process.cwd()})
-    expect(stdout).to.contain('2024-01-01')
-    expect(stdout).to.contain('paid')
+    // Header, rule, then one line per invoice; cells are separated by │.
+    const [header, , ...rows] = stdout.trim().split('\n').slice(0, 4).map(line => line.split('│').map(cell => cell.trim()))
+    expect(header).to.deep.equal(['Invoice ID', 'Date', 'Amount (USD)', 'Status', 'Receipt #'])
+    expect(rows).to.deep.equal([
+      ['in_1PabcXYZ', '2026-08-01T00:00:00.0000000+00:00', '99.5', 'paid', '2081-4432'],
+      ['', '', '0', 'open', ''],
+    ])
   })
 
-  it('outputs JSON with --json', async () => {
+  it('passes the items through whole with --json', async () => {
     const {stdout} = await runCommand(['billing', 'invoices', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed).to.be.an('array')
-    expect(parsed[0]).to.deep.include({id: 1, status: 'paid'})
+    expect(JSON.parse(stdout)).to.deep.equal(invoices)
   })
 })

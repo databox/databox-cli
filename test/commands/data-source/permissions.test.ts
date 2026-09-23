@@ -12,7 +12,7 @@ describe('data-source permissions', () => {
       {
         method: 'GET',
         path: '/v2/data-sources/42/permissions',
-        response: {data: {accessLevel: 'everyone', users: []}, requestId: 'test', status: 'success'},
+        response: {data: {accessLevel: 'selectedUsers', accessList: [{id: 31, name: 'Ada'}]}, requestId: 'test', status: 'success'},
       },
     ])
   })
@@ -24,12 +24,12 @@ describe('data-source permissions', () => {
 
   it('shows permissions', async () => {
     const {stdout} = await runCommand(['data-source', 'permissions', '42'], {root: process.cwd()})
-    expect(stdout).to.include('everyone')
+    expect(stdout).to.include('selectedUsers')
+    expect(stdout).to.include('Ada')
   })
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['data-source', 'permissions', '42', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.accessLevel).to.equal('everyone')
+    expect(JSON.parse(stdout)).to.deep.equal({accessLevel: 'selectedUsers', accessList: [{id: 31, name: 'Ada'}]})
   })
 })

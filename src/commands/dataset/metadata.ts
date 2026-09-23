@@ -2,6 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {DatasetMetadataResponse} from '../../lib/types.js'
 
 export default class DatasetMetadata extends BaseCommand<typeof DatasetMetadata> {
   static args = {
@@ -20,8 +21,8 @@ export default class DatasetMetadata extends BaseCommand<typeof DatasetMetadata>
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/metadata`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<DatasetMetadataResponse>(`/v2/datasets/${args.datasetId}/metadata`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

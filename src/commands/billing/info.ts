@@ -3,7 +3,8 @@ import {formatSingle} from '../../lib/output.js'
 
 interface BillingResponse {
   billingEmail: null | string
-  billingPeriod: string
+  /** monthly, quarterly or yearly; null when the plan has no billing cycle. */
+  billingPeriod: null | string
   planName: string
   planStatus: string
 }
@@ -19,6 +20,6 @@ export default class BillingInfo extends BaseCommand<typeof BillingInfo> {
   async run(): Promise<void> {
     const response = await this.apiClient.get<BillingResponse>('/v2/billing', undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

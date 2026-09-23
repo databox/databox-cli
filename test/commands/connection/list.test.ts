@@ -4,6 +4,7 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {connectionListItem} from './fixtures.js'
 
 describe('connection list', () => {
   beforeEach(() => {
@@ -14,9 +15,7 @@ describe('connection list', () => {
         path: '/v2/connections',
         response: {
           data: {
-            items: [{
-              id: 1, integrationKey: 'GoogleAnalytics4', name: 'GA4 Connection', status: 'active',
-            }],
+            items: [connectionListItem],
             pagination: {page: 0, pageSize: 25, totalItems: 1},
           },
           requestId: 'test',
@@ -38,7 +37,6 @@ describe('connection list', () => {
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['connection', 'list', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed).to.be.an('array')
+    expect(JSON.parse(stdout)).to.deep.equal([connectionListItem])
   })
 })

@@ -2,6 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {Permissions} from '../../lib/types.js'
 
 export default class DatasetPermissions extends BaseCommand<typeof DatasetPermissions> {
   static args = {
@@ -20,8 +21,8 @@ export default class DatasetPermissions extends BaseCommand<typeof DatasetPermis
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    const response = await this.apiClient.get<Record<string, unknown>>(`/v2/datasets/${args.datasetId}/permissions`, undefined, this.accountHeaders)
+    const response = await this.apiClient.get<Permissions>(`/v2/datasets/${args.datasetId}/permissions`, undefined, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

@@ -5,7 +5,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
 describe('dataset ingest', () => {
@@ -60,5 +60,21 @@ describe('dataset ingest', () => {
     const parsed = JSON.parse(stdout)
     expect(parsed.ingestionId).to.equal('ing-1')
     expect(parsed.status).to.equal('accepted')
+  })
+
+  // DatasetService.IngestData rejects an empty records list with a 400 on `records`.
+  it('rejects an empty --records array with exit 2 before calling the API', async () => {
+    const {error} = await runCommand(['dataset', 'ingest', '123', '--records', '[]'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('At least one record must be provided')
+    expect(requests()).to.have.length(0)
+  })
+
+  it('rejects an empty array from --file with exit 2 before calling the API', async () => {
+    fs.writeFileSync(tempFilePath, '[]')
+    const {error} = await runCommand(['dataset', 'ingest', '123', '--file', tempFilePath], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('At least one record must be provided')
+    expect(requests()).to.have.length(0)
   })
 })

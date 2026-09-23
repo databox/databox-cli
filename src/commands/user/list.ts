@@ -2,19 +2,13 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {
-  addPagination, addSorting, paginationFlags, sortFlags,
+  addSorting, fetchPaginated, paginationFlags, sortFlags,
 } from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
-
-interface User {
-  email: string
-  id: number
-  name: string
-  role: string
-}
+import {UserListItem} from '../../lib/types.js'
 
 interface UsersResponse {
-  items: User[]
+  items: UserListItem[]
   pagination?: {
     page: number
     pageSize: number
@@ -27,28 +21,25 @@ export default class UserList extends BaseCommand<typeof UserList> {
 
   static examples = [
     '<%= config.bin %> user list',
+    '<%= config.bin %> user list --role editor',
     '<%= config.bin %> user list --json',
   ]
 
   static flags = {
     ...paginationFlags,
-    role: Flags.string({description: 'Filter by role', options: ['admin', 'user']}),
+    role: Flags.string({description: 'Filter by role', options: ['admin', 'user', 'editor', 'viewer']}),
     search: Flags.string({description: 'Search by name or email'}),
-    ...sortFlags,
+    ...sortFlags(),
   }
 
   async run(): Promise<void> {
     const query: Record<string, number | string | undefined> = {}
-    addPagination(query, this.flags)
     if (this.flags.search) query.search = this.flags.search
     if (this.flags.role) query.role = this.flags.role
     addSorting(query, this.flags)
 
-    const response = await this.apiClient.get<UsersResponse>(
-      '/v2/users',
-      Object.keys(query).length > 0 ? query : undefined,
-      this.accountHeaders,
-    )
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<UsersResponse>('/v2/users', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
@@ -58,9 +49,9 @@ export default class UserList extends BaseCommand<typeof UserList> {
         {header: 'Email', key: 'email'},
         {header: 'Role', key: 'role'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

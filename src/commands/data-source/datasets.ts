@@ -1,19 +1,15 @@
-import {Args} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {addPagination, paginationFlags} from '../../lib/flags.js'
+import {
+  Pagination, addSorting, fetchPaginated, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
-
-interface Dataset {
-  datasetType: string
-  id: number
-  name: null | string
-  statusInfo: {status: string} | null
-}
+import {DatasetListItem} from '../../lib/types.js'
 
 interface DatasetsResponse {
-  items: Dataset[]
-  pagination?: {page: number; pageSize: number; totalItems: number}
+  items: DatasetListItem[]
+  pagination: Pagination
 }
 
 export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDatasets> {
@@ -28,12 +24,15 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
 
   static examples = [
     '<%= config.bin %> data-source datasets 12345',
+    '<%= config.bin %> data-source datasets 12345 --search "orders" --sort-by name',
     '<%= config.bin %> data-source datasets 12345 --page 0 --page-size 10',
     '<%= config.bin %> data-source datasets 12345 --json',
   ]
 
   static flags = {
     ...paginationFlags,
+    search: Flags.string({description: 'Search by name'}),
+    ...sortFlags(['name', 'createdAt', 'lastActivityAt']),
   }
 
   async run(): Promise<void> {
@@ -43,21 +42,25 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
     const query: Record<string, number | string | undefined> = {
       dataSourceId: args.dataSourceId,
     }
-    addPagination(query, this.flags)
+    if (this.flags.search) query.search = this.flags.search
+    addSorting(query, this.flags)
 
-    const response = await this.apiClient.get<DatasetsResponse>('/v2/datasets', query, this.accountHeaders)
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<DatasetsResponse>('/v2/datasets', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {header: 'Type', key: 'datasetType'},
+        {get: row => (row.ingestionSupported ? 'yes' : 'no'), header: 'Ingestion'},
         {get: row => row.statusInfo?.status ?? '', header: 'Status'},
+        {get: row => row.syncInfo?.status ?? '', header: 'Sync status'},
+        {get: row => row.lastActivityAt ?? '', header: 'Last activity'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

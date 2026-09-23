@@ -4,6 +4,8 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
+import {envelope} from '../dataset/fixtures.js'
+import {dataSourceDetail} from './fixtures.js'
 
 describe('data-source get', () => {
   beforeEach(() => {
@@ -12,11 +14,7 @@ describe('data-source get', () => {
       {
         method: 'GET',
         path: '/v2/data-sources/42',
-        response: {
-          data: {
-            id: 42, integrationKey: 'DataboxAPI', timezone: 'UTC', title: 'My Source',
-          }, requestId: 'test', status: 'success',
-        },
+        response: envelope(dataSourceDetail),
       },
     ])
   })
@@ -34,7 +32,6 @@ describe('data-source get', () => {
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['data-source', 'get', '42', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.id).to.equal(42)
+    expect(JSON.parse(stdout)).to.deep.equal(dataSourceDetail)
   })
 })

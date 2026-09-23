@@ -2,19 +2,13 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {
-  addPagination, addSorting, paginationFlags, sortFlags,
+  addSorting, fetchPaginated, paginationFlags, sortFlags,
 } from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
-
-interface Integration {
-  id: number
-  key: string
-  name: string
-  supportsDatasets: boolean
-}
+import {IntegrationListItem} from '../../lib/types.js'
 
 interface IntegrationsResponse {
-  items: Integration[]
+  items: IntegrationListItem[]
   pagination?: {
     page: number
     pageSize: number
@@ -34,20 +28,16 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
   static flags = {
     ...paginationFlags,
     search: Flags.string({description: 'Search by integration name'}),
-    ...sortFlags,
+    ...sortFlags(['name']),
   }
 
   async run(): Promise<void> {
     const query: Record<string, number | string | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
-    addPagination(query, this.flags)
     addSorting(query, this.flags)
 
-    const response = await this.apiClient.get<IntegrationsResponse>(
-      '/v2/integrations',
-      Object.keys(query).length > 0 ? query : undefined,
-      this.accountHeaders,
-    )
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<IntegrationsResponse>('/v2/integrations', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,
@@ -57,9 +47,9 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
         {header: 'Name', key: 'name'},
         {get: row => String(row.supportsDatasets), header: 'Datasets'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
 
-    showPagination(response.pagination, this.flags.json)
+    showPagination(response.pagination, this.outputFormat)
   }
 }

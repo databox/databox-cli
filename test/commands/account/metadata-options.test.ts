@@ -14,7 +14,7 @@ describe('account metadata-options', () => {
       response: {
         data: {
           annualRevenues: [{label: '$0-$1M', value: '$0-$1M'}],
-          businessClassifications: [{label: 'B2B', value: 'B2B'}],
+          businessTypes: [{label: 'B2B', value: 'B2B'}],
           companySizes: [{label: '1-10', value: '1-10'}],
           industries: [{label: 'Technology', value: 'Technology'}],
         }, requestId: 'test', status: 'success',
@@ -35,6 +35,6 @@ describe('account metadata-options', () => {
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['account', 'metadata-options', '--json'])
     const json = JSON.parse(stdout)
-    expect(json.businessClassifications).to.be.an('array')
+    expect(json.businessTypes).to.be.an('array')
   })
 })

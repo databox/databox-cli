@@ -2,6 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
+import {ConnectionDetail} from '../../lib/types.js'
 
 export default class ConnectionUpdate extends BaseCommand<typeof ConnectionUpdate> {
   static args = {
@@ -23,6 +24,11 @@ export default class ConnectionUpdate extends BaseCommand<typeof ConnectionUpdat
     const {args, flags} = await this.parse(ConnectionUpdate)
     this.requireNumericId(args.connectionId, 'Connection ID')
 
+    // The API rejects a blank name with a 400; catch it before the round trip.
+    if (flags.name !== undefined && flags.name.trim() === '') {
+      this.error('--name cannot be empty.', {exit: 2})
+    }
+
     const body: Record<string, unknown> = {}
     if (flags.name !== undefined) body.name = flags.name
 
@@ -30,8 +36,8 @@ export default class ConnectionUpdate extends BaseCommand<typeof ConnectionUpdat
       this.error('Provide at least one field to update (--name).', {exit: 1})
     }
 
-    const response = await this.apiClient.patch<Record<string, unknown>>(`/v2/connections/${args.connectionId}`, body, this.accountHeaders)
+    const response = await this.apiClient.patch<ConnectionDetail>(`/v2/connections/${args.connectionId}`, body, this.accountHeaders)
 
-    formatSingle(response, this.flags.json)
+    formatSingle(response, this.outputFormat)
   }
 }

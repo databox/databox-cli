@@ -27,7 +27,7 @@ export default class AccountCountries extends BaseCommand<typeof AccountCountrie
         {header: 'Code', key: 'code'},
         {header: 'Name', key: 'name'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
   }
 }

@@ -8,7 +8,7 @@ import {
 describe('dataset set-metadata', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([{method: 'PATCH', path: '/v2/datasets/123/metadata', response: {data: {description: 'Updated'}, requestId: 'test', status: 'success'}}])
+    mockApi([{method: 'PATCH', path: '/v2/datasets/123/metadata', response: {data: {defaultTimeDimension: null, description: 'Updated', synonyms: null}, requestId: 'test', status: 'success'}}])
   })
 
   afterEach(() => {
@@ -32,6 +32,15 @@ describe('dataset set-metadata', () => {
   it('sends synonyms as a parsed array', async () => {
     await runCommand(['dataset', 'set-metadata', '123', '--synonyms', '["revenue","sales"]'], {root: process.cwd()})
     expect(lastBody('PATCH', '/v2/datasets/123/metadata')).to.deep.equal({synonyms: ['revenue', 'sales']})
+  })
+
+  it('sends description, synonyms and defaultTimeDimension together', async () => {
+    await runCommand([
+      'dataset', 'set-metadata', '123', '--description', 'Orders', '--synonyms', '["sales"]', '--default-time-dimension', 'orderDate',
+    ], {root: process.cwd()})
+    expect(lastBody('PATCH', '/v2/datasets/123/metadata')).to.deep.equal({
+      defaultTimeDimension: 'orderDate', description: 'Orders', synonyms: ['sales'],
+    })
   })
 
   it('rejects malformed JSON in --synonyms with exit 2', async () => {
