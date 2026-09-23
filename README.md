@@ -1,6 +1,8 @@
 # databox-cli
 
-CLI for the [Databox](https://databox.com) V2 API. Manage accounts, data sources, datasets, metrics, connections, users, billing, and more — all from the terminal.
+Command-line interface for the [Databox](https://databox.com) API. Manage data sources, datasets and the data in them, custom metrics, databoards, users, client accounts, connections and billing — from the terminal, from scripts, or through an AI agent.
+
+Version 1.0 targets the Databox V2 API. Upgrading from 0.x? The [1.0.0 migration guide](https://github.com/databox/databox-cli/blob/main/CHANGELOG.md) lists every renamed command and flag.
 
 ## Installation
 
@@ -8,63 +10,143 @@ CLI for the [Databox](https://databox.com) V2 API. Manage accounts, data sources
 npm install -g databox-cli
 ```
 
+Requires Node.js 18 or later.
+
 ## Getting Started
 
 ```bash
-# Authenticate with your API key
+# Authenticate with your API key, and check it works
 databox auth login
-
-# Verify your key works
 databox auth validate
 
-# View your account
-databox account info
+# Create a data source, then a dataset under it with a schema
+databox data-source create --name "My App"
+databox dataset create --name "Orders" --data-source-id 12345 \
+  --primary-key order_id \
+  --schema '[{"id":"order_id","dataType":"string"},{"id":"date","dataType":"datetime"},{"id":"country","dataType":"string"},{"id":"amount","dataType":"number"}]'
 
-# List data sources
-databox data-source list
+# Push rows into the dataset: inline, from a file, or piped on stdin
+databox dataset ingest 67890 --records '[{"order_id":"A-1","date":"2026-01-15","country":"US","amount":42}]'
+databox dataset ingest 67890 --file orders.json
+cat orders.json | databox dataset ingest 67890
 
-# Create a data source and dataset
-databox data-source create --name "My Data Source"
-databox dataset create --name "My Dataset" --data-source-id 12345
+# Check what arrived
+databox dataset ingestions 67890
+databox dataset data 67890
 
-# Push data into a dataset
-databox dataset ingest 67890 --file data.json
+# Build a custom metric on the dataset. Column references are {"id","displayName"},
+# with the id taken from "dataset schema".
+databox metric create --name "Revenue" --dataset-id 67890 \
+  --measure '{"id":"amount","displayName":"Amount"}' \
+  --date '{"id":"date","displayName":"Date"}' \
+  --dimension '{"id":"country","displayName":"Country"}'
 
-# List metrics
-databox metric list
+# List the dataset's metrics, then read the rows behind one for January 2026
+databox metric list --source-id 67890
+databox metric drilldown --metric-id "67890|custom_query_100" --source-id 67890 \
+  --start-timestamp 1767225600 --end-timestamp 1769904000 --dimension-id country
 ```
+
+`metric create` prints the new metric, including its ID; use that ID in place of `67890|custom_query_100`.
 
 ## Authentication
 
-All commands (except `auth login`) require an API key. Run `databox auth login` to store your key in `~/.config/databox-cli/config.json`.
-
-You can also pass the key inline:
+All commands except `auth login` need an API key. `databox auth login` prompts for it and stores it in `~/.config/databox-cli/config.json`, readable only by you. You can also pass it inline:
 
 ```bash
 databox auth login --api-key YOUR_API_KEY
 ```
 
+In CI, set `DATABOX_API_KEY` instead; it takes precedence over the stored key.
+
 ## Global Flags
 
-| Flag | Env Var | Description |
+Every command accepts these:
+
+| Flag | Env var | Description |
 |------|---------|-------------|
-| `--json` | — | Output as JSON instead of table |
-| `--api-key` | `DATABOX_API_KEY` | Override the stored API key |
-| `--api-url` | `DATABOX_API_URL` | Override the API base URL |
-| `--account-id` | `DATABOX_ACCOUNT_ID` | Target a specific account (for agency/client access) |
+| `--output table\|json\|csv` | — | Output format. Default `table`. |
+| `--json` | — | Shorthand for `--output json`. Cannot be combined with `--output`. |
+| `--verbose` | — | Print each request and response (method, URL, status, duration, request ID) to stderr. The API key is never printed. |
+| `--no-color` | `NO_COLOR` | Disable coloured output. A non-empty `NO_COLOR` does the same. |
+| `--api-key` | `DATABOX_API_KEY` | Use this API key instead of the stored one. |
+| `--api-url` | `DATABOX_API_URL` | Override the API base URL (default `https://api.databox.com`). |
+| `--account-id` | `DATABOX_ACCOUNT_ID` | Run the command against another account you manage (see [Multi-Account Access](#multi-account-access)). |
+| `-h`, `--help` | — | Show help for a command or topic. |
+
+`--api-key`, `--api-url` and `--account-id` do not appear in each command's `--help`, but work on every command that calls the API.
+
+Commands that return a list also take:
+
+| Flag | Description |
+|------|-------------|
+| `--page` | Page number, starting at 0. |
+| `--page-size` | Items per page: at most 100, or 1000 on `dataset data` and `metric drilldown`. |
+| `--all` | Fetch every page and print them as one list. Cannot be combined with `--page`. |
+| `--search`, `--sort-by`, `--sort-order` | On the commands that support them; `--help` lists the accepted sort fields. |
+
+### Safe retries with `--idempotency-key`
+
+Commands that create something, or start work that should not happen twice, accept `--idempotency-key <uuid>`. The key is sent as the `Idempotency-Key` header: a retry with the same key within 24 hours returns the first response instead of repeating the action.
+
+```bash
+KEY=$(uuidgen)
+databox dataset ingest 67890 --file orders.json --idempotency-key "$KEY"
+# Timed out? Re-running with the same key cannot ingest the rows twice.
+databox dataset ingest 67890 --file orders.json --idempotency-key "$KEY"
+```
+
+It is available on `client create`, `data-source create`, `data-source purge`, `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`, `metric create` and `user invite`. The value must be a UUID.
 
 ## Output Formats
 
-By default, commands output human-readable tables. Add `--json` to any command for machine-readable JSON output:
+Commands print a table by default. `--output json` (or `--json`) and `--output csv` are for scripts:
 
 ```bash
-databox account info --json
-databox data-source list --json
+# JSON, filtered with jq
+databox dataset list --json | jq '.[] | {id, name}'
+
+# Every data source as CSV, across all pages
+databox data-source list --all --output csv > data-sources.csv
+
+# A dataset's rows as CSV
+databox dataset data 67890 --all --output csv > orders.csv
 ```
+
+What `--json` prints:
+
+- **Lists** print a JSON array of the items, each exactly as the API returned it. With `--all`, the array holds every page.
+- **Responses that carry more than a list** print the whole response object: `dataset schema` (`{items, primaryKey}`), `dataset data` (`{items, pagination, schema, lastUpdatedAt}`), `dataset preview-modification` and `metric drilldown` (`{items, schema, pagination}`), `databoard metrics`.
+- **Single resources** print the object the API returned. Commands that change a resource and get it back — `metric create`, `metric update`, `set-timezone`, `set-sync-frequency`, `set-verification` and the like — print the updated resource. In table mode they print a one-line confirmation instead.
+- **Deletes, purges and clears** print a one-line confirmation in every format.
+
+CSV uses the same columns as the table, with a header row even when there are no results. A single resource prints as `field,value` rows.
+
+Stdout carries only the result. Pagination footers appear in table mode only, and `--verbose` traces, warnings and errors go to stderr, so piping stays clean.
+
+## Errors and Exit Codes
+
+When the API rejects a request, the CLI prints the error code, the message, the field at fault (if any) and the request ID, on stderr:
+
+```
+ ›   Error: invalid_input
+ ›     Unknown timezone.
+ ›     Field: timezone
+ ›     Request ID: 0HN7A2B3C4D5E:00000001
+```
+
+If you contact Databox support about a failed command, quote the **Request ID**: it identifies the exact request in Databox's logs. `--verbose` prints the request ID of successful requests too.
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Success. Declining a confirmation prompt also exits 0, after printing `Aborted.` |
+| `1` | The API returned an error (4xx or 5xx). Also: no API key is configured, or an update command was given no field to change. |
+| `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, or a network failure or timeout. |
+| `130` | A confirmation prompt was interrupted with Ctrl-C. |
 
 ## Multi-Account Access
 
-For agency accounts managing client accounts, use the `--account-id` flag to scope commands to a specific client:
+For agency accounts managing client accounts, `--account-id` scopes any command to a specific client:
 
 ```bash
 # List your client accounts
@@ -76,7 +158,7 @@ databox data-source list --account-id 12345
 
 ## Agent Skills
 
-This package includes shareable skills for AI agents (like [Claude Code](https://claude.ai/claude-code)) to use the CLI autonomously.
+This package includes skills that let AI agents (like [Claude Code](https://claude.ai/claude-code)) use the CLI on your behalf.
 
 ### Bundled Skills
 
@@ -84,14 +166,14 @@ This package includes shareable skills for AI agents (like [Claude Code](https:/
 |-------|-------------|
 | `databox-auth` | Authentication setup and API key validation |
 | `databox-account` | Account info, usage, settings, timezones |
-| `databox-data-sources` | Data source CRUD, timezone, sync, permissions, purge |
-| `databox-datasets` | Dataset CRUD, schema, data ingestion, metadata, verification, modifications |
-| `databox-metrics` | Metric CRUD, data loading, dimensions, drilldown, verification |
-| `databox-users` | User invite, role management, removal |
+| `databox-data-sources` | Data source CRUD, timezone, sync frequency, permissions, purge |
+| `databox-datasets` | Dataset CRUD, schema, data ingestion, metadata, verification, modifications, lineage |
+| `databox-metrics` | Custom metric CRUD, dimension values, drilldown, lineage, usages, verification |
+| `databox-users` | User invites, roles, removal |
 | `databox-clients` | Client account management (agency model) |
 | `databox-connections` | Connection management and permissions |
-| `databox-integrations` | Browse available integration types |
-| `databox-billing` | Billing info and invoices |
+| `databox-integrations` | Browse the integration catalog |
+| `databox-billing` | Plan details and invoices |
 | `databox-analyze` | Dataset analysis with Genie AI, conversational data Q&A |
 
 ### Install Skills
@@ -118,7 +200,7 @@ npx skills add databox/databox-cli --skill databox-billing
 npx skills add databox/databox-cli --skill databox-analyze
 ```
 
-Once installed, Claude Code can manage your Databox resources directly — managing accounts, data sources, datasets, metrics, users, connections, billing, and analyzing data with Genie AI.
+Once installed, Claude Code can manage your Databox resources directly — accounts, data sources, datasets, metrics, users, connections and billing — and analyze data with Genie AI.
 
 ## Changelog
 
@@ -160,11 +242,10 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox data-source set-permissions DATASOURCEID`](#databox-data-source-set-permissions-datasourceid)
 * [`databox data-source set-sync-frequency DATASOURCEID`](#databox-data-source-set-sync-frequency-datasourceid)
 * [`databox data-source set-timezone DATASOURCEID`](#databox-data-source-set-timezone-datasourceid)
-* [`databox data-source sync-frequencies DATASOURCEID`](#databox-data-source-sync-frequencies-datasourceid)
+* [`databox data-source sync-frequency-options DATASOURCEID`](#databox-data-source-sync-frequency-options-datasourceid)
 * [`databox data-source update DATASOURCEID`](#databox-data-source-update-datasourceid)
 * [`databox databoard list`](#databox-databoard-list)
 * [`databox databoard metrics DATABOARDID`](#databox-databoard-metrics-databoardid)
-* [`databox dataset add-modification DATASETID`](#databox-dataset-add-modification-datasetid)
 * [`databox dataset clear-modifications DATASETID`](#databox-dataset-clear-modifications-datasetid)
 * [`databox dataset column-metadata DATASETID`](#databox-dataset-column-metadata-datasetid)
 * [`databox dataset create`](#databox-dataset-create)
@@ -179,7 +260,7 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox dataset lineage DATASETID`](#databox-dataset-lineage-datasetid)
 * [`databox dataset list`](#databox-dataset-list)
 * [`databox dataset metadata DATASETID`](#databox-dataset-metadata-datasetid)
-* [`databox dataset modification-formulas`](#databox-dataset-modification-formulas)
+* [`databox dataset modification-functions`](#databox-dataset-modification-functions)
 * [`databox dataset modification-rules`](#databox-dataset-modification-rules)
 * [`databox dataset modifications DATASETID`](#databox-dataset-modifications-datasetid)
 * [`databox dataset permissions DATASETID`](#databox-dataset-permissions-datasetid)
@@ -192,7 +273,7 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox dataset set-sync-frequency DATASETID`](#databox-dataset-set-sync-frequency-datasetid)
 * [`databox dataset set-timezone DATASETID`](#databox-dataset-set-timezone-datasetid)
 * [`databox dataset set-verification DATASETID`](#databox-dataset-set-verification-datasetid)
-* [`databox dataset sync-frequencies DATASETID`](#databox-dataset-sync-frequencies-datasetid)
+* [`databox dataset sync-frequency-options DATASETID`](#databox-dataset-sync-frequency-options-datasetid)
 * [`databox dataset sync-history DATASETID`](#databox-dataset-sync-history-datasetid)
 * [`databox dataset sync-statistics DATASETID`](#databox-dataset-sync-statistics-datasetid)
 * [`databox dataset update DATASETID`](#databox-dataset-update-datasetid)
@@ -202,11 +283,11 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox integration get INTEGRATIONID`](#databox-integration-get-integrationid)
 * [`databox integration list`](#databox-integration-list)
 * [`databox metric create`](#databox-metric-create)
-* [`databox metric data`](#databox-metric-data)
 * [`databox metric delete METRICID`](#databox-metric-delete-metricid)
 * [`databox metric dimension-values`](#databox-metric-dimension-values)
 * [`databox metric drilldown`](#databox-metric-drilldown)
 * [`databox metric get METRICID`](#databox-metric-get-metricid)
+* [`databox metric lineage METRICID`](#databox-metric-lineage-metricid)
 * [`databox metric list`](#databox-metric-list)
 * [`databox metric set-verification METRICID`](#databox-metric-set-verification-metricid)
 * [`databox metric update METRICID`](#databox-metric-update-metricid)
@@ -227,10 +308,14 @@ List available countries
 
 ```
 USAGE
-  $ databox account countries [--json]
+  $ databox account countries [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List available countries
@@ -249,10 +334,14 @@ Show your account details
 
 ```
 USAGE
-  $ databox account info [--json]
+  $ databox account info [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show your account details
@@ -271,10 +360,14 @@ List available metadata options for account settings
 
 ```
 USAGE
-  $ databox account metadata-options [--json]
+  $ databox account metadata-options [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List available metadata options for account settings
@@ -293,10 +386,14 @@ List all supported timezones
 
 ```
 USAGE
-  $ databox account timezones [--json]
+  $ databox account timezones [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List all supported timezones
@@ -315,27 +412,43 @@ Update account details
 
 ```
 USAGE
-  $ databox account update [--json] [--address <value>] [--billing-name <value>] [--company-name <value>]
-    [--metadata <value>] [--name <value>] [--settings <value>] [--tax-number <value>] [--website-url <value>]
+  $ databox account update [--no-color] [--output table|json|csv | --json] [--verbose] [--address <value>]
+    [--billing-name <value>] [--company-name <value>] [--metadata <value>] [--name <value>] [--settings <value>]
+    [--tax-number <value>] [--website-url <value>]
 
 FLAGS
   --address=<value>       JSON object: {street, zip, city, state, country}
   --billing-name=<value>  Billing name
   --company-name=<value>  Company name
-  --json                  Output as JSON
+  --json                  Output as JSON (shorthand for --output json)
   --metadata=<value>      JSON object: {industry, businessType, companySize, annualRevenue}
   --name=<value>          Account name
-  --settings=<value>      JSON object: {dateFormat, numberFormat, firstDayOfWeek, calendar}
+  --no-color              Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>       [default: table] Output format
+                          <options: table|json|csv>
+  --settings=<value>      JSON object: {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart: {month,
+                          day}}
   --tax-number=<value>    Tax number
+  --verbose               Print each request and response (method, URL, status, duration, request ID) to stderr
   --website-url=<value>   Website URL
 
 DESCRIPTION
   Update account details
 
+  --settings takes {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}:
+  - numberFormat: GroupingCommaDecimalDot (1,234.5), GroupingDotDecimalComma (1.234,5), GroupingSpaceDecimalComma (1
+  234,5) or GroupingSpaceDecimalDot (1 234.5). An unrecognised value is stored as GroupingCommaDecimalDot.
+  - firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value keeps the
+  current day.
+  - calendar: gregorian, customFiscal or weekAlignedFiscal.
+  - fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.
+
 EXAMPLES
   $ databox account update --name "My Company"
 
   $ databox account update --company-name "Acme Inc" --json
+
+  $ databox account update --settings '{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}'
 ```
 
 _See code: [src/commands/account/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/update.ts)_
@@ -346,10 +459,14 @@ Show account usage statistics
 
 ```
 USAGE
-  $ databox account usage [--json]
+  $ databox account usage [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show account usage statistics
@@ -368,18 +485,26 @@ List activity log entries
 
 ```
 USAGE
-  $ databox activity-log list [--json] [--page <value>] [--page-size <value>] [--date-from <value>] [--date-to <value>]
-    [--resource-type <value>] [--search <value>] [--user-id <value>]
+  $ databox activity-log list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--date-from <value>] [--date-to <value>] [--resource-type
+    dataSource|dataset|metric|user|account|client|billing|connection] [--search <value>] [--user-id <value>]
 
 FLAGS
-  --date-from=<value>      Only entries on or after this date (ISO 8601)
-  --date-to=<value>        Only entries on or before this date (ISO 8601)
-  --json                   Output as JSON
-  --page=<value>           Page number (0-indexed)
-  --page-size=<value>      Number of items per page
-  --resource-type=<value>  Filter by resource type
-  --search=<value>         Search the log text
-  --user-id=<value>        Filter by user ID
+  --all                     Fetch every page (100 items per request unless --page-size is given) and print them as one
+                            list
+  --date-from=<value>       Only entries on or after this date (ISO 8601)
+  --date-to=<value>         Only entries on or before this date (ISO 8601)
+  --json                    Output as JSON (shorthand for --output json)
+  --no-color                Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>         [default: table] Output format
+                            <options: table|json|csv>
+  --page=<value>            Page number (0-indexed)
+  --page-size=<value>       Number of items per page (max 100)
+  --resource-type=<option>  Filter by resource type
+                            <options: dataSource|dataset|metric|user|account|client|billing|connection>
+  --search=<value>          Search the log text
+  --user-id=<value>         Filter by the ID of the user who acted
+  --verbose                 Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List activity log entries
@@ -387,7 +512,7 @@ DESCRIPTION
 EXAMPLES
   $ databox activity-log list
 
-  $ databox activity-log list --resource-type data_source
+  $ databox activity-log list --resource-type dataSource
 
   $ databox activity-log list --user-id 123
 
@@ -402,7 +527,8 @@ Ask Genie AI a question about a dataset
 
 ```
 USAGE
-  $ databox analyze ask-genie DATASETID QUESTION [--json] [--service-url <value>] [--thread-id <value>]
+  $ databox analyze ask-genie DATASETID QUESTION [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--service-url <value>] [--thread-id <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to query
@@ -410,9 +536,13 @@ ARGUMENTS
 
 FLAGS
   --json                 Output as JSON
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
   --service-url=<value>  [default: https://agentic-service.databox.com, env: DATABOX_AGENTIC_SERVICE_URL] Override the
                          agentic service base URL
   --thread-id=<value>    Continue an existing conversation thread
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Ask Genie AI a question about a dataset
@@ -455,10 +585,14 @@ Validate the currently stored API key
 
 ```
 USAGE
-  $ databox auth validate [--json]
+  $ databox auth validate [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Validate the currently stored API key
@@ -472,10 +606,14 @@ Show billing and plan details
 
 ```
 USAGE
-  $ databox billing info [--json]
+  $ databox billing info [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show billing and plan details
@@ -494,12 +632,18 @@ List invoices
 
 ```
 USAGE
-  $ databox billing invoices [--json] [--page <value>] [--page-size <value>]
+  $ databox billing invoices [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>]
 
 FLAGS
-  --json               Output as JSON
+  --all                Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
   --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --page-size=<value>  Number of items per page (max 100)
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List invoices
@@ -518,13 +662,20 @@ Create a client account
 
 ```
 USAGE
-  $ databox client create --name <value> [--json] [--managed-by-id <value>] [--website-url <value>]
+  $ databox client create --name <value> [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--idempotency-key <value>] [--managed-by-id <value>] [--website-url <value>]
 
 FLAGS
-  --json                   Output as JSON
-  --managed-by-id=<value>  User ID of the account manager
-  --name=<value>           (required) Name of the client account
-  --website-url=<value>    Website URL for the client account
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --managed-by-id=<value>    User ID of the account manager
+  --name=<value>             (required) Name of the client account
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
+  --website-url=<value>      Website URL for the client account
 
 DESCRIPTION
   Create a client account
@@ -545,14 +696,18 @@ Delete a client account
 
 ```
 USAGE
-  $ databox client delete CLIENTID [--json] [--force]
+  $ databox client delete CLIENTID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
 
 ARGUMENTS
   CLIENTID  The client account ID to delete
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Delete a client account
@@ -571,13 +726,17 @@ Get client account details
 
 ```
 USAGE
-  $ databox client get CLIENTID [--json]
+  $ databox client get CLIENTID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   CLIENTID  The client account ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get client account details
@@ -596,23 +755,32 @@ List client accounts
 
 ```
 USAGE
-  $ databox client list [--json] [--page <value>] [--page-size <value>] [--search <value>] [--sort-by <value>]
-    [--sort-order asc|desc]
+  $ databox client list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--search <value>] [--sort-by <value>] [--sort-order asc|desc]
 
 FLAGS
-  --json                 Output as JSON
+  --all                  Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json                 Output as JSON (shorthand for --output json)
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
   --page=<value>         Page number (0-indexed)
-  --page-size=<value>    Number of items per page
+  --page-size=<value>    Number of items per page (max 100)
   --search=<value>       Search by name
   --sort-by=<value>      Field to sort by
   --sort-order=<option>  Sort direction
                          <options: asc|desc>
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List client accounts
 
+  --sort-by takes name, website or managedBy. The CLI does not restrict it: the value is passed to the API as given.
+
 EXAMPLES
   $ databox client list
+
+  $ databox client list --sort-by name --sort-order asc
 
   $ databox client list --json
 ```
@@ -625,15 +793,20 @@ Update a client account
 
 ```
 USAGE
-  $ databox client update CLIENTID [--json] [--managed-by-id <value>] [--name <value>] [--website-url <value>]
+  $ databox client update CLIENTID [--no-color] [--output table|json|csv | --json] [--verbose] [--managed-by-id
+    <value>] [--name <value>] [--website-url <value>]
 
 ARGUMENTS
   CLIENTID  The client account ID to update
 
 FLAGS
-  --json                   Output as JSON
+  --json                   Output as JSON (shorthand for --output json)
   --managed-by-id=<value>  User ID of the account manager
   --name=<value>           New name for the client account
+  --no-color               Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>        [default: table] Output format
+                           <options: table|json|csv>
+  --verbose                Print each request and response (method, URL, status, duration, request ID) to stderr
   --website-url=<value>    New website URL
 
 DESCRIPTION
@@ -655,14 +828,18 @@ Delete a connection
 
 ```
 USAGE
-  $ databox connection delete CONNECTIONID [--json] [--force]
+  $ databox connection delete CONNECTIONID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
 
 ARGUMENTS
   CONNECTIONID  The connection ID to delete
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Delete a connection
@@ -681,13 +858,17 @@ Get connection details
 
 ```
 USAGE
-  $ databox connection get CONNECTIONID [--json]
+  $ databox connection get CONNECTIONID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   CONNECTIONID  The connection ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get connection details
@@ -706,13 +887,19 @@ List connections
 
 ```
 USAGE
-  $ databox connection list [--json] [--page <value>] [--page-size <value>] [--search <value>]
+  $ databox connection list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--search <value>]
 
 FLAGS
-  --json               Output as JSON
+  --all                Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
   --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --page-size=<value>  Number of items per page (max 100)
   --search=<value>     Search by connection name
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List connections
@@ -733,13 +920,17 @@ Show connection permissions
 
 ```
 USAGE
-  $ databox connection permissions CONNECTIONID [--json]
+  $ databox connection permissions CONNECTIONID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   CONNECTIONID  The connection ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show connection permissions
@@ -758,28 +949,36 @@ Update connection permissions
 
 ```
 USAGE
-  $ databox connection set-permissions CONNECTIONID --access-level everyone|selectedUsers|private [--json] [--access-list
-    <value>...] [--shared-with-clients]
+  $ databox connection set-permissions CONNECTIONID --access-level everyone|selectedUsers|private --shared-with-clients
+    [--no-color] [--output table|json|csv | --json] [--verbose] [--access-list <value>...]
 
 ARGUMENTS
   CONNECTIONID  The connection ID
 
 FLAGS
-  --access-level=<option>   (required) Access level for the connection
-                            <options: everyone|selectedUsers|private>
-  --access-list=<value>...  User ID granted access (repeat for several)
-  --json                    Output as JSON
-  --shared-with-clients     Share this connection with client accounts
+  --access-level=<option>     (required) Access level for the connection
+                              <options: everyone|selectedUsers|private>
+  --access-list=<value>...    User ID granted access, with --access-level selectedUsers (repeat for several)
+  --json                      Output as JSON (shorthand for --output json)
+  --no-color                  Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>           [default: table] Output format
+                              <options: table|json|csv>
+  --[no-]shared-with-clients  (required) Share this connection with client accounts (--no-shared-with-clients to stop
+                              sharing)
+  --verbose                   Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Update connection permissions
 
+  --shared-with-clients or --no-shared-with-clients is required: the API replaces the sharing setting on every call, so
+  leaving it out would silently un-share the connection.
+
 EXAMPLES
-  $ databox connection set-permissions 12345 --access-level everyone
+  $ databox connection set-permissions 12345 --access-level everyone --shared-with-clients
 
-  $ databox connection set-permissions 12345 --access-level private --json
+  $ databox connection set-permissions 12345 --access-level private --no-shared-with-clients --json
 
-  $ databox connection set-permissions 12345 --access-level selectedUsers --access-list 31
+  $ databox connection set-permissions 12345 --access-level selectedUsers --access-list 31 --no-shared-with-clients
 ```
 
 _See code: [src/commands/connection/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/connection/set-permissions.ts)_
@@ -790,14 +989,18 @@ Update a connection
 
 ```
 USAGE
-  $ databox connection update CONNECTIONID [--json] [--name <value>]
+  $ databox connection update CONNECTIONID [--no-color] [--output table|json|csv | --json] [--verbose] [--name <value>]
 
 ARGUMENTS
   CONNECTIONID  The connection ID to update
 
 FLAGS
-  --json          Output as JSON
-  --name=<value>  New name for the connection
+  --json             Output as JSON (shorthand for --output json)
+  --name=<value>     New name for the connection
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Update a connection
@@ -816,13 +1019,20 @@ Create a new data source
 
 ```
 USAGE
-  $ databox data-source create --name <value> [--json] [--integration-key <value>] [--timezone <value>]
+  $ databox data-source create --name <value> [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--idempotency-key <value>] [--integration-key <value>] [--timezone <value>]
 
 FLAGS
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
   --integration-key=<value>  Integration key for the data source (e.g., Datadoo)
-  --json                     Output as JSON
+  --json                     Output as JSON (shorthand for --output json)
   --name=<value>             (required) Name of the data source
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
   --timezone=<value>         Timezone for the data source
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Create a new data source
@@ -845,21 +1055,34 @@ List datasets for a data source
 
 ```
 USAGE
-  $ databox data-source datasets DATASOURCEID [--json] [--page <value>] [--page-size <value>]
+  $ databox data-source datasets DATASOURCEID [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page
+    <value>] [--page-size <value>] [--search <value>] [--sort-by name|createdAt|lastActivityAt] [--sort-order asc|desc]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --all                  Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json                 Output as JSON (shorthand for --output json)
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
+  --page=<value>         Page number (0-indexed)
+  --page-size=<value>    Number of items per page (max 100)
+  --search=<value>       Search by name
+  --sort-by=<option>     Field to sort by
+                         <options: name|createdAt|lastActivityAt>
+  --sort-order=<option>  Sort direction
+                         <options: asc|desc>
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List datasets for a data source
 
 EXAMPLES
   $ databox data-source datasets 12345
+
+  $ databox data-source datasets 12345 --search "orders" --sort-by name
 
   $ databox data-source datasets 12345 --page 0 --page-size 10
 
@@ -874,14 +1097,18 @@ Delete a data source
 
 ```
 USAGE
-  $ databox data-source delete DATASOURCEID [--json] [--force]
+  $ databox data-source delete DATASOURCEID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source to delete
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Delete a data source
@@ -900,13 +1127,17 @@ Get details of a data source
 
 ```
 USAGE
-  $ databox data-source get DATASOURCEID [--json]
+  $ databox data-source get DATASOURCEID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get details of a data source
@@ -925,18 +1156,26 @@ List all data sources
 
 ```
 USAGE
-  $ databox data-source list [--json] [--connection-id <value>] [--page <value>] [--page-size <value>] [--search
-    <value>] [--sort-by <value>] [--sort-order asc|desc]
+  $ databox data-source list [--no-color] [--output table|json|csv | --json] [--verbose] [--connection-id <value>]
+    [--all | --page <value>] [--page-size <value>] [--search <value>] [--sort-by name|createdAt|lastActivityAt]
+    [--sort-order asc|desc]
 
 FLAGS
+  --all                    Fetch every page (100 items per request unless --page-size is given) and print them as one
+                           list
   --connection-id=<value>  Filter by connection ID
-  --json                   Output as JSON
+  --json                   Output as JSON (shorthand for --output json)
+  --no-color               Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>        [default: table] Output format
+                           <options: table|json|csv>
   --page=<value>           Page number (0-indexed)
-  --page-size=<value>      Number of items per page
+  --page-size=<value>      Number of items per page (max 100)
   --search=<value>         Search by name
-  --sort-by=<value>        Field to sort by
+  --sort-by=<option>       Field to sort by
+                           <options: name|createdAt|lastActivityAt>
   --sort-order=<option>    Sort direction
                            <options: asc|desc>
+  --verbose                Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List all data sources
@@ -945,6 +1184,8 @@ EXAMPLES
   $ databox data-source list
 
   $ databox data-source list --search "Google"
+
+  $ databox data-source list --sort-by lastActivityAt --sort-order desc
 
   $ databox data-source list --page 0 --page-size 10 --json
 ```
@@ -957,13 +1198,17 @@ Show permissions for a data source
 
 ```
 USAGE
-  $ databox data-source permissions DATASOURCEID [--json]
+  $ databox data-source permissions DATASOURCEID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show permissions for a data source
@@ -982,14 +1227,21 @@ Purge all data from a data source
 
 ```
 USAGE
-  $ databox data-source purge DATASOURCEID [--json] [--force]
+  $ databox data-source purge DATASOURCEID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
+    [--idempotency-key <value>]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source to purge
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force                    Skip confirmation prompt
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Purge all data from a data source
@@ -1008,25 +1260,34 @@ Set permissions for a data source
 
 ```
 USAGE
-  $ databox data-source set-permissions DATASOURCEID --access-level everyone|selectedUsers [--json] [--access-list
-  <value>...]
+  $ databox data-source set-permissions DATASOURCEID --access-level everyone|selectedUsers|private [--no-color] [--output
+    table|json|csv | --json] [--verbose] [--access-list <value>...]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
   --access-level=<option>   (required) Access level
-                            <options: everyone|selectedUsers>
-  --access-list=<value>...  User ID granted access (repeat for several)
-  --json                    Output as JSON
+                            <options: everyone|selectedUsers|private>
+  --access-list=<value>...  User ID granted access, with --access-level selectedUsers (repeat for several)
+  --json                    Output as JSON (shorthand for --output json)
+  --no-color                Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>         [default: table] Output format
+                            <options: table|json|csv>
+  --verbose                 Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set permissions for a data source
+
+  everyone grants every user in the account; selectedUsers grants only the users in --access-list; private grants no one
+  explicitly. Admins and the account owner always keep access.
 
 EXAMPLES
   $ databox data-source set-permissions 12345 --access-level everyone
 
   $ databox data-source set-permissions 12345 --access-level selectedUsers --access-list 31 --access-list 42
+
+  $ databox data-source set-permissions 12345 --access-level private
 ```
 
 _See code: [src/commands/data-source/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/set-permissions.ts)_
@@ -1037,22 +1298,31 @@ Set the sync frequency for a data source
 
 ```
 USAGE
-  $ databox data-source set-sync-frequency DATASOURCEID --interval <value> [--json]
+  $ databox data-source set-sync-frequency DATASOURCEID --interval 1|15|60|240|360|480|1440 [--no-color] [--output table|json|csv |
+    --json] [--verbose]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
-  --interval=<value>  (required) Sync interval in minutes
-  --json              Output as JSON
+  --interval=<option>  (required) Sync interval in minutes
+                       <options: 1|15|60|240|360|480|1440>
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set the sync frequency for a data source
 
+  Prints a confirmation; --json or --output csv prints the updated data source instead. Run "data-source
+  sync-frequency-options" to see which intervals your plan includes.
+
 EXAMPLES
   $ databox data-source set-sync-frequency 12345 --interval 60
 
-  $ databox data-source set-sync-frequency 12345 --interval 1440
+  $ databox data-source set-sync-frequency 12345 --interval 1440 --json
 ```
 
 _See code: [src/commands/data-source/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/set-sync-frequency.ts)_
@@ -1063,52 +1333,63 @@ Set the timezone for a data source
 
 ```
 USAGE
-  $ databox data-source set-timezone DATASOURCEID --timezone <value> [--json] [--apply-to-datasets] [--purge-data]
+  $ databox data-source set-timezone DATASOURCEID --timezone <value> [--no-color] [--output table|json|csv | --json]
+    [--verbose] [--apply-to-datasets] [--purge-data]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
   --apply-to-datasets  Apply the timezone to the datasets too
-  --json               Output as JSON
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
   --purge-data         Purge existing data when changing the timezone
   --timezone=<value>   (required) Timezone value
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set the timezone for a data source
 
+  Prints a confirmation; --json or --output csv prints the updated data source instead.
+
 EXAMPLES
   $ databox data-source set-timezone 12345 --timezone "US/Eastern"
 
-  $ databox data-source set-timezone 12345 --timezone "Europe/London"
+  $ databox data-source set-timezone 12345 --timezone "Europe/London" --apply-to-datasets --json
 ```
 
 _See code: [src/commands/data-source/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/set-timezone.ts)_
 
-## `databox data-source sync-frequencies DATASOURCEID`
+## `databox data-source sync-frequency-options DATASOURCEID`
 
-List available sync frequencies for a data source
+List the sync frequencies a data source can be set to, and which your plan includes
 
 ```
 USAGE
-  $ databox data-source sync-frequencies DATASOURCEID [--json]
+  $ databox data-source sync-frequency-options DATASOURCEID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List available sync frequencies for a data source
+  List the sync frequencies a data source can be set to, and which your plan includes
 
 EXAMPLES
-  $ databox data-source sync-frequencies 12345
+  $ databox data-source sync-frequency-options 12345
 
-  $ databox data-source sync-frequencies 12345 --json
+  $ databox data-source sync-frequency-options 12345 --json
 ```
 
-_See code: [src/commands/data-source/sync-frequencies.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/sync-frequencies.ts)_
+_See code: [src/commands/data-source/sync-frequency-options.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/data-source/sync-frequency-options.ts)_
 
 ## `databox data-source update DATASOURCEID`
 
@@ -1116,14 +1397,18 @@ Update a data source
 
 ```
 USAGE
-  $ databox data-source update DATASOURCEID --name <value> [--json]
+  $ databox data-source update DATASOURCEID --name <value> [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASOURCEID  ID of the data source to update
 
 FLAGS
-  --json          Output as JSON
-  --name=<value>  (required) New name for the data source
+  --json             Output as JSON (shorthand for --output json)
+  --name=<value>     (required) New name for the data source
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Update a data source
@@ -1142,13 +1427,19 @@ List databoards
 
 ```
 USAGE
-  $ databox databoard list [--json] [--page <value>] [--page-size <value>] [--search <value>]
+  $ databox databoard list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--search <value>]
 
 FLAGS
-  --json               Output as JSON
+  --all                Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
   --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --page-size=<value>  Number of items per page (max 100)
   --search=<value>     Search by databoard name
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List databoards
@@ -1165,20 +1456,27 @@ _See code: [src/commands/databoard/list.ts](https://github.com/databox/databox-c
 
 ## `databox databoard metrics DATABOARDID`
 
-Get metrics for a databoard
+Get the metrics on a databoard
 
 ```
 USAGE
-  $ databox databoard metrics DATABOARDID [--json]
+  $ databox databoard metrics DATABOARDID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATABOARDID  The databoard ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Get metrics for a databoard
+  Get the metrics on a databoard
+
+  One row per metric on each datablock; a datablock without metrics gets one row of its own. --json returns the whole
+  response, including each metric's applied filters, which "metric drilldown --filters" accepts as they are.
 
 EXAMPLES
   $ databox databoard metrics 12345
@@ -1188,46 +1486,24 @@ EXAMPLES
 
 _See code: [src/commands/databoard/metrics.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/databoard/metrics.ts)_
 
-## `databox dataset add-modification DATASETID`
-
-Add a modification to a dataset
-
-```
-USAGE
-  $ databox dataset add-modification DATASETID --data <value> [--json]
-
-ARGUMENTS
-  DATASETID  The dataset ID
-
-FLAGS
-  --data=<value>  (required) JSON object with modification data (columnId, type, etc.)
-  --json          Output as JSON
-
-DESCRIPTION
-  Add a modification to a dataset
-
-EXAMPLES
-  $ databox dataset add-modification 12345 --data '{"columnId":"revenue","type":"sum"}'
-
-  $ databox dataset add-modification 12345 --data '{"columnId":"revenue","type":"sum"}' --json
-```
-
-_See code: [src/commands/dataset/add-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/add-modification.ts)_
-
 ## `databox dataset clear-modifications DATASETID`
 
 Clear all modifications from a dataset
 
 ```
 USAGE
-  $ databox dataset clear-modifications DATASETID [--json] [--force]
+  $ databox dataset clear-modifications DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Clear all modifications from a dataset
@@ -1246,13 +1522,17 @@ Get column metadata for a dataset
 
 ```
 USAGE
-  $ databox dataset column-metadata DATASETID [--json]
+  $ databox dataset column-metadata DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get column metadata for a dataset
@@ -1271,15 +1551,22 @@ Create a new dataset
 
 ```
 USAGE
-  $ databox dataset create --data-source-id <value> --name <value> [--json] [--primary-key <value>...] [--schema
-    <value>]
+  $ databox dataset create --data-source-id <value> --name <value> [--no-color] [--output table|json|csv | --json]
+    [--verbose] [--idempotency-key <value>] [--primary-key <value>...] [--schema <value>]
 
 FLAGS
-  --data-source-id=<value>  (required) ID of the data source to associate with
-  --json                    Output as JSON
-  --name=<value>            (required) Name of the dataset
-  --primary-key=<value>...  Primary key column names
-  --schema=<value>          JSON string of schema columns (array of {columnId, dataType})
+  --data-source-id=<value>   (required) ID of the data source to associate with
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --name=<value>             (required) Name of the dataset
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --primary-key=<value>...   Primary key column names
+  --schema=<value>           JSON array of schema columns, each {id, dataType} with dataType one of string, number,
+                             datetime
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Create a new dataset
@@ -1289,7 +1576,7 @@ EXAMPLES
 
   $ databox dataset create --name "My Dataset" --data-source-id 123 --primary-key date --primary-key campaign
 
-  $ databox dataset create --name "My Dataset" --data-source-id 123 --schema '[{"columnId":"date","dataType":"datetime"},{"columnId":"value","dataType":"number"}]'
+  $ databox dataset create --name "My Dataset" --data-source-id 123 --schema '[{"id":"date","dataType":"datetime"},{"id":"value","dataType":"number"}]'
 
   $ databox dataset create --name "My Dataset" --data-source-id 123 --json
 ```
@@ -1302,23 +1589,39 @@ Get data from a dataset
 
 ```
 USAGE
-  $ databox dataset data DATASETID [--json] [--page <value>] [--page-size <value>]
+  $ databox dataset data DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page
+    <value>] [--page-size <value>] [--sort-by <value>] [--sort-order asc|desc]
 
 ARGUMENTS
   DATASETID  The dataset ID to get data from
 
 FLAGS
-  --json               Output as JSON
-  --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --all                  Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json                 Output as JSON (shorthand for --output json)
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
+  --page=<value>         Page number (0-indexed)
+  --page-size=<value>    Number of items per page (max 1000)
+  --sort-by=<value>      Field to sort by
+  --sort-order=<option>  Sort direction
+                         <options: asc|desc>
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get data from a dataset
+
+  Columns follow the dataset schema: in its order, headed by display name, without the columns a modification hid.
+  --json returns the whole response: the rows under "items", with "schema" and "lastUpdatedAt".
 
 EXAMPLES
   $ databox dataset data 12345
 
   $ databox dataset data 12345 --page 0 --page-size 10
+
+  $ databox dataset data 12345 --sort-by amount --sort-order desc
+
+  $ databox dataset data 12345 --output csv > rows.csv
 
   $ databox dataset data 12345 --json
 ```
@@ -1331,14 +1634,18 @@ Delete a dataset
 
 ```
 USAGE
-  $ databox dataset delete DATASETID [--json] [--force]
+  $ databox dataset delete DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
 
 ARGUMENTS
   DATASETID  The dataset ID to delete
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Delete a dataset
@@ -1357,14 +1664,21 @@ Duplicate a dataset (not supported for datasets created through the API)
 
 ```
 USAGE
-  $ databox dataset duplicate DATASETID [--json] [--name <value>]
+  $ databox dataset duplicate DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--idempotency-key
+    <value>] [--name <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to duplicate
 
 FLAGS
-  --json          Output as JSON
-  --name=<value>  Name for the duplicate (defaults to a server-generated name)
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --name=<value>             Name for the duplicate (defaults to a server-generated name)
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Duplicate a dataset (not supported for datasets created through the API)
@@ -1383,13 +1697,17 @@ Get details of a specific dataset
 
 ```
 USAGE
-  $ databox dataset get DATASETID [--json]
+  $ databox dataset get DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID to retrieve
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get details of a specific dataset
@@ -1408,15 +1726,22 @@ Ingest data into a dataset
 
 ```
 USAGE
-  $ databox dataset ingest DATASETID [--json] [--file <value> | --records <value>]
+  $ databox dataset ingest DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--file <value> |
+    --records <value>] [--idempotency-key <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to ingest data into
 
 FLAGS
-  --file=<value>     Path to a JSON file containing records array
-  --json             Output as JSON
-  --records=<value>  Inline JSON array of records
+  --file=<value>             Path to a JSON file containing records array
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --records=<value>          Inline JSON array of records
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Ingest data into a dataset
@@ -1439,14 +1764,18 @@ Get details of a specific ingestion
 
 ```
 USAGE
-  $ databox dataset ingestion DATASETID INGESTIONID [--json]
+  $ databox dataset ingestion DATASETID INGESTIONID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID    The dataset ID
   INGESTIONID  The ingestion ID to retrieve
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get details of a specific ingestion
@@ -1465,13 +1794,17 @@ Get ingestion statistics for a dataset
 
 ```
 USAGE
-  $ databox dataset ingestion-statistics DATASETID [--json]
+  $ databox dataset ingestion-statistics DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get ingestion statistics for a dataset
@@ -1490,15 +1823,21 @@ List ingestions for a dataset
 
 ```
 USAGE
-  $ databox dataset ingestions DATASETID [--json] [--page <value>] [--page-size <value>]
+  $ databox dataset ingestions DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page
+    <value>] [--page-size <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to list ingestions for
 
 FLAGS
-  --json               Output as JSON
+  --all                Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
   --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --page-size=<value>  Number of items per page (max 100)
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List ingestions for a dataset
@@ -1519,16 +1858,24 @@ Show dataset lineage (parents and children)
 
 ```
 USAGE
-  $ databox dataset lineage DATASETID [--json]
+  $ databox dataset lineage DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show dataset lineage (parents and children)
+
+  Parents are the data sources and datasets this dataset is built from; children are the datasets and metrics built from
+  it. Type is dataSource, dataset, mergedDataset, basicMetric or customMetric. A metric's ID is its key, so IDs are
+  strings.
 
 EXAMPLES
   $ databox dataset lineage 12345
@@ -1544,18 +1891,26 @@ List datasets
 
 ```
 USAGE
-  $ databox dataset list [--json] [--data-source-id <value>] [--page <value>] [--page-size <value>] [--search
-    <value>] [--sort-by <value>] [--sort-order asc|desc]
+  $ databox dataset list [--no-color] [--output table|json|csv | --json] [--verbose] [--data-source-id <value>]
+    [--all | --page <value>] [--page-size <value>] [--search <value>] [--sort-by name|createdAt|lastActivityAt]
+    [--sort-order asc|desc]
 
 FLAGS
+  --all                     Fetch every page (100 items per request unless --page-size is given) and print them as one
+                            list
   --data-source-id=<value>  Filter by data source ID
-  --json                    Output as JSON
+  --json                    Output as JSON (shorthand for --output json)
+  --no-color                Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>         [default: table] Output format
+                            <options: table|json|csv>
   --page=<value>            Page number (0-indexed)
-  --page-size=<value>       Number of items per page
+  --page-size=<value>       Number of items per page (max 100)
   --search=<value>          Search by name
-  --sort-by=<value>         Field to sort by
+  --sort-by=<option>        Field to sort by
+                            <options: name|createdAt|lastActivityAt>
   --sort-order=<option>     Sort direction
                             <options: asc|desc>
+  --verbose                 Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List datasets
@@ -1564,6 +1919,8 @@ EXAMPLES
   $ databox dataset list
 
   $ databox dataset list --search "revenue"
+
+  $ databox dataset list --sort-by lastActivityAt --sort-order desc
 
   $ databox dataset list --page 0 --page-size 10
 
@@ -1578,13 +1935,17 @@ Get metadata for a dataset
 
 ```
 USAGE
-  $ databox dataset metadata DATASETID [--json]
+  $ databox dataset metadata DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get metadata for a dataset
@@ -1597,41 +1958,55 @@ EXAMPLES
 
 _See code: [src/commands/dataset/metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/metadata.ts)_
 
-## `databox dataset modification-formulas`
+## `databox dataset modification-functions`
 
-List available modification formulas
+List the functions available to modification formulas
 
 ```
 USAGE
-  $ databox dataset modification-formulas [--json]
+  $ databox dataset modification-functions [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List available modification formulas
+  List the functions available to modification formulas
+
+  --json also includes each function's parameters and an example.
 
 EXAMPLES
-  $ databox dataset modification-formulas
+  $ databox dataset modification-functions
 
-  $ databox dataset modification-formulas --json
+  $ databox dataset modification-functions --json
 ```
 
-_See code: [src/commands/dataset/modification-formulas.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/modification-formulas.ts)_
+_See code: [src/commands/dataset/modification-functions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/modification-functions.ts)_
 
 ## `databox dataset modification-rules`
 
-List available modification rules
+List the filter operators and type conversions modifications accept
 
 ```
 USAGE
-  $ databox dataset modification-rules [--json]
+  $ databox dataset modification-rules [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List available modification rules
+  List the filter operators and type conversions modifications accept
+
+  Filter operators are what "filters" conditions take as "type", per column type. Type conversions are what "dataTypes"
+  accepts as "outputLogicalType" (and "inputFormat"), per current column type, followed by the output formats and
+  scales.
 
 EXAMPLES
   $ databox dataset modification-rules
@@ -1643,20 +2018,27 @@ _See code: [src/commands/dataset/modification-rules.ts](https://github.com/datab
 
 ## `databox dataset modifications DATASETID`
 
-List modifications for a dataset
+Show a dataset's modification definition
 
 ```
 USAGE
-  $ databox dataset modifications DATASETID [--json]
+  $ databox dataset modifications DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List modifications for a dataset
+  Show a dataset's modification definition
+
+  The table has one row per column, in the dataset's column order. --json returns the definition as the API does:
+  {filters, formulas, displayNames, dataTypes, order, visibility}, the input "dataset update-modification" takes.
 
 EXAMPLES
   $ databox dataset modifications 12345
@@ -1672,13 +2054,17 @@ Get permissions for a dataset
 
 ```
 USAGE
-  $ databox dataset permissions DATASETID [--json]
+  $ databox dataset permissions DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get permissions for a dataset
@@ -1693,28 +2079,41 @@ _See code: [src/commands/dataset/permissions.ts](https://github.com/databox/data
 
 ## `databox dataset preview-modification DATASETID`
 
-Preview a dataset modification before applying
+Preview a dataset modification without saving it
 
 ```
 USAGE
-  $ databox dataset preview-modification DATASETID --data <value> [--json] [--page <value>] [--page-size <value>]
+  $ databox dataset preview-modification DATASETID --data <value> [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--sort-by <value>] [--sort-order asc|desc]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --data=<value>       (required) JSON string with modification rules to preview
-  --json               Output as JSON
-  --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --data=<value>         (required) JSON modification definition to preview: filters, formulas, displayNames, dataTypes,
+                         order, visibility
+  --json                 Output as JSON (shorthand for --output json)
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
+  --sort-by=<value>      Field to sort by
+  --sort-order=<option>  Sort direction
+                         <options: asc|desc>
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Preview a dataset modification before applying
+  Preview a dataset modification without saving it
+
+  --data takes the same definition as "dataset update-modification". The preview is a sample, not a paged read: it shows
+  up to 200 rows and how many matched in all. Use "dataset data" to page through a dataset. --json returns the whole
+  response: {items, pagination: {totalItems}, schema}.
 
 EXAMPLES
-  $ databox dataset preview-modification 12345 --data '{"rules":{...}}'
+  $ databox dataset preview-modification 12345 --data '{"filters":{"amount":{"logicalOperator":"AND","conditions":[{"type":"greater_than","value":100}]}}}'
 
-  $ databox dataset preview-modification 12345 --data '{"rules":{...}}' --json
+  $ databox dataset preview-modification 12345 --data '{"formulas":{"totalWithTax":"$amount * 1.2"}}' --sort-by totalWithTax --sort-order desc
+
+  $ databox dataset preview-modification 12345 --data '{"displayNames":{"amount":"Revenue"}}' --json
 ```
 
 _See code: [src/commands/dataset/preview-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/preview-modification.ts)_
@@ -1725,14 +2124,21 @@ Purge all data from a dataset
 
 ```
 USAGE
-  $ databox dataset purge DATASETID [--json] [--force]
+  $ databox dataset purge DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
+    [--idempotency-key <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to purge data from
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force                    Skip confirmation prompt
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Purge all data from a dataset
@@ -1751,16 +2157,23 @@ Get the schema of a dataset
 
 ```
 USAGE
-  $ databox dataset schema DATASETID [--json]
+  $ databox dataset schema DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get the schema of a dataset
+
+  The table is followed by the primary key: "n/a" for a dataset that cannot have one, "none" for an ingestion dataset
+  created without one. --json returns the whole response, {items, primaryKey}.
 
 EXAMPLES
   $ databox dataset schema 12345
@@ -1776,22 +2189,31 @@ Update column metadata for a dataset
 
 ```
 USAGE
-  $ databox dataset set-column-metadata DATASETID --columns <value> [--json]
+  $ databox dataset set-column-metadata DATASETID --columns <value> [--no-color] [--output table|json|csv | --json]
+  [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --columns=<value>  (required) JSON array of column metadata objects ({columnId, displayName?, description?})
-  --json             Output as JSON
+  --columns=<value>  (required) JSON array of column metadata updates ({id, description?, conceptType?, synonyms?})
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Update column metadata for a dataset
 
-EXAMPLES
-  $ databox dataset set-column-metadata 12345 --columns '[{"columnId":"revenue","displayName":"Revenue ($)"}]'
+  Each column is {id, description?, conceptType?, synonyms?}. conceptType is measure, dimension or timeDimension;
+  synonyms is an array of alternative names. Display names are not set here: rename a column through "dataset
+  update-modification" (displayNames). Prints the dataset's column metadata after the update.
 
-  $ databox dataset set-column-metadata 12345 --columns '[{"columnId":"revenue","displayName":"Revenue ($)"}]' --json
+EXAMPLES
+  $ databox dataset set-column-metadata 12345 --columns '[{"id":"revenue","description":"Order value in USD","conceptType":"measure"}]'
+
+  $ databox dataset set-column-metadata 12345 --columns '[{"id":"country","conceptType":"dimension","synonyms":["nation","market"]}]' --json
 ```
 
 _See code: [src/commands/dataset/set-column-metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-column-metadata.ts)_
@@ -1802,17 +2224,22 @@ Update metadata for a dataset
 
 ```
 USAGE
-  $ databox dataset set-metadata DATASETID [--json] [--description <value>] [--default-time-dimension <value>] [--synonyms
-    <value>]
+  $ databox dataset set-metadata DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--default-time-dimension <value>] [--description <value>] [--synonyms <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --default-time-dimension=<value>  Column ID to use as the default time dimension
+  --default-time-dimension=<value>  ID of a datetime column to use as the default time dimension
   --description=<value>             Dataset description
-  --json                            Output as JSON
+  --json                            Output as JSON (shorthand for --output json)
+  --no-color                        Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>                 [default: table] Output format
+                                    <options: table|json|csv>
   --synonyms=<value>                JSON array of synonyms
+  --verbose                         Print each request and response (method, URL, status, duration, request ID) to
+                                    stderr
 
 DESCRIPTION
   Update metadata for a dataset
@@ -1821,6 +2248,8 @@ EXAMPLES
   $ databox dataset set-metadata 12345 --description "Revenue tracking"
 
   $ databox dataset set-metadata 12345 --synonyms '["finance","quarterly"]'
+
+  $ databox dataset set-metadata 12345 --default-time-dimension order_date
 ```
 
 _See code: [src/commands/dataset/set-metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-metadata.ts)_
@@ -1831,24 +2260,34 @@ Set permissions for a dataset
 
 ```
 USAGE
-  $ databox dataset set-permissions DATASETID --access-level everyone|selectedUsers [--json] [--access-list <value>...]
+  $ databox dataset set-permissions DATASETID --access-level everyone|selectedUsers|private [--no-color] [--output
+    table|json|csv | --json] [--verbose] [--access-list <value>...]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
   --access-level=<option>   (required) Access level
-                            <options: everyone|selectedUsers>
-  --access-list=<value>...  User ID granted access (repeat for several)
-  --json                    Output as JSON
+                            <options: everyone|selectedUsers|private>
+  --access-list=<value>...  User ID granted access, with --access-level selectedUsers (repeat for several)
+  --json                    Output as JSON (shorthand for --output json)
+  --no-color                Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>         [default: table] Output format
+                            <options: table|json|csv>
+  --verbose                 Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set permissions for a dataset
+
+  everyone grants every user in the account; selectedUsers grants only the users in --access-list; private grants no one
+  explicitly. Admins and the account owner always keep access.
 
 EXAMPLES
   $ databox dataset set-permissions 12345 --access-level everyone
 
   $ databox dataset set-permissions 12345 --access-level selectedUsers --access-list 31 --access-list 42
+
+  $ databox dataset set-permissions 12345 --access-level private
 ```
 
 _See code: [src/commands/dataset/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-permissions.ts)_
@@ -1859,22 +2298,31 @@ Set the sync frequency for a dataset
 
 ```
 USAGE
-  $ databox dataset set-sync-frequency DATASETID --interval <value> [--json]
+  $ databox dataset set-sync-frequency DATASETID --interval 1|15|60|240|360|480|1440 [--no-color] [--output table|json|csv |
+    --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --interval=<value>  (required) Sync interval in minutes
-  --json              Output as JSON
+  --interval=<option>  (required) Sync interval in minutes
+                       <options: 1|15|60|240|360|480|1440>
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set the sync frequency for a dataset
 
+  Prints a confirmation; --json or --output csv prints the updated dataset instead. Run "dataset sync-frequency-options"
+  to see which intervals your plan includes.
+
 EXAMPLES
   $ databox dataset set-sync-frequency 12345 --interval 60
 
-  $ databox dataset set-sync-frequency 12345 --interval 1440
+  $ databox dataset set-sync-frequency 12345 --interval 1440 --json
 ```
 
 _See code: [src/commands/dataset/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-sync-frequency.ts)_
@@ -1885,23 +2333,30 @@ Set the timezone for a dataset
 
 ```
 USAGE
-  $ databox dataset set-timezone DATASETID --timezone <value> [--json] [--purge-data]
+  $ databox dataset set-timezone DATASETID --timezone <value> [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--purge-data]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json              Output as JSON
+  --json              Output as JSON (shorthand for --output json)
+  --no-color          Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>   [default: table] Output format
+                      <options: table|json|csv>
   --purge-data        Purge existing data when changing the timezone
   --timezone=<value>  (required) Timezone to set
+  --verbose           Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set the timezone for a dataset
 
+  Prints a confirmation; --json or --output csv prints the updated dataset instead.
+
 EXAMPLES
   $ databox dataset set-timezone 12345 --timezone "US/Eastern"
 
-  $ databox dataset set-timezone 12345 --timezone "Europe/London"
+  $ databox dataset set-timezone 12345 --timezone "Europe/London" --json
 ```
 
 _See code: [src/commands/dataset/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-timezone.ts)_
@@ -1912,51 +2367,63 @@ Set verification status for a dataset
 
 ```
 USAGE
-  $ databox dataset set-verification DATASETID --status verified|unverified [--json]
+  $ databox dataset set-verification DATASETID --status verified|unverified [--no-color] [--output table|json|csv | --json]
+    [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json             Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
   --status=<option>  (required) Verification status
                      <options: verified|unverified>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set verification status for a dataset
 
+  Prints a confirmation; --json or --output csv prints the resulting verification (isVerified, verifiedAt, verifiedBy)
+  instead.
+
 EXAMPLES
   $ databox dataset set-verification 12345 --status verified
 
-  $ databox dataset set-verification 12345 --status unverified
+  $ databox dataset set-verification 12345 --status unverified --json
 ```
 
 _See code: [src/commands/dataset/set-verification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/set-verification.ts)_
 
-## `databox dataset sync-frequencies DATASETID`
+## `databox dataset sync-frequency-options DATASETID`
 
-List available sync frequencies for a dataset
+List the sync frequencies a dataset can be set to, and which your plan includes
 
 ```
 USAGE
-  $ databox dataset sync-frequencies DATASETID [--json]
+  $ databox dataset sync-frequency-options DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List available sync frequencies for a dataset
+  List the sync frequencies a dataset can be set to, and which your plan includes
 
 EXAMPLES
-  $ databox dataset sync-frequencies 12345
+  $ databox dataset sync-frequency-options 12345
 
-  $ databox dataset sync-frequencies 12345 --json
+  $ databox dataset sync-frequency-options 12345 --json
 ```
 
-_See code: [src/commands/dataset/sync-frequencies.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/sync-frequencies.ts)_
+_See code: [src/commands/dataset/sync-frequency-options.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/sync-frequency-options.ts)_
 
 ## `databox dataset sync-history DATASETID`
 
@@ -1964,15 +2431,21 @@ Show sync history for a dataset
 
 ```
 USAGE
-  $ databox dataset sync-history DATASETID [--json] [--page <value>] [--page-size <value>]
+  $ databox dataset sync-history DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page
+    <value>] [--page-size <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json               Output as JSON
+  --all                Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
   --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
+  --page-size=<value>  Number of items per page (max 100)
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show sync history for a dataset
@@ -1981,6 +2454,8 @@ EXAMPLES
   $ databox dataset sync-history 12345
 
   $ databox dataset sync-history 12345 --page 0 --page-size 10
+
+  $ databox dataset sync-history 12345 --json
 ```
 
 _See code: [src/commands/dataset/sync-history.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/sync-history.ts)_
@@ -1991,13 +2466,17 @@ Show sync history statistics for a dataset
 
 ```
 USAGE
-  $ databox dataset sync-statistics DATASETID [--json]
+  $ databox dataset sync-statistics DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show sync history statistics for a dataset
@@ -2016,14 +2495,18 @@ Update a dataset
 
 ```
 USAGE
-  $ databox dataset update DATASETID [--json] [--name <value>]
+  $ databox dataset update DATASETID [--no-color] [--output table|json|csv | --json] [--verbose] [--name <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID to update
 
 FLAGS
-  --json          Output as JSON
-  --name=<value>  New name for the dataset
+  --json             Output as JSON (shorthand for --output json)
+  --name=<value>     New name for the dataset
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Update a dataset
@@ -2038,26 +2521,53 @@ _See code: [src/commands/dataset/update.ts](https://github.com/databox/databox-c
 
 ## `databox dataset update-modification DATASETID`
 
-Update a dataset modification
+Create or replace a dataset's modification
 
 ```
 USAGE
-  $ databox dataset update-modification DATASETID --data <value> [--json]
+  $ databox dataset update-modification DATASETID --data <value> [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--idempotency-key <value>]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --data=<value>  (required) JSON string with modification data (rules, displayNames)
-  --json          Output as JSON
+  --data=<value>             (required) JSON modification definition: filters, formulas, displayNames, dataTypes, order,
+                             visibility
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Update a dataset modification
+  Create or replace a dataset's modification
+
+  This replaces the whole definition: a field left out of --data is cleared, not kept. To change part of it, start from
+  "dataset modifications <id> --json" and send it back edited.
+
+  --data takes any of these keys:
+  - filters: per column, {"logicalOperator": "AND", "conditions": [{"type": "greater_than", "value": 100}]}
+  - formulas: computed columns, {"<col>": "$amount * 1.2"}
+  - displayNames: column renames, {"<col>": "Revenue"}
+  - dataTypes: per column, {"outputLogicalType": "currency", "inputFormat": ..., "outputFormat": {"type": ..., "scale":
+  ...}}, the last two optional
+  - order: column IDs in display order
+  - visibility: {"<col>": false} hides a column
+
+  Prints the saved definition, one row per column as "dataset modifications" does.
+
+  "dataset modification-rules" lists the filter operators and type conversions each column type accepts; "dataset
+  modification-functions" lists the formula functions.
 
 EXAMPLES
-  $ databox dataset update-modification 12345 --data '{"rules":{...},"displayNames":{...}}'
+  $ databox dataset update-modification 12345 --data '{"filters":{"amount":{"logicalOperator":"AND","conditions":[{"type":"greater_than","value":100}]}}}'
 
-  $ databox dataset update-modification 12345 --data '{"rules":{...}}' --json
+  $ databox dataset update-modification 12345 --data '{"formulas":{"totalWithTax":"$amount * 1.2"},"displayNames":{"amount":"Revenue"}}'
+
+  $ databox dataset update-modification 12345 --data '{"dataTypes":{"amount":{"outputLogicalType":"currency"}},"visibility":{"orderId":false}}' --json
 ```
 
 _See code: [src/commands/dataset/update-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/dataset/update-modification.ts)_
@@ -2068,13 +2578,17 @@ Get verification status for a dataset
 
 ```
 USAGE
-  $ databox dataset verification DATASETID [--json]
+  $ databox dataset verification DATASETID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get verification status for a dataset
@@ -2113,13 +2627,17 @@ Get integration details
 
 ```
 USAGE
-  $ databox integration get INTEGRATIONID [--json]
+  $ databox integration get INTEGRATIONID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   INTEGRATIONID  The integration ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get integration details
@@ -2138,17 +2656,23 @@ List available integrations
 
 ```
 USAGE
-  $ databox integration list [--json] [--page <value>] [--page-size <value>] [--search <value>] [--sort-by <value>]
-    [--sort-order asc|desc]
+  $ databox integration list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--search <value>] [--sort-by name] [--sort-order asc|desc]
 
 FLAGS
-  --json                 Output as JSON
+  --all                  Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json                 Output as JSON (shorthand for --output json)
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
   --page=<value>         Page number (0-indexed)
-  --page-size=<value>    Number of items per page
+  --page-size=<value>    Number of items per page (max 100)
   --search=<value>       Search by integration name
-  --sort-by=<value>      Field to sort by
+  --sort-by=<option>     Field to sort by
+                         <options: name>
   --sort-order=<option>  Sort direction
                          <options: asc|desc>
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List available integrations
@@ -2165,66 +2689,49 @@ _See code: [src/commands/integration/list.ts](https://github.com/databox/databox
 
 ## `databox metric create`
 
-Create a custom metric
+Create a custom metric on a dataset
 
 ```
 USAGE
-  $ databox metric create --date <value> --dataset-id <value> --measure <value> --name <value> [--json]
-    [--aggregation-function <value>] [--dimension <value>...] [--filters <value>]
+  $ databox metric create --dataset-id <value> --date <value> --measure <value> --name <value> [--no-color]
+    [--output table|json|csv | --json] [--verbose] [--aggregation-function sum|avg|min|max|count] [--dimension
+    <value>...] [--filters <value>] [--idempotency-key <value>]
 
 FLAGS
-  --aggregation-function=<value>  [default: sum] Aggregation applied to the measure
-  --dataset-id=<value>            (required) Dataset ID to create the metric on
-  --date=<value>                  (required) Date field reference as JSON ({"id":"...","name":"..."})
-  --dimension=<value>...          Dimension field reference as JSON ({"id":"...","name":"..."}); repeat for several
-  --filters=<value>               JSON array of filters ([{"field":"...","operator":"...","values":["..."]}])
-  --json                          Output as JSON
-  --measure=<value>               (required) Measure field reference as JSON ({"id":"...","name":"..."})
-  --name=<value>                  (required) Name of the metric
+  --aggregation-function=<option>  [default: sum] Aggregation applied to the measure
+                                   <options: sum|avg|min|max|count>
+  --dataset-id=<value>             (required) Dataset ID to create the metric on (a dataset, not a data source)
+  --date=<value>                   (required) Date column reference as JSON ({"id":"amount","displayName":"Amount"})
+  --dimension=<value>...           Dimension column reference as JSON ({"id":"amount","displayName":"Amount"}); repeat
+                                   for several
+  --filters=<value>                Filters as JSON: {logicalOperator: and|or, conditions: [{field, operator, values}]},
+                                   e.g. {"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","v
+                                   alues":["US","UK"]}]}
+  --idempotency-key=<value>        A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                                   returns the first response instead of repeating the action
+  --json                           Output as JSON (shorthand for --output json)
+  --measure=<value>                (required) Measure column reference as JSON ({"id":"amount","displayName":"Amount"})
+  --name=<value>                   (required) Name of the metric
+  --no-color                       Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>                [default: table] Output format
+                                   <options: table|json|csv>
+  --verbose                        Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Create a custom metric
+  Create a custom metric on a dataset
+
+  Column references are {"id","displayName"}, with the id taken from "dataset schema". --filters is one group of
+  conditions with a shared logicalOperator (and or or). Prints the new metric as "metric get" does.
 
 EXAMPLES
-  $ databox metric create --name "Revenue" --dataset-id 123 --measure '{"id":"amount","name":"Amount"}' --date '{"id":"created_at","name":"Created At"}'
+  $ databox metric create --name "Revenue" --dataset-id 123 --measure '{"id":"amount","displayName":"Amount"}' --date '{"id":"created_at","displayName":"Created At"}'
 
-  $ databox metric create --name "Revenue" --dataset-id 123 --measure '{"id":"amount","name":"Amount"}' --date '{"id":"created_at","name":"Created At"}' --json
+  $ databox metric create --name "Revenue by country" --dataset-id 123 --measure '{"id":"amount","displayName":"Amount"}' --date '{"id":"created_at","displayName":"Created At"}' --aggregation-function avg --dimension '{"id":"country","displayName":"Country"}'
+
+  $ databox metric create --name "US revenue" --dataset-id 123 --measure '{"id":"amount","displayName":"Amount"}' --date '{"id":"created_at","displayName":"Created At"}' --filters '{"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","values":["US","UK"]}]}' --json
 ```
 
 _See code: [src/commands/metric/create.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/create.ts)_
-
-## `databox metric data`
-
-Load metric data
-
-```
-USAGE
-  $ databox metric data --date-from <value> --date-to <value> --granularity
-    hourly|daily|weekly|monthly|quarterly|yearly|allTime --metric-id <value> [--json] [--data-source-id <value> |
-    --dataset-id <value>] [--dimension <value>...] [--filters <value>]
-
-FLAGS
-  --data-source-id=<value>  Data source ID (alternative to --dataset-id)
-  --dataset-id=<value>      Dataset ID (alternative to --data-source-id)
-  --date-from=<value>       (required) Start date (YYYY-MM-DD)
-  --date-to=<value>         (required) End date (YYYY-MM-DD)
-  --dimension=<value>...    Dimension to break the data down by (repeat for several)
-  --filters=<value>         JSON object: {logicalOperator, groups}
-  --granularity=<option>    (required) Time granularity
-                            <options: hourly|daily|weekly|monthly|quarterly|yearly|allTime>
-  --json                    Output as JSON
-  --metric-id=<value>       (required) Metric ID
-
-DESCRIPTION
-  Load metric data
-
-EXAMPLES
-  $ databox metric data --metric-id "500|custom_query_100" --date-from 2025-01-01 --date-to 2025-12-31 --granularity daily --dataset-id 123
-
-  $ databox metric data --metric-id "GoogleAnalytics4@sessions" --date-from 2025-01-01 --date-to 2025-12-31 --granularity monthly --data-source-id 42 --json
-```
-
-_See code: [src/commands/metric/data.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/data.ts)_
 
 ## `databox metric delete METRICID`
 
@@ -2232,14 +2739,18 @@ Delete a metric
 
 ```
 USAGE
-  $ databox metric delete METRICID [--json] [--force]
+  $ databox metric delete METRICID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
 
 ARGUMENTS
   METRICID  The metric ID to delete
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Delete a metric
@@ -2254,54 +2765,85 @@ _See code: [src/commands/metric/delete.ts](https://github.com/databox/databox-cl
 
 ## `databox metric dimension-values`
 
-Get dimension values for a metric
+Get the values of a metric's dimension
 
 ```
 USAGE
-  $ databox metric dimension-values --dimension <value>... --metric-id <value> --source-id <value> [--json]
+  $ databox metric dimension-values --dimension-id <value> --metric-id <value> --source-id <value> [--no-color] [--output
+    table|json|csv | --json] [--verbose]
 
 FLAGS
-  --dimension=<value>...  (required) Dimension key (repeat for several)
-  --json                  Output as JSON
+  --dimension-id=<value>  (required) Dimension id to list the values of
+  --json                  Output as JSON (shorthand for --output json)
   --metric-id=<value>     (required) Metric ID
-  --source-id=<value>     (required) Source ID of the metric (the sourceId shown by "metric list")
+  --no-color              Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>       [default: table] Output format
+                          <options: table|json|csv>
+  --source-id=<value>     (required) The data source or dataset the metric belongs to (the sourceId shown by "metric
+                          list")
+  --verbose               Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Get dimension values for a metric
+  Get the values of a metric's dimension
+
+  --dimension-id is a dimension id from "metric get" or "metric list". It takes one: the API accepts a list but only
+  honours the first entry. An unknown dimension is rejected with the metric's available dimensions.
 
 EXAMPLES
-  $ databox metric dimension-values --metric-id "500|custom_query_100" --dimension country --source-id 123
+  $ databox metric dimension-values --metric-id "500|custom_query_100" --source-id 500 --dimension-id country
 
-  $ databox metric dimension-values --metric-id "500|custom_query_100" --dimension country --dimension city --source-id 123
-
-  $ databox metric dimension-values --metric-id "500|custom_query_100" --dimension country --source-id 123 --json
+  $ databox metric dimension-values --metric-id "GoogleAnalytics4@sessions" --source-id 42 --dimension-id country --json
 ```
 
 _See code: [src/commands/metric/dimension-values.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/dimension-values.ts)_
 
 ## `databox metric drilldown`
 
-Get drilldown data for a metric
+Get the rows behind a metric's value
 
 ```
 USAGE
-  $ databox metric drilldown --dataset-id <value> --end-timestamp <value> --metric-id <value> --start-timestamp
-    <value> [--json]
+  $ databox metric drilldown --end-timestamp <value> --metric-id <value> --source-id <value> --start-timestamp <value>
+    [--no-color] [--output table|json|csv | --json] [--verbose] [--dimension-id <value>...] [--filters <value>] [--all |
+    --page <value>] [--page-size <value>] [--sort-by <value>] [--sort-order asc|desc]
 
 FLAGS
-  --dataset-id=<value>       (required) Dataset ID
-  --end-timestamp=<value>    (required) End timestamp (Unix epoch)
-  --json                     Output as JSON
+  --all                      Fetch every page (100 items per request unless --page-size is given) and print them as one
+                             list
+  --dimension-id=<value>...  Dimension id the metric is broken down by (repeat for several)
+  --end-timestamp=<value>    (required) End of the period (Unix timestamp, seconds)
+  --filters=<value>          Filters as JSON: {logicalOperator, groups: [{logicalOperator, conditions: [{type, field,
+                             operator, values}]}]}, e.g. {"logicalOperator":"AND","groups":[{"logicalOperator":"AND","co
+                             nditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}
+  --json                     Output as JSON (shorthand for --output json)
   --metric-id=<value>        (required) Metric ID
-  --start-timestamp=<value>  (required) Start timestamp (Unix epoch)
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --page=<value>             Page number (0-indexed)
+  --page-size=<value>        Number of items per page (max 1000)
+  --sort-by=<value>          Field to sort by
+  --sort-order=<option>      Sort direction
+                             <options: asc|desc>
+  --source-id=<value>        (required) The dataset the metric belongs to (the sourceId shown by "metric list")
+  --start-timestamp=<value>  (required) Start of the period (Unix timestamp, seconds)
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Get drilldown data for a metric
+  Get the rows behind a metric's value
+
+  Only dataset-backed custom metrics support drilldown; check "Drilldown" in "metric list" or "metric get". To reproduce
+  what a databoard shows, pass the same --dimension-id and --filters its datablock uses ("databoard metrics" reports
+  both); without them you get every row in the period. Columns follow the response schema, headed by display name;
+  --sort-by takes a column id. --json returns the whole response: the rows under "items", with "schema" and
+  "pagination".
 
 EXAMPLES
-  $ databox metric drilldown --metric-id "500|custom_query_100" --dataset-id 123 --start-timestamp 1704067200 --end-timestamp 1706745600
+  $ databox metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600
 
-  $ databox metric drilldown --metric-id "500|custom_query_100" --dataset-id 123 --start-timestamp 1704067200 --end-timestamp 1706745600 --json
+  $ databox metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600 --dimension-id country --sort-by amount --sort-order desc
+
+  $ databox metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600 --filters '{"logicalOperator":"AND","groups":[{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}' --json
 ```
 
 _See code: [src/commands/metric/drilldown.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/drilldown.ts)_
@@ -2312,16 +2854,23 @@ Get metric details
 
 ```
 USAGE
-  $ databox metric get METRICID [--json]
+  $ databox metric get METRICID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   METRICID  The metric ID (e.g., "500|custom_query_100")
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get metric details
+
+  Type is event, general, current, or unknown when the metric's definition could not be read. Measure, date, aggregation
+  and filters describe a custom-query metric's definition and are empty for integration and push metrics.
 
 EXAMPLES
   $ databox metric get "500|custom_query_100"
@@ -2331,20 +2880,60 @@ EXAMPLES
 
 _See code: [src/commands/metric/get.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/get.ts)_
 
+## `databox metric lineage METRICID`
+
+Show metric lineage (parents and children)
+
+```
+USAGE
+  $ databox metric lineage METRICID [--no-color] [--output table|json|csv | --json] [--verbose]
+
+ARGUMENTS
+  METRICID  The metric ID (e.g., "500|custom_query_100")
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  Show metric lineage (parents and children)
+
+  Parents are what the metric is built from: the metrics a calculated metric reads, otherwise its dataset or data
+  source. Children are the calculated metrics that read it; use "metric usages" for databoards and the like. Type is
+  dataSource, dataset, mergedDataset, basicMetric or customMetric, the same as "dataset lineage". A metric that is not
+  built on a dataset has no lineage and returns 404.
+
+EXAMPLES
+  $ databox metric lineage "500|custom_query_100"
+
+  $ databox metric lineage "500|script_7" --json
+```
+
+_See code: [src/commands/metric/lineage.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/lineage.ts)_
+
 ## `databox metric list`
 
 List metrics
 
 ```
 USAGE
-  $ databox metric list [--json] [--source-id <value>] [--page <value>] [--page-size <value>] [--search <value>]
+  $ databox metric list [--no-color] [--output table|json|csv | --json] [--verbose] [--source-id <value>] [--all
+    | --page <value>] [--page-size <value>] [--search <value>]
 
 FLAGS
-  --json               Output as JSON
+  --all                Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
   --page=<value>       Page number (0-indexed)
-  --page-size=<value>  Number of items per page
-  --search=<value>     Search by metric name
+  --page-size=<value>  Number of items per page (max 100)
+  --search=<value>     Search by metric name or ID
   --source-id=<value>  Filter by source ID (data source or dataset)
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List metrics
@@ -2367,55 +2956,86 @@ Set metric verification status
 
 ```
 USAGE
-  $ databox metric set-verification METRICID --status verified|unverified [--json]
+  $ databox metric set-verification METRICID --status verified|unverified [--no-color] [--output table|json|csv | --json]
+    [--verbose]
 
 ARGUMENTS
   METRICID  The metric ID
 
 FLAGS
-  --json             Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
   --status=<option>  (required) Verification status
                      <options: verified|unverified>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Set metric verification status
 
+  The metric ID must carry its source ("500|custom_query_100"): an integration key without "|", such as
+  "GoogleAnalytics4@sessions", is rejected with a 400. Prints a confirmation; --json or --output csv prints the
+  resulting verification (isVerified, verifiedAt, verifiedBy) instead.
+
 EXAMPLES
   $ databox metric set-verification "500|custom_query_100" --status verified
 
-  $ databox metric set-verification "500|custom_query_100" --status unverified
+  $ databox metric set-verification "500|custom_query_100" --status unverified --json
 ```
 
 _See code: [src/commands/metric/set-verification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/set-verification.ts)_
 
 ## `databox metric update METRICID`
 
-Update a metric
+Update a custom metric
 
 ```
 USAGE
-  $ databox metric update METRICID [--json] [--aggregation-function <value>] [--date <value>] [--dimension
-    <value>...] [--filters <value>] [--measure <value>] [--name <value>]
+  $ databox metric update METRICID [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--aggregation-function sum|avg|min|max|count] [--clear-dimensions | --dimension <value>...] [--date <value>]
+    [--filters <value>] [--measure <value>] [--name <value>]
 
 ARGUMENTS
   METRICID  The metric ID to update
 
 FLAGS
-  --aggregation-function=<value>  New aggregation applied to the measure
-  --date=<value>                  New date field reference as JSON ({"id":"...","name":"..."})
-  --dimension=<value>...          Dimension field reference as JSON ({"id":"...","name":"..."}); repeat for several
-  --filters=<value>               JSON array of filters ([{"field":"...","operator":"...","values":["..."]}])
-  --json                          Output as JSON
-  --measure=<value>               New measure field reference as JSON ({"id":"...","name":"..."})
-  --name=<value>                  New name for the metric
+  --aggregation-function=<option>  New aggregation applied to the measure
+                                   <options: sum|avg|min|max|count>
+  --clear-dimensions               Remove every dimension (sends "dimensions": [])
+  --date=<value>                   New date column reference as JSON ({"id":"amount","displayName":"Amount"})
+  --dimension=<value>...           Dimension column reference as JSON ({"id":"amount","displayName":"Amount"}); repeat
+                                   for several. Replaces the current dimensions
+  --filters=<value>                Filters as JSON: {logicalOperator: and|or, conditions: [{field, operator, values}]}.
+                                   Omit conditions to keep them; [] clears them
+  --json                           Output as JSON (shorthand for --output json)
+  --measure=<value>                New measure column reference as JSON ({"id":"amount","displayName":"Amount"})
+  --name=<value>                   New name for the metric
+  --no-color                       Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>                [default: table] Output format
+                                   <options: table|json|csv>
+  --verbose                        Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Update a metric
+  Update a custom metric
+
+  Only custom-query metrics can be updated. Fields you omit keep their current values. --dimension replaces the whole
+  dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so
+  "logicalOperator" can be changed on its own; "conditions": [] clears them. Prints the updated metric as "metric get"
+  does.
 
 EXAMPLES
   $ databox metric update "500|custom_query_100" --name "New Name"
 
-  $ databox metric update "500|custom_query_100" --name "New Name" --json
+  $ databox metric update "500|custom_query_100" --measure '{"id":"amount","displayName":"Amount"}' --aggregation-function avg
+
+  $ databox metric update "500|custom_query_100" --filters '{"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","values":["US","UK"]}]}'
+
+  $ databox metric update "500|custom_query_100" --filters '{"logicalOperator":"or"}'
+
+  $ databox metric update "500|custom_query_100" --clear-dimensions
+
+  $ databox metric update "500|custom_query_100" --filters '{"conditions":[]}' --json
 ```
 
 _See code: [src/commands/metric/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/update.ts)_
@@ -2426,16 +3046,24 @@ Get where a metric is used
 
 ```
 USAGE
-  $ databox metric usages METRICID [--json]
+  $ databox metric usages METRICID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   METRICID  The metric ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get where a metric is used
+
+  Type is board, alert, goal, report, forecast, scorecard or calculatedMetric. Only custom-query metrics (IDs like
+  "500|custom_query_100") are looked up: for any other metric the list is always empty, as it is for a metric whose
+  query has since been deleted.
 
 EXAMPLES
   $ databox metric usages "500|custom_query_100"
@@ -2451,16 +3079,23 @@ Get metric verification status
 
 ```
 USAGE
-  $ databox metric verification METRICID [--json]
+  $ databox metric verification METRICID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   METRICID  The metric ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get metric verification status
+
+  The metric ID must carry its source ("500|custom_query_100"): an integration key without "|", such as
+  "GoogleAnalytics4@sessions", is rejected with a 400.
 
 EXAMPLES
   $ databox metric verification "500|custom_query_100"
@@ -2476,10 +3111,14 @@ Show your profile
 
 ```
 USAGE
-  $ databox profile info [--json]
+  $ databox profile info [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Show your profile
@@ -2498,10 +3137,14 @@ List available departments and roles for profile metadata
 
 ```
 USAGE
-  $ databox profile metadata-options [--json]
+  $ databox profile metadata-options [--no-color] [--output table|json|csv | --json] [--verbose]
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List available departments and roles for profile metadata
@@ -2520,16 +3163,25 @@ Update your profile
 
 ```
 USAGE
-  $ databox profile update [--json] [--metadata <value>] [--name <value>] [--timezone <value>]
+  $ databox profile update [--no-color] [--output table|json|csv | --json] [--verbose] [--metadata <value>] [--name
+    <value>] [--timezone <value>]
 
 FLAGS
-  --json              Output as JSON
-  --metadata=<value>  JSON object: {department, title, role}
+  --json              Output as JSON (shorthand for --output json)
+  --metadata=<value>  JSON object: {department, title, role}; "" clears a field
   --name=<value>      New display name
+  --no-color          Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>   [default: table] Output format
+                      <options: table|json|csv>
   --timezone=<value>  New timezone
+  --verbose           Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Update your profile
+
+  --metadata takes {department, title, role}. department and role must be values from "profile metadata-options", and a
+  role must belong to the department; title is free text. A field left out keeps its value, and "" clears it. Clearing
+  department requires clearing role in the same call: {"department":"","role":""}.
 
 EXAMPLES
   $ databox profile update --name "New Name"
@@ -2537,6 +3189,10 @@ EXAMPLES
   $ databox profile update --timezone "US/Eastern"
 
   $ databox profile update --name "New Name" --timezone "UTC" --json
+
+  $ databox profile update --metadata '{"department":"engineering","role":"software_engineer"}'
+
+  $ databox profile update --metadata '{"department":"","role":""}'
 ```
 
 _See code: [src/commands/profile/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/profile/update.ts)_
@@ -2547,14 +3203,18 @@ Remove a user from the account
 
 ```
 USAGE
-  $ databox user delete USERID [--json] [--force]
+  $ databox user delete USERID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
 
 ARGUMENTS
   USERID  The user ID to remove
 
 FLAGS
-  --force  Skip confirmation prompt
-  --json   Output as JSON
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Remove a user from the account
@@ -2573,13 +3233,17 @@ Get user details
 
 ```
 USAGE
-  $ databox user get USERID [--json]
+  $ databox user get USERID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
   USERID  The user ID
 
 FLAGS
-  --json  Output as JSON
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get user details
@@ -2598,17 +3262,27 @@ Invite a user to the account
 
 ```
 USAGE
-  $ databox user invite --email <value> --role admin|user [--json] [--name <value>]
+  $ databox user invite --email <value> --role admin|user|editor|viewer [--no-color] [--output table|json|csv |
+    --json] [--verbose] [--idempotency-key <value>] [--name <value>]
 
 FLAGS
-  --email=<value>  (required) Email address of the user to invite
-  --json           Output as JSON
-  --name=<value>   Display name for the new user
-  --role=<option>  (required) Role for the new user
-                   <options: admin|user>
+  --email=<value>            (required) Email address of the user to invite
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --name=<value>             Display name for the new user
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --role=<option>            (required) Role for the new user
+                             <options: admin|user|editor|viewer>
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Invite a user to the account
+
+  An email already in the account, invited or active, is refused with duplicate_record; change that user with "user
+  update" instead.
 
 EXAMPLES
   $ databox user invite --email user@example.com --role user
@@ -2624,25 +3298,33 @@ List users in the account
 
 ```
 USAGE
-  $ databox user list [--json] [--page <value>] [--page-size <value>] [--role admin|user] [--search <value>]
-    [--sort-by <value>] [--sort-order asc|desc]
+  $ databox user list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--role admin|user|editor|viewer] [--search <value>] [--sort-by <value>] [--sort-order
+    asc|desc]
 
 FLAGS
-  --json                 Output as JSON
+  --all                  Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json                 Output as JSON (shorthand for --output json)
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
   --page=<value>         Page number (0-indexed)
-  --page-size=<value>    Number of items per page
+  --page-size=<value>    Number of items per page (max 100)
   --role=<option>        Filter by role
-                         <options: admin|user>
+                         <options: admin|user|editor|viewer>
   --search=<value>       Search by name or email
   --sort-by=<value>      Field to sort by
   --sort-order=<option>  Sort direction
                          <options: asc|desc>
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   List users in the account
 
 EXAMPLES
   $ databox user list
+
+  $ databox user list --role editor
 
   $ databox user list --json
 ```
@@ -2651,28 +3333,35 @@ _See code: [src/commands/user/list.ts](https://github.com/databox/databox-cli/bl
 
 ## `databox user update USERID`
 
-Update a user's role
+Update a user's name or role
 
 ```
 USAGE
-  $ databox user update USERID [--json] [--name <value>] [--role admin|user]
+  $ databox user update USERID [--no-color] [--output table|json|csv | --json] [--verbose] [--name <value>]
+    [--role admin|user|editor|viewer]
 
 ARGUMENTS
   USERID  The user ID to update
 
 FLAGS
-  --json           Output as JSON
-  --name=<value>   New display name for the user
-  --role=<option>  New role for the user
-                   <options: admin|user>
+  --json             Output as JSON (shorthand for --output json)
+  --name=<value>     New display name for the user
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --role=<option>    New role for the user
+                     <options: admin|user|editor|viewer>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Update a user's role
+  Update a user's name or role
 
 EXAMPLES
   $ databox user update 12345 --role admin
 
-  $ databox user update 12345 --role user --json
+  $ databox user update 12345 --role viewer --json
+
+  $ databox user update 12345 --name "Jane Doe"
 ```
 
 _See code: [src/commands/user/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/user/update.ts)_

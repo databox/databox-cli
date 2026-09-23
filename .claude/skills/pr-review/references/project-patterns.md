@@ -38,7 +38,7 @@ body.schema = JSON.parse(flags.schema) as SchemaType
 try {
   body.schema = JSON.parse(flags.schema) as SchemaType
 } catch {
-  this.error('Invalid JSON for --schema. Expected format: [{"columnId":"...","dataType":"..."}]', {exit: 2})
+  this.error('Invalid JSON for --schema. Expected format: [{"id":"...","dataType":"..."}]', {exit: 2})
 }
 ```
 
@@ -55,8 +55,9 @@ renames nothing — the docs then actively mislead. `--tags`→`--synonyms` and 
   `README.md` (regenerate with `npx oclif readme`), `skills/databox-*/SKILL.md` and
   `CHANGELOG.md`. Grep the old name across the repo; the count should be zero.
 - Before reporting a rename as a bug, confirm the old flag is actually gone. Different commands
-  legitimately use different names for the same concept (`--data-source-id` on `dataset create`,
-  `dataset list` and `metric data`; `--source-id` on `metric list`).
+  legitimately use different names for the same concept (`--data-source-id` on `dataset create`
+  and `dataset list`; `--source-id` on `metric list`, `metric drilldown` and
+  `metric dimension-values`; `--dataset-id` on `metric create`).
 
 **Double-parse inconsistency**
 `BaseCommand.init()` parses flags into `this.flags`. Most commands with args also call

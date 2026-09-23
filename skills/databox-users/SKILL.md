@@ -18,12 +18,16 @@ Must be authenticated with admin privileges. If not, use the `databox-auth` skil
 | List users | `databox user list` |
 | Get user detail | `databox user get USER_ID` |
 | Invite user | `databox user invite --email user@example.com --role user` |
+| Filter by role | `databox user list --role editor` |
 | Update role | `databox user update USER_ID --role admin` |
+| Rename | `databox user update USER_ID --name "Jane Doe"` |
 | Remove user | `databox user delete USER_ID --force` |
 
 ## Roles
 
-Available roles: `admin`, `user`
+Available roles: `admin`, `user`, `editor`, `viewer`. `--role` on `invite`, `update` and `list` accepts only these.
+
+Inviting an email that is already in the account, invited or active, fails with `duplicate_record`; change that user with `user update` instead.
 
 ## Notes
 

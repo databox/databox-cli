@@ -22,10 +22,12 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | Create with key | `databox data-source create --name "Name" --integration-key Datadoo` |
 | Update name | `databox data-source update ID --name "New Name"` |
 | Set timezone | `databox data-source set-timezone ID --timezone "US/Eastern"` |
-| View sync frequencies | `databox data-source sync-frequencies ID` |
+| Set timezone for its datasets too | `databox data-source set-timezone ID --timezone "US/Eastern" --apply-to-datasets` |
+| View sync frequency options | `databox data-source sync-frequency-options ID` |
 | Set sync frequency | `databox data-source set-sync-frequency ID --interval 60` |
 | View permissions | `databox data-source permissions ID` |
 | Set permissions | `databox data-source set-permissions ID --access-level everyone` |
+| Restrict to some users | `databox data-source set-permissions ID --access-level selectedUsers --access-list 31 --access-list 42` |
 | List linked datasets | `databox data-source datasets ID` |
 | Purge all data | `databox data-source purge ID --force` |
 | Delete data source | `databox data-source delete ID --force` |
@@ -43,6 +45,14 @@ databox dataset create --name "Daily Metrics" --data-source-id 42
 # 3. Push data
 databox dataset ingest 67890 --file data.json
 ```
+
+## Sync Frequency
+
+`--interval` is in minutes: `1`, `15`, `60`, `240`, `360`, `480` or `1440`. Run `data-source sync-frequency-options ID` first to see which intervals the data source can use and which your plan includes. `set-sync-frequency` and `set-timezone` print a confirmation; with `--json` they print the updated data source.
+
+## Permissions
+
+`--access-level` is `everyone`, `selectedUsers` or `private`. `--access-list USER_ID` (repeatable) is only accepted with `selectedUsers`. Admins and the account owner always keep access.
 
 ## Destructive Operations
 
