@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, errorText, expectExit, expectField, expectKey, expectOk, json, retryRead, serviceUnavailable,
+  cli, cliWithRetry, errorText, expectExit, expectField, expectKey, expectOk, json, retryRead, serviceUnavailable, skipWith,
 } from './helpers/cli.js'
 import {
   DEFAULT_RECORDS,
@@ -14,13 +14,31 @@ import {
   waitForIngestion,
 } from './helpers/resources.js'
 
+/** DatasetResponse.cs `DatasetListItem`: only what these tests read. */
 interface Dataset {
-  datasetType: string
+  createdAt: null | string
+  dataSourceId: null | number
   id: number
   name: string
-  parentDataSourceId: null | number
   timezone: null | string
 }
+
+/** DatasetResponse.cs `DatasetDetail`: only what these tests read. */
+interface DatasetDetail extends Dataset {
+  columnCount: number
+  rowCount: number
+  syncInterval: null | number
+}
+
+/** DatasetResponse.cs `LineageNode`. */
+interface LineageNode {
+  id: string
+  name: string
+  type: string
+}
+
+/** The node types DatasetService reports; a dataset's own kind is deliberately not one of them. */
+const LINEAGE_TYPES = ['dataSource', 'dataset', 'mergedDataset', 'basicMetric', 'customMetric']
 
 describe('dataset', () => {
   const tracker = new ResourceTracker()
@@ -46,22 +64,44 @@ describe('dataset', () => {
   })
 
   it('returns the created dataset by id', async () => {
-    const dataset = json<Dataset>(await cli(['dataset', 'get', datasetId, '--json']))
+    const dataset = json<DatasetDetail>(await cli(['dataset', 'get', datasetId, '--json']))
 
     expectField(dataset, 'id', 'number')
     expect(String(dataset.id)).to.equal(datasetId)
     expect(dataset.name).to.equal(datasetName)
+    expect(String(dataset.dataSourceId)).to.equal(dataSourceId)
+
+    // The DatasetDetail contract: the list item's fields plus the detail-only ones.
+    expectField(dataset, 'ingestionSupported', 'boolean')
+    expectField(dataset, 'columnCount', 'number')
+    expectField(dataset, 'rowCount', 'number')
+    for (const key of [
+      'statusInfo', 'syncInfo', 'verificationInfo', 'ingestionInfo', 'createdAt', 'lastActivityAt',
+      'managedBy', 'size', 'maxSize', 'syncInterval',
+    ]) {
+      expectKey(dataset, key)
+    }
+
+    // Moved to `dataset schema`; the detail must not carry it any more.
+    expect(dataset, 'primaryKey belongs to the schema response').to.not.have.property('primaryKey')
   })
 
-  it('returns the schema it was created with', async () => {
-    const schema = json<Array<{columnId: string; dataType: string}>>(
+  it('returns the schema it was created with, and its primary key', async () => {
+    const schema = json<{items: Array<{dataType: string; id: string}>; primaryKey?: string[]}>(
       await cli(['dataset', 'schema', datasetId, '--json']),
     )
 
-    expect(schema).to.be.an('array').with.lengthOf(DEFAULT_SCHEMA.length)
-    expect(schema.map(column => column.columnId).sort()).to.deep.equal(
-      DEFAULT_SCHEMA.map(column => column.columnId).sort(),
+    expect(schema.items).to.be.an('array').with.lengthOf(DEFAULT_SCHEMA.length)
+    expect(schema.items.map(column => column.id).sort()).to.deep.equal(
+      DEFAULT_SCHEMA.map(column => column.id).sort(),
     )
+
+    // createDataset keys on the first column.
+    expect(schema.primaryKey).to.deep.equal([DEFAULT_SCHEMA[0].id])
+
+    const table = expectOk(await cli(['dataset', 'schema', datasetId]))
+    expect(table.stdout).to.include('Display Name')
+    expect(table.stdout).to.include(`Primary key: ${DEFAULT_SCHEMA[0].id}`)
   })
 
   it('finds the dataset in the list', async () => {
@@ -72,27 +112,56 @@ describe('dataset', () => {
     const found = listed.find(item => String(item.id) === datasetId)
     expect(found, `dataset ${datasetId} not in the listing`).to.not.equal(undefined)
 
-    // Pins the list contract: the API names this parentDataSourceId, not dataSourceId,
-    // and there is no createdAt on the list item.
-    expectField(found!, 'parentDataSourceId', 'number')
-    expectField(found!, 'datasetType', 'string')
-    expect(String(found!.parentDataSourceId)).to.equal(dataSourceId)
+    // Pins the list contract: dataSourceId (formerly parentDataSourceId), no datasetType, and the
+    // status, sync, verification, ingestion and activity fields.
+    expectField(found!, 'dataSourceId', 'number')
+    expect(String(found!.dataSourceId)).to.equal(dataSourceId)
+    expectField(found!, 'ingestionSupported', 'boolean')
+    for (const key of ['statusInfo', 'syncInfo', 'verificationInfo', 'ingestionInfo', 'createdAt', 'lastActivityAt']) {
+      expectKey(found!, key)
+    }
+
+    expect(found!).to.not.have.property('parentDataSourceId')
+    expect(found!).to.not.have.property('datasetType')
+  })
+
+  it('sorts the list by a supported field', async () => {
+    const listed = json<Dataset[]>(
+      await cli(['dataset', 'list', '--sort-by', 'createdAt', '--sort-order', 'desc', '--page-size', '20', '--json']),
+    )
+
+    const created = listed.map(item => item.createdAt).filter((value): value is string => value !== null)
+    expect(created.length, 'no dataset on the first page reports createdAt').to.be.greaterThan(0)
+
+    const descending = [...created].sort((a, b) => Date.parse(b) - Date.parse(a))
+    expect(created, 'createdAt should be in descending order').to.deep.equal(descending)
+  })
+
+  // DatasetService rejects any other sort field with a 400; the CLI now offers only the valid
+  // three as options, so a bad one never reaches the API and fails locally as a usage error.
+  it('rejects an unsupported sort field with exit 2 before calling the API', async () => {
+    const result = await cli(['dataset', 'list', '--sort-by', 'datasetType', '--json'])
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.match(/to be one of: name, createdAt, lastActivityAt/)
   })
 
   // Unfiltered on purpose: this asserts the CLI's column mapping, not the server's
   // filtering. The dataSourceId filter was broken upstream (fixed in ingestion-api,
   // see test/e2e/README.md); switch this to a filtered listing once that is deployed.
-  it('renders the list table with a populated Data Source ID column', async () => {
+  it('renders the list table with a populated Data Source column', async () => {
     const listed = json<Dataset[]>(await cli(['dataset', 'list', '--page-size', '10', '--json']))
-    const withParent = listed.find(item => item.parentDataSourceId !== null)
-    expect(withParent, 'no dataset in the first page has a parent data source').to.not.equal(undefined)
+    const withParent = listed.find(item => item.dataSourceId !== null)
+    expect(withParent, 'no dataset in the first page has a data source').to.not.equal(undefined)
 
     const table = expectOk(await cli(['dataset', 'list', '--page-size', '10']))
 
-    expect(table.stdout).to.include('Data Source ID')
-    // The column used to read `dataSourceId`, which the API does not return, so it
-    // rendered blank for every row.
-    expect(table.stdout).to.include(String(withParent!.parentDataSourceId))
+    for (const header of ['Data Source', 'Ingestion', 'Status', 'Sync status', 'Last activity']) {
+      expect(table.stdout).to.include(header)
+    }
+
+    // A column reading a field the API does not return renders blank for every row.
+    expect(table.stdout).to.include(String(withParent!.dataSourceId))
   })
 
   it('lists the dataset under its data source', async () => {
@@ -115,8 +184,7 @@ describe('dataset', () => {
 
     const outage = serviceUnavailable(result)
     if (outage) {
-      console.log(`   skip: ${outage}`)
-      this.skip()
+      skipWith(this, `${outage}`)
     }
 
     const response = json<{ingestionId: string}>(result)
@@ -124,17 +192,25 @@ describe('dataset', () => {
     ingestionId = response.ingestionId
   })
 
+  // DatasetService.IngestData rejects an empty records list; the CLI refuses it first.
+  it('rejects an empty records array with exit 2 before calling the API', async () => {
+    const result = await cli(['dataset', 'ingest', datasetId, '--records', '[]'])
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('At least one record must be provided')
+  })
+
   it('lists the ingestion', async function () {
     this.timeout(120_000)
-    if (!ingestionId) this.skip()
+    if (!ingestionId) skipWith(this, 'no ingestion was started')
 
     await retryRead(
       async () => {
-        const ingestions = json<Array<{ingestionId: string; status: string}>>(
+        const ingestions = json<Array<{id: string; status: string}>>(
           await cli(['dataset', 'ingestions', datasetId, '--json']),
         )
 
-        if (!ingestions.some(item => item.ingestionId === ingestionId)) {
+        if (!ingestions.some(item => item.id === ingestionId)) {
           throw new Error(`ingestion ${ingestionId} not listed yet`)
         }
       },
@@ -144,25 +220,37 @@ describe('dataset', () => {
 
   it('retrieves the ingestion by id and reaches a terminal state', async function () {
     this.timeout(120_000)
-    if (!ingestionId) this.skip()
+    if (!ingestionId) skipWith(this, 'no ingestion was started')
 
     const ingestion = await waitForIngestion(datasetId, ingestionId)
-    if (!ingestion) this.skip()
+    if (!ingestion) skipWith(this, 'the ingestion did not reach a terminal state within the poll window')
 
     expectField(ingestion, 'status', 'string')
     expect(String(ingestion.status).toLowerCase()).to.not.equal('failed')
+    expect(ingestion.id, 'the detail is keyed by id, not ingestionId').to.equal(ingestionId)
 
     // The detail response must carry at least what a list row carries. It used to return only
     // ingestionId + status, because the API read the ingest through its V1 contract — fixed in
     // ingestion-api (GetIngestion now reads account-service directly).
-    expectField(ingestion, 'startedAt', 'string')
+    expectField(ingestion, 'initiatedAt', 'string')
+    expectKey(ingestion, 'initiatedBy')
 
-    const listed = json<Array<{duration?: null | number; ingestionId: string; startedAt?: null | string}>>(
+    // Both are null when the run reported nothing, but the keys are always there.
+    expectKey(ingestion, 'summary')
+    expectKey(ingestion, 'errors')
+    const summary = ingestion.summary as {ingestion: {receivedRecordCount: number} | null} | null
+    if (summary?.ingestion) {
+      expect(summary.ingestion.receivedRecordCount, 'summary.ingestion.receivedRecordCount').to.equal(DEFAULT_RECORDS.length)
+    } else {
+      console.log('   note: the ingestion reported no summary counts')
+    }
+
+    const listed = json<Array<{duration: null | number; id: string; initiatedAt: null | string}>>(
       await cli(['dataset', 'ingestions', datasetId, '--json']),
-    ).find(item => item.ingestionId === ingestionId)
+    ).find(item => item.id === ingestionId)
 
     expect(listed, 'the ingestion should still be listed').to.not.equal(undefined)
-    expect(ingestion.startedAt, 'startedAt should agree with the list row').to.equal(listed!.startedAt)
+    expect(ingestion.initiatedAt, 'initiatedAt should agree with the list row').to.equal(listed!.initiatedAt)
     expect(ingestion.duration, 'duration should agree with the list row').to.equal(listed!.duration)
   })
 
@@ -173,21 +261,24 @@ describe('dataset', () => {
 
   it('returns the ingested rows', async function () {
     this.timeout(120_000)
-    if (!ingestionId) this.skip()
+    if (!ingestionId) skipWith(this, 'no ingestion was started')
 
     const probe = await cli(['dataset', 'data', datasetId, '--page-size', '50', '--json'])
     const outage = serviceUnavailable(probe)
     if (outage) {
-      console.log(`   skip: ${outage}`)
-      this.skip()
+      skipWith(this, `${outage}`)
     }
 
     await retryRead(
       async () => {
-        const rows = json<Array<Record<string, unknown>>>(
+        // --json is the whole response: the rows sit beside the schema that describes them.
+        const data = json<{items: Array<Record<string, unknown>> | null; lastUpdatedAt: null | string; schema: null | unknown[]}>(
           await cli(['dataset', 'data', datasetId, '--page-size', '50', '--json']),
         )
 
+        expectKey(data, 'schema')
+        expectKey(data, 'lastUpdatedAt')
+        const rows = data.items ?? []
         if (rows.length === 0) throw new Error('no rows returned yet')
         expectKey(rows[0], 'id')
         expectKey(rows[0], 'name')
@@ -196,20 +287,43 @@ describe('dataset', () => {
     )
   })
 
-  it('lists and sets sync frequency', async () => {
-    const frequencies = json<Array<{syncInterval: number}>>(
-      await cli(['dataset', 'sync-frequencies', datasetId, '--json']),
+  it('lists the sync frequency options', async () => {
+    // Unwrapped from {items} to a bare array, like every other list.
+    const options = json<Array<{availability: string; isDefault: boolean; isSelected: boolean; label: string; syncInterval: number}>>(
+      await cli(['dataset', 'sync-frequency-options', datasetId, '--json']),
     )
-    expect(frequencies).to.be.an('array').that.is.not.empty
-    expectField(frequencies[0], 'syncInterval', 'number')
+    expect(options).to.be.an('array').that.is.not.empty
+    expectField(options[0], 'syncInterval', 'number')
+    expectField(options[0], 'label', 'string')
+    expectField(options[0], 'isDefault', 'boolean')
+    expectField(options[0], 'isSelected', 'boolean')
+    expectField(options[0], 'availability', 'string')
 
-    expectOk(await cli(['dataset', 'sync-frequencies', datasetId]))
-    expectOk(await cliWithRetry(['dataset', 'set-sync-frequency', datasetId, '--interval', '1440']))
+    const table = expectOk(await cli(['dataset', 'sync-frequency-options', datasetId]))
+    expect(table.stdout).to.include('Interval (min)')
+    expect(table.stdout).to.include('Availability')
+  })
+
+  it('sets the sync frequency and returns the updated dataset', async () => {
+    const table = expectOk(await cliWithRetry(['dataset', 'set-sync-frequency', datasetId, '--interval', '1440']))
+    expect(table.stdout).to.include('1440 minutes')
+
+    const updated = json<DatasetDetail>(
+      await cliWithRetry(['dataset', 'set-sync-frequency', datasetId, '--interval', '1440', '--json']),
+    )
+    expect(String(updated.id)).to.equal(datasetId)
+    expectField(updated, 'columnCount', 'number')
+    expect(updated.syncInterval, 'the detail reports the interval just set').to.equal(1440)
   })
 
   it('returns sync history', async () => {
-    const history = json<unknown[]>(await cli(['dataset', 'sync-history', datasetId, '--json']))
+    const history = json<Array<Record<string, unknown>>>(await cli(['dataset', 'sync-history', datasetId, '--json']))
     expect(history).to.be.an('array')
+
+    // A pushed dataset may never have synced; check the row shape only when there is one.
+    if (history.length > 0) {
+      for (const key of ['id', 'initiatedAt', 'status', 'type', 'duration', 'error']) expectKey(history[0], key)
+    }
   })
 
   it('returns sync statistics', async () => {
@@ -217,14 +331,27 @@ describe('dataset', () => {
     expect(statistics).to.be.an('object')
   })
 
-  it('returns lineage', async () => {
-    const lineage = json<{children: unknown[]; id: number; parents: unknown[]}>(
+  it('returns lineage with string node ids', async () => {
+    const lineage = json<{children: LineageNode[]; id: number; parents: LineageNode[]}>(
       await cli(['dataset', 'lineage', datasetId, '--json']),
     )
 
+    // The dataset's own id is a number; a node's is a string, because a metric's id is its key.
     expectField(lineage, 'id', 'number')
+    expect(String(lineage.id)).to.equal(datasetId)
     expect(lineage.parents).to.be.an('array')
     expect(lineage.children).to.be.an('array')
+
+    for (const node of [...lineage.parents, ...lineage.children]) {
+      expectField(node, 'id', 'string')
+      expect(LINEAGE_TYPES, `lineage node ${node.id} type`).to.include(node.type)
+      expect(node, `lineage node ${node.id}`).to.not.have.property('datasetType')
+    }
+
+    const table = expectOk(await cli(['dataset', 'lineage', datasetId]))
+    if (lineage.parents.length + lineage.children.length > 0) {
+      expect(table.stdout).to.include('Relation')
+    }
   })
 
   it('reads verification status', async () => {

@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, errorText, expectKey, expectOk, json, serviceUnavailable,
+  cli, cliWithRetry, errorText, expectKey, expectOk, json, serviceUnavailable, skipWith,
 } from './helpers/cli.js'
 
 interface ActivityLogEntry {
@@ -41,8 +41,7 @@ describe('activity-log', () => {
 
   it('lists activity log entries', function () {
     if (!entries) {
-      console.log(`   skip: ${unavailableReason}`)
-      this.skip()
+      skipWith(this, `${unavailableReason}`)
     }
 
     expect(entries).to.be.an('array')
@@ -54,17 +53,18 @@ describe('activity-log', () => {
   })
 
   it('renders the log as a table', async function () {
-    if (!entries) this.skip()
+    if (!entries) skipWith(this, `${unavailableReason}`)
 
     const result = expectOk(await cli(['activity-log', 'list', '--page-size', '5']))
     expect(result.stdout).to.include('Action')
   })
 
   it('filters by resource type', async function () {
-    if (!entries || entries.length === 0) this.skip()
+    if (!entries) skipWith(this, `${unavailableReason}`)
+    if (entries.length === 0) skipWith(this, 'the activity log is empty, so there is no resource type to filter by')
 
     const resourceType = entries!.find(entry => entry.resourceType)?.resourceType
-    if (!resourceType) this.skip()
+    if (!resourceType) skipWith(this, 'no entry on the first page has a resource type to filter by')
 
     const filtered = json<ActivityLogEntry[]>(
       await cli(['activity-log', 'list', '--resource-type', resourceType!, '--page-size', '20', '--json']),

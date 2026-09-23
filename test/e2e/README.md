@@ -111,10 +111,40 @@ same: `npm run test:e2e:cleanup`.
   assertions and teardown all shell out. The e2e layer has no API client to drift.
 - Destructive commands always take `--force`: stdin is `'ignore'`, so an interactive
   `confirm()` prompt would hang until the mocha timeout.
-- Environment-dependent suites call `this.skip()` with a logged reason rather than
-  failing (no agency account, add-on not enabled, no databoards).
+- Environment-dependent suites skip with `skipWith(this, reason)` rather than failing (no
+  agency account, add-on not enabled, no databoards). It prints the reason; never call a
+  bare `this.skip()`, which is indistinguishable from a pass.
 - Reads that race the API's cache use `retryRead`. Never wrap a create in it — mocha
   `--retries` and `--parallel` are off for the same reason.
+- To check a cell under a named column, read `--output csv` back with `parseCsv` /
+  `csvColumn` from `helpers/csv.ts` rather than matching the table's text.
+
+## The contract the suites pin
+
+What a user sees, which the unit suite can only assume:
+
+- **`--json` returns what the endpoint returned.** A plain list (`{items}` or
+  `{items, pagination}`) unwraps to a bare array: `dataset list`, `sync-frequency-options`,
+  `column-metadata`, `modification-functions`, `metric usages`, and the rest. A response
+  whose siblings carry data comes through whole: `dataset schema` `{items, primaryKey}`,
+  `dataset data` `{items, schema, pagination, lastUpdatedAt}`, `preview-modification`
+  `{items, pagination: {totalItems}, schema}`, `metric drilldown` `{items, schema,
+  pagination}`, both `lineage` commands, `dataset modifications`, `databoard metrics`
+  `{datablocks}` and `metric dimension-values` `{dimensionValues}`.
+- **Mutations that return the resource print it.** `set-sync-frequency`, `set-timezone` and
+  `set-verification` print it under `--json` (or `--output csv`) and a confirmation line in
+  table mode. `metric create`/`update` print the metric detail in every mode, and
+  `update-modification` prints the saved modification, as a table like `dataset modifications`.
+- **Exit codes:** 0 on success; 1 for an API error, rendered as its code, message,
+  `Field:` and `Request ID:`; 2 for a usage error the CLI catches itself (a bad option value,
+  malformed JSON, an empty `--name`) and for failing to reach the API at all.
+- **`--output csv`** prints a header and one line per row, with no table rule or footer.
+  **`--verbose`** traces each request to stderr with the key redacted; stdout stays clean.
+  **`--all`** fetches every page.
+- **Two questions the unit suite cannot answer**, settled here against real rows: that
+  `dataset data` and the modification preview key a renamed column's cells by column id
+  (`src/lib/dataset-rows.ts`), and that `metric drilldown` rows are keyed by
+  `schema.items[].id`.
 
 ## Reading the output
 
@@ -149,8 +179,8 @@ cannot.
 
 | Command | Was | Now |
 |---|---|---|
-| `data-source sync-frequencies` | Read `response.items`, but the API returns a bare array: `--json` printed the literal `undefined` and **exited 0**; table mode threw `Cannot read properties of undefined (reading 'length')`. | Reads the array; also uses the real `syncInterval` field and surfaces `isSelected`/`availability`. |
-| `dataset sync-frequencies` | Same. | Same fix. |
+| `data-source sync-frequencies` | Read `response.items`, but the API returned a bare array: `--json` printed the literal `undefined` and **exited 0**; table mode threw `Cannot read properties of undefined (reading 'length')`. | Since replaced by `data-source sync-frequency-options`, a new route that answers `{items}`; the command unwraps it. |
+| `dataset sync-frequencies` | Same. | Same: now `dataset sync-frequency-options`. |
 | `dataset column-metadata` | The mirror image — the API returns `{items: […]}` and the command passed it straight to `formatOutput`. Table mode threw `data.map is not a function`. | Unwraps `response.items`. |
 
 **Request-body drift** — the command sent a field the API does not accept, so it could
@@ -168,15 +198,16 @@ Every one of these passed in the unit suite, because its mocks supplied the shap
 command expected. `test/helpers.ts` now records request bodies (`lastBody()`), and the
 five commands above assert on theirs, so this family cannot silently return.
 
-**Still open** — stale types, no user-visible symptom since `formatSingle` prints
-whatever it is given:
+The two stale types once listed here (`account usage` buckets, `data-source get`'s
+`title`) now mirror the contract, and `metric create` takes `--aggregation-function` and
+`--dimension`, which the metric suite exercises.
 
-- `src/commands/account/usage.ts` declares `{current, limit}` per bucket; the API returns
-  `{count, limit|null}` and adds a `clients` bucket the interface omits.
-- `src/commands/data-source/get.ts` declares `title`; the API returns `name`.
-
-**Coverage gap**: `metric create` cannot set `aggregationFunction` or `dimensions`,
-though the API accepts both.
+The re-sync with ingestion-api v2 found a second round of request-body drift — dataset
+schema `columnId` (now `id`), metric column references `{id, name}` (now
+`{id, displayName}`), modification `filters[]` (now `conditions`), and `sourceId` /
+`dimensionIds` on `metric dimension-values` and `metric drilldown` — plus the removed
+routes behind `dataset add-modification` (use `update-modification`) and `metric data`
+(use `metric drilldown`). The suites use the current names throughout.
 
 ## Findings for the API team
 

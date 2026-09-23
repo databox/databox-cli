@@ -4,11 +4,13 @@ import {
   cli, expectField, expectKey, expectOk, json,
 } from './helpers/cli.js'
 
+/** BillingResponse.cs `InvoiceItem`. `amount` is USD; there is no currency or description field. */
 interface Invoice {
   amount: number
-  currency: string
-  date: string
+  date: null | string
   downloadUrl: null | string
+  invoiceId: null | string
+  receiptNumber: null | string
   status: string
 }
 
@@ -19,6 +21,7 @@ describe('billing', () => {
     expectField(billing, 'planName', 'string')
     expectField(billing, 'planStatus', 'string')
     expectKey(billing, 'billingPeriod')
+    expectKey(billing, 'billingEmail')
   })
 
   it('renders plan details as labelled output', async () => {
@@ -34,11 +37,11 @@ describe('billing', () => {
     // The account may legitimately have no invoices; only check the shape when it does.
     if (invoices.length > 0) {
       const [invoice] = invoices
-      expectField(invoice, 'date', 'string')
+      expect(invoice).to.have.all.keys('invoiceId', 'date', 'amount', 'status', 'receiptNumber', 'downloadUrl')
       expectField(invoice, 'amount', 'number')
-      expectField(invoice, 'currency', 'string')
       expectField(invoice, 'status', 'string')
-      expectKey(invoice, 'downloadUrl')
+    } else {
+      console.log('   note: the account has no invoices, so their fields could not be checked')
     }
   })
 
@@ -49,7 +52,7 @@ describe('billing', () => {
     if (invoices.length === 0) {
       expect(result.stdout).to.include('No results found.')
     } else {
-      expect(result.stdout).to.include('Date')
+      for (const header of ['Invoice ID', 'Date', 'Amount (USD)', 'Status', 'Receipt #']) expect(result.stdout).to.include(header)
     }
   })
 })

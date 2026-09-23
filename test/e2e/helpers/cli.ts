@@ -232,10 +232,15 @@ const SERVICE_OUTAGE_PATTERNS = [
 
 /**
  * The CLI hard-wraps error output, so a message can be split across lines with
- * padding. Always match against this, never the raw stream.
+ * padding, and oclif starts every wrapped line with a "›" (or "»") gutter. Always
+ * match against this, never the raw stream: the gutter is dropped before the
+ * whitespace is collapsed, so a phrase split across lines reads as one.
  */
 export function errorText(result: CliResult): string {
-  return redact(`${result.stderr} ${result.stdout}`).replaceAll(/\s+/g, ' ').trim()
+  return redact(`${result.stderr} ${result.stdout}`)
+  .replaceAll(/^\s*[»›]\s?/gm, '')
+  .replaceAll(/\s+/g, ' ')
+  .trim()
 }
 
 /** Returns a skip reason when the failure is the environment's, otherwise undefined. */
@@ -317,4 +322,13 @@ export async function retryRead<T>(
   }
 
   throw lastError
+}
+
+/**
+ * Skips the running test with its reason printed. A skip is green in the run's summary, so a
+ * silent one cannot be told apart from a pass; this is the only way a suite should skip.
+ */
+export function skipWith(context: Mocha.Context, reason: string): never {
+  console.log(`   skip: ${reason}`)
+  return context.skip()
 }

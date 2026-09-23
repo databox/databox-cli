@@ -20,6 +20,22 @@ interface SweepTarget {
   label: string
 }
 
+/** How long one sweep listing may take, and how many times a transient failure is retried. */
+export interface SweepBudget {
+  attempts: number
+  timeoutMs: number
+}
+
+/**
+ * For the root after() hook, whose own timeout is 300s. A timed-out call ends within 65s (its 60s
+ * plus cli()'s 5s kill grace), so two listings of 2 attempts and a 3s retry delay each take 266s at
+ * worst, leaving room for the restores that run first.
+ */
+const HOOK_BUDGET: SweepBudget = {attempts: 2, timeoutMs: 60_000}
+
+/** For the standalone cleanup script, which has no hook timeout to fit inside. */
+const STANDALONE_BUDGET: SweepBudget = {attempts: 3, timeoutMs: 180_000}
+
 /** Deleting a data source cascades to its datasets, so datasets need no sweep of their own. */
 const SWEEP_TARGETS: SweepTarget[] = [
   {command: 'data-source', label: 'data sources'},
@@ -37,14 +53,17 @@ export interface SweepResult {
  * Removes anything left behind by an interrupted run. Safe to run at any time —
  * it only touches resources whose name carries the e2e prefix.
  */
-export async function sweepOrphans(): Promise<SweepResult> {
+export async function sweepOrphans({attempts, timeoutMs}: SweepBudget = HOOK_BUDGET): Promise<SweepResult> {
   let deleted = 0
   let failed = 0
   const unchecked: string[] = []
 
   for (const {command, label} of SWEEP_TARGETS) {
+    // --all, not one large page: the API clamps page size to 100, so a single page misses
+    // every orphan past the first hundred. --search narrows it to the prefix server-side, so a
+    // large shared account is not paged through in full; the name check below still decides.
     // eslint-disable-next-line no-await-in-loop
-    const listed = await cliWithRetry([command, 'list', '--page-size', '200', '--json'])
+    const listed = await cliWithRetry([command, 'list', '--search', E2E_PREFIX, '--all', '--json'], {attempts, timeoutMs})
 
     if (listed.code !== 0) {
       unchecked.push(label)
@@ -91,7 +110,7 @@ async function main(): Promise<void> {
 
   console.log(`Sweeping resources named "${E2E_PREFIX}*"\n`)
 
-  const {deleted, failed, unchecked} = await sweepOrphans()
+  const {deleted, failed, unchecked} = await sweepOrphans(STANDALONE_BUDGET)
 
   if (deleted > 0 || failed > 0) {
     console.log(`\nSwept ${deleted} resource(s), ${failed} failure(s).`)

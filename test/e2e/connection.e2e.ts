@@ -1,13 +1,20 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, expectField, expectOk, json,
+  cli, cliWithRetry, expectField, expectKey, expectOk, json, skipWith,
 } from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
 interface Connection {
   id: number
   name: null | string
+}
+
+/** ConnectionResponse.cs `ConnectionPermissions`. */
+interface Permissions {
+  accessLevel: string
+  accessList: Array<{id: number; name: string}> | null
+  sharedWithClients: boolean
 }
 
 /**
@@ -25,41 +32,61 @@ describe('connection', () => {
 
   it('lists connections', function () {
     if (connections.length === 0) {
-      console.log('   skip: account has no connections')
-      this.skip()
+      skipWith(this, 'account has no connections')
     }
 
     expectField(connections[0], 'id', 'number')
   })
 
   it('renders the list as a table', async function () {
-    if (connections.length === 0) this.skip()
+    if (connections.length === 0) skipWith(this, 'account has no connections')
 
     const result = expectOk(await cli(['connection', 'list', '--page-size', '5']))
     expect(result.stdout).to.include('ID')
   })
 
   it('returns a connection by id', async function () {
-    if (connections.length === 0) this.skip()
+    if (connections.length === 0) skipWith(this, 'account has no connections')
 
-    const connection = json<Connection>(await cli(['connection', 'get', String(connections[0].id), '--json']))
+    const connection = json<Connection & Permissions>(await cli(['connection', 'get', String(connections[0].id), '--json']))
     expect(String(connection.id)).to.equal(String(connections[0].id))
+
+    // The detail carries the same access fields: accessList is null unless selectedUsers.
+    expectField(connection, 'accessLevel', 'string')
+    expectKey(connection, 'accessList')
+    if (connection.accessLevel !== 'selectedUsers') {
+      expect(connection.accessList, 'accessList is null unless accessLevel is selectedUsers').to.equal(null)
+    }
   })
 
   it('reads connection permissions', async function () {
-    if (connections.length === 0) this.skip()
+    if (connections.length === 0) skipWith(this, 'account has no connections')
 
-    const permissions = json<Record<string, unknown>>(
+    const permissions = json<Permissions>(
       await cli(['connection', 'permissions', String(connections[0].id), '--json']),
     )
-    expect(permissions).to.be.an('object')
+
+    expectField(permissions, 'accessLevel', 'string')
+    expectField(permissions, 'sharedWithClients', 'boolean')
+    expectKey(permissions, 'accessList')
+    if (permissions.accessLevel === 'selectedUsers') {
+      expect(permissions.accessList).to.be.an('array')
+    } else {
+      expect(permissions.accessList, 'accessList is null unless accessLevel is selectedUsers').to.equal(null)
+    }
   })
 
   it('updates a connection name and restores it', async function () {
-    if (connections.length === 0) this.skip()
+    if (connections.length === 0) skipWith(this, 'account has no connections')
 
     const {id} = connections[0]
     const original = connections[0].name ?? ''
+
+    // Both the CLI and the API refuse a blank name, so a blank original could never be put back.
+    if (original.trim() === '') {
+      skipWith(this, `connection ${id}: original name is blank and cannot be restored through the API`)
+    }
+
     const renamed = `${original} (e2e)`
 
     await withRestore(

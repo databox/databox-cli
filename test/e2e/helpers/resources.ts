@@ -1,5 +1,5 @@
 import {
-  CliResult, cli, cliWithRetry, expectField, json, sleep,
+  CliResult, cli, cliWithRetry, expectField, json, retryRead, sleep,
 } from './cli.js'
 
 /**
@@ -11,16 +11,16 @@ import {
 export const E2E_PREFIX = 'cli-e2e-'
 
 export interface SchemaColumn {
-  columnId: string
   dataType: 'datetime' | 'number' | 'string'
+  id: string
 }
 
 /** Mirrors DEFAULT_SCHEMA in ingestion-api's ExternalTests/v2/v2-test-helper.js. */
 export const DEFAULT_SCHEMA: SchemaColumn[] = [
-  {columnId: 'id', dataType: 'number'},
-  {columnId: 'name', dataType: 'string'},
-  {columnId: 'date', dataType: 'datetime'},
-  {columnId: 'amount', dataType: 'number'},
+  {dataType: 'number', id: 'id'},
+  {dataType: 'string', id: 'name'},
+  {dataType: 'datetime', id: 'date'},
+  {dataType: 'number', id: 'amount'},
 ]
 
 export const DEFAULT_RECORDS = [
@@ -102,7 +102,7 @@ export async function createDataset(
   options: {label?: string; primaryKey?: string[]; schema?: SchemaColumn[]} = {},
 ): Promise<{id: string; name: string}> {
   const {label = 'dataset', schema = DEFAULT_SCHEMA} = options
-  const primaryKey = options.primaryKey ?? [schema[0].columnId]
+  const primaryKey = options.primaryKey ?? [schema[0].id]
   const name = e2eName(label)
 
   const argv = [
@@ -168,4 +168,27 @@ export async function waitForIngestion(
 
   console.log(`   note: ingestion ${ingestionId} did not reach a terminal state within the poll window`)
   return undefined
+}
+
+/**
+ * Saving or clearing a dataset's modifications makes account-service re-prepare the dataset.
+ * Until that finishes, a read answers with an empty `order`, and the next save or clear is
+ * refused with 423 Locked (or a 500), which the CLI reports as an internal_error. Polls the
+ * definition until `order` describes every column again, and returns it; throws if it never does.
+ */
+export async function waitForModificationsSettled<T extends {order: string[]}>(
+  datasetId: string,
+  {attempts = 20, columns = DEFAULT_SCHEMA.length, delayMs = 4000}: {attempts?: number; columns?: number; delayMs?: number} = {},
+): Promise<T> {
+  return retryRead(
+    async () => {
+      const modification = json<T>(await cli(['dataset', 'modifications', datasetId, '--json']))
+      if (modification.order?.length !== columns) {
+        throw new Error(`dataset ${datasetId} has not settled after a modification change: order lists ${modification.order?.length ?? 0} of ${columns} columns`)
+      }
+
+      return modification
+    },
+    {attempts, delayMs},
+  )
 }

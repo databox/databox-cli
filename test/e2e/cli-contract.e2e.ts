@@ -4,8 +4,9 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 
 import {
-  cli, errorText, expectExit, expectOk, json,
+  cli, errorText, expectExit, expectOk, json, skipWith,
 } from './helpers/cli.js'
+import {parseCsv} from './helpers/csv.js'
 import {getConfig} from './helpers/env.js'
 import {
   DEFAULT_RECORDS, ResourceTracker, createDataSource, createDataset,
@@ -114,6 +115,61 @@ describe('cli-contract', () => {
     })
   })
 
+  describe('global flags', () => {
+    it('prints CSV under --output csv: a header, one line per row, no table rule or footer', async () => {
+      const result = expectOk(await cli(['integration', 'list', '--page-size', '3', '--output', 'csv']))
+      const rows = parseCsv(result.stdout.trimEnd())
+
+      expect(rows[0]).to.deep.equal(['ID', 'Key', 'Name', 'Datasets'])
+      expect(rows.length, 'a header plus up to three rows').to.be.within(1, 4)
+      for (const row of rows) expect(row).to.have.lengthOf(4)
+
+      expect(result.stdout).to.not.include('│')
+      expect(result.stdout).to.not.match(/Page \d+ of \d+/)
+    })
+
+    it('traces requests to stderr under --verbose, leaving stdout parseable and the key unprinted', async () => {
+      const {apiKey} = getConfig().environment
+      const result = await cli(['account', 'info', '--json', '--verbose'])
+
+      expect(() => JSON.parse(result.stdout), 'stdout under --verbose was not pure JSON').to.not.throw()
+      expect(result.stderr).to.match(/Request: GET https?:\/\/\S+\/v2\/account\b/)
+      expect(result.stderr).to.include('Headers: x-api-key: <redacted>')
+      expect(result.stderr).to.match(/Response: 200 \(\d+ms\)/)
+      expect(result.stdout).to.not.match(/Request: |Response: /)
+
+      expect(result.stdout, 'stdout under --verbose').to.not.include(apiKey)
+      expect(result.stderr, 'stderr under --verbose').to.not.include(apiKey)
+    })
+
+    // Port 9 (discard) is closed on a loopback that runs no such service, so the connection is
+    // refused at once. A failure to reach the API is exit 2; an API error would be exit 1.
+    it('exits 2 when the API cannot be reached', async () => {
+      const result = await cli(['account', 'info', '--api-url', 'http://127.0.0.1:9'])
+
+      expectExit(result, 2)
+      expect(errorText(result)).to.match(/could not connect to api/i)
+    })
+
+    it('fetches every page under --all', async function () {
+      this.timeout(120_000)
+
+      // The catalog changes rarely, so its total is stable between two reads.
+      const footer = expectOk(await cli(['integration', 'list', '--page-size', '1'])).stdout.match(/\((\d+) total items\)/)
+      expect(footer, 'the table footer should report the total').to.not.equal(null)
+      const total = Number(footer![1])
+
+      const all = await cli(['integration', 'list', '--all', '--json'])
+      const items = json<Array<{key: string}>>(all)
+
+      // Key, not id: IntegrationListItem.Id is `model.Id ?? 0`, and production lists several
+      // integrations (Make, Zapier) whose upstream id is null, so they all read as 0.
+      expect(items).to.have.lengthOf(total)
+      expect(new Set(items.map(item => item.key)).size, 'no integration should be listed twice').to.equal(total)
+      expect(all.stderr, 'a complete fetch prints no warning').to.not.match(/Fetched \d+/)
+    })
+  })
+
   describe('credential hygiene', () => {
     it('never prints the API key, on success or failure', async () => {
       const {apiKey} = getConfig().environment
@@ -158,8 +214,7 @@ describe('cli-contract', () => {
       const result = await cli(['dataset', 'ingest', datasetId, '--records', JSON.stringify(DEFAULT_RECORDS), '--json'])
 
       if (result.code !== 0 && /upstream service error/i.test(errorText(result))) {
-        console.log('   skip: ingestion pipeline unavailable on this environment')
-        this.skip()
+        skipWith(this, 'ingestion pipeline unavailable on this environment')
       }
 
       expectOk(result)
@@ -173,8 +228,7 @@ describe('cli-contract', () => {
         const result = await cli(['dataset', 'ingest', datasetId, '--file', file, '--json'])
 
         if (result.code !== 0 && /upstream service error/i.test(errorText(result))) {
-          console.log('   skip: ingestion pipeline unavailable on this environment')
-          this.skip()
+          skipWith(this, 'ingestion pipeline unavailable on this environment')
         }
 
         expectOk(result)
@@ -187,8 +241,7 @@ describe('cli-contract', () => {
       const result = await cli(['dataset', 'ingest', datasetId, '--json'], {stdin: JSON.stringify(DEFAULT_RECORDS)})
 
       if (result.code !== 0 && /upstream service error/i.test(errorText(result))) {
-        console.log('   skip: ingestion pipeline unavailable on this environment')
-        this.skip()
+        skipWith(this, 'ingestion pipeline unavailable on this environment')
       }
 
       expectOk(result)
@@ -237,7 +290,7 @@ describe('cli-contract', () => {
 
     it('sends x-account-id when --account-id is set', async function () {
       const {accountId} = getConfig()
-      if (!accountId) this.skip()
+      if (!accountId) skipWith(this, 'DATABOX_E2E_ACCOUNT_ID is not set, so there is no account to scope to')
 
       const scoped = json<{id: number}>(await cli(['account', 'info', '--account-id', accountId!, '--json']))
       expect(String(scoped.id)).to.equal(accountId)

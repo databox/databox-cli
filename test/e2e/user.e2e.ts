@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, expectField, expectOk, json, retryRead, serviceUnavailable,
+  cli, cliWithRetry, errorText, expectExit, expectField, expectOk, json, retryRead, serviceUnavailable, skipWith,
 } from './helpers/cli.js'
 import {E2E_PREFIX, ResourceTracker} from './helpers/resources.js'
 
@@ -18,6 +18,7 @@ describe('user', () => {
   const tracker = new ResourceTracker()
   let users: User[]
   let invitedId: string | undefined
+  let invitedEmail: string | undefined
 
   before(async function () {
     this.timeout(120_000)
@@ -75,18 +76,18 @@ describe('user', () => {
 
     const outage = serviceUnavailable(result)
     if (outage) {
-      console.log(`   skip: ${outage}`)
-      this.skip()
+      skipWith(this, `${outage}`)
     }
 
     const invited = json<{id: number}>(result)
     expectField(invited, 'id', 'number')
     invitedId = tracker.track('user', invited.id)
+    invitedEmail = email
   })
 
   it('finds the invited user in the list', async function () {
     this.timeout(120_000)
-    if (!invitedId) this.skip()
+    if (!invitedId) skipWith(this, 'no user was invited')
 
     await retryRead(
       async () => {
@@ -99,14 +100,32 @@ describe('user', () => {
     )
   })
 
+  it('refuses to invite the same email again, pointing to user update', async function () {
+    if (!invitedEmail) skipWith(this, 'no user was invited')
+
+    const result = await cli(['user', 'invite', '--email', invitedEmail!, '--role', 'user', '--json'])
+
+    // Should the API ever accept it, track what came back so teardown removes it.
+    if (result.code === 0) {
+      const duplicate = JSON.parse(result.stdout) as {id: number}
+      if (String(duplicate.id) !== invitedId) tracker.track('user', duplicate.id)
+    }
+
+    // A 409 is an API error, so exit 1; the CLI appends the hint to the API's own message.
+    expectExit(result, 1)
+    const text = errorText(result)
+    expect(text).to.include('duplicate_record')
+    expect(text).to.include('Hint: to change an existing user\'s role or name, run "user update <userId>"')
+  })
+
   it('updates the invited user role', async function () {
-    if (!invitedId) this.skip()
+    if (!invitedId) skipWith(this, 'no user was invited')
 
     expectOk(await cli(['user', 'update', invitedId!, '--role', 'admin', '--json']))
   })
 
   it('removes the invited user', async function () {
-    if (!invitedId) this.skip()
+    if (!invitedId) skipWith(this, 'no user was invited')
 
     const result = expectOk(await cli(['user', 'delete', invitedId!, '--force']))
     expect(result.stdout).to.match(/removed|deleted/i)

@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, expectField, expectOk, json,
+  cli, cliWithRetry, errorText, expectExit, expectField, expectOk, json, skipWith,
 } from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
@@ -33,9 +33,22 @@ describe('profile', () => {
     expect(options).to.be.an('object')
   })
 
-  it('updates the display name and restores it', async () => {
+  // The API answers a blank name with a 400; the CLI now catches it before the request, so
+  // nothing is sent and the profile is never touched.
+  it('rejects an empty --name with exit 2 before calling the API', async () => {
+    const result = await cli(['profile', 'update', '--name', ''])
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('--name cannot be empty')
+  })
+
+  it('updates the display name and restores it', async function () {
     const original = profile.name ?? ''
-    expect(original, 'profile has no name to round-trip').to.not.be.empty
+
+    // Both the CLI and the API refuse a blank name, so a blank original could never be put back.
+    if (original.trim() === '') {
+      skipWith(this, 'profile: original name is blank and cannot be restored through the API')
+    }
 
     const renamed = `${original} (e2e)`
 

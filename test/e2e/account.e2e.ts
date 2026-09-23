@@ -1,15 +1,20 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, expectField, expectKey, expectOk, json,
+  cli, cliWithRetry, expectField, expectKey, expectOk, json, skipWith,
 } from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
+/** AccountResponse.cs `AccountResponse`: only what these tests read. */
 interface Account {
   accountType: string
   companyName: null | string
   id: number
   name: string
+  settings: {
+    calendar: null | string
+    fiscalYearStart: {day: number; month: number} | null
+  } | null
 }
 
 describe('account', () => {
@@ -26,6 +31,12 @@ describe('account', () => {
     expectKey(account, 'companyName')
     expectKey(account, 'settings')
     expectKey(account, 'managedBy')
+    for (const key of ['websiteUrl', 'address', 'taxNumber', 'billingName', 'metadata']) expectKey(account, key)
+    if (account.settings) {
+      for (const key of ['dateFormat', 'numberFormat', 'firstDayOfWeek', 'calendar', 'fiscalYearStart']) {
+        expectKey(account.settings, key)
+      }
+    }
   })
 
   it('renders account info as a labelled table', async () => {
@@ -34,18 +45,31 @@ describe('account', () => {
     expect(result.stdout).to.include(account.name)
   })
 
-  // The API returns {count, limit} per bucket, plus a `clients` bucket. Note that
-  // src/commands/account/usage.ts declares {current, limit} and omits `clients` —
-  // the interface is stale, though formatSingle prints whatever it is given, so
-  // there is no user-visible symptom. Asserted here against the real contract.
-  it('reports usage counts', async () => {
-    const usage = json<Record<string, {count: number; limit: null | number}>>(await cli(['account', 'usage', '--json']))
+  // {count, limit} per bucket, and aiCredits, which is null when the credits read failed.
+  it('reports usage counts and AI credits', async () => {
+    const usage = json<{aiCredits: Record<string, unknown> | null} & Record<string, {count: number; limit: null | number}>>(
+      await cli(['account', 'usage', '--json']),
+    )
 
     for (const bucket of ['users', 'dataSources', 'clients']) {
       expectField(usage, bucket, 'object')
       expect(usage[bucket].count, `${bucket}.count`).to.be.a('number').and.to.be.at.least(0)
       expectKey(usage[bucket], 'limit')
     }
+
+    expectKey(usage, 'aiCredits')
+    if (usage.aiCredits) {
+      for (const key of ['used', 'limit', 'remaining', 'resetsAt']) expectKey(usage.aiCredits, key)
+      expect(['ok', 'low', 'exhausted', 'unknown']).to.include(usage.aiCredits.state)
+    } else {
+      console.log('   note: aiCredits is null (the API could not read the credit usage)')
+    }
+
+    // Rendered as readable lines, not a JSON-encoded object.
+    const table = expectOk(await cli(['account', 'usage']))
+    expect(table.stdout).to.match(/Users: \d+ of /)
+    expect(table.stdout).to.include('AI credits')
+    expect(table.stdout).to.not.include('{"')
   })
 
   it('lists timezones', async () => {
@@ -107,8 +131,56 @@ describe('account', () => {
     expect(result.stderr).to.include('at least one field')
   })
 
-  it('updates the account name and restores it', async () => {
+  // Sets a fiscal calendar and a fiscal year start, then puts the original back. Only run from a
+  // state the restore can reproduce exactly: gregorian (upstream clears the fiscal config for it),
+  // or customFiscal with a known start. A non-gregorian save reuses the stored calendar config, so
+  // a weekAlignedFiscal account could lose its week pattern for good.
+  it('round-trips a fiscal calendar and restores it', async function () {
+    const original = json<Account>(await cli(['account', 'info', '--json'])).settings
+    const calendar = original?.calendar
+    const start = original?.fiscalYearStart ?? null
+
+    const restorable = (calendar === 'gregorian' && start === null) || (calendar === 'customFiscal' && start !== null)
+    if (!restorable) {
+      skipWith(this, `the account's calendar (${calendar ?? 'none'}, fiscal year start ${JSON.stringify(start)}) could not be restored exactly`)
+    }
+
+    const restoreSettings: Record<string, unknown> = calendar === 'gregorian'
+      ? {calendar}
+      : {calendar, fiscalYearStart: start}
+
+    // Differs from the current start, so the change is observable whatever the account had.
+    const fiscalYearStart = start?.month === 4 ? {day: 1, month: 7} : {day: 1, month: 4}
+
+    await withRestore(
+      'account.settings.calendar',
+      ['account', 'update', '--settings', JSON.stringify(restoreSettings), '--json'],
+      async () => {
+        const updated = json<Account>(await cli([
+          'account', 'update', '--settings', JSON.stringify({calendar: 'customFiscal', fiscalYearStart}), '--json',
+        ]))
+        expect(updated.settings?.calendar).to.equal('customFiscal')
+        expect(updated.settings?.fiscalYearStart).to.deep.equal(fiscalYearStart)
+
+        const reread = json<Account>(await cli(['account', 'info', '--json']))
+        expect(reread.settings?.calendar).to.equal('customFiscal')
+        expect(reread.settings?.fiscalYearStart).to.deep.equal(fiscalYearStart)
+      },
+    )
+
+    const restored = json<Account>(await cli(['account', 'info', '--json'])).settings
+    expect(restored?.calendar).to.equal(calendar)
+    expect(restored?.fiscalYearStart).to.deep.equal(start)
+  })
+
+  it('updates the account name and restores it', async function () {
     const original = account.name
+
+    // Both the CLI and the API refuse a blank name, so a blank original could never be put back.
+    if (original.trim() === '') {
+      skipWith(this, 'account: original name is blank and cannot be restored through the API')
+    }
+
     const renamed = `${original} (e2e)`
 
     await withRestore('account.name', ['account', 'update', '--name', original, '--json'], async () => {
