@@ -11,7 +11,7 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
 
   static description = `Set permissions for a dataset
 
-everyone grants every user in the account; selectedUsers grants only the users in --access-list; private grants no one explicitly. Admins and the account owner always keep access.`
+everyone grants every user in the organization; selectedUsers grants only the users in --access-list; private grants no one explicitly. Admins and the organization owner always keep access.`
 
   static examples = [
     '<%= config.bin %> dataset set-permissions 12345 --access-level everyone',

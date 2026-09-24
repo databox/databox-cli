@@ -1,11 +1,11 @@
 ---
-name: databox-account
-description: Use when the user wants to view their Databox account info, check usage, update account settings, list timezones, or explore account resources. Triggers on mentions of Databox account details, settings, usage stats, or timezones.
+name: databox-organization
+description: Use when the user wants to view their Databox organization info, check usage, update organization settings, list timezones, or explore the organization's resources. Triggers on mentions of Databox organization details, settings, usage stats, or timezones.
 ---
 
-# Databox Account Management
+# Databox Organization Management
 
-View account details, usage, and settings via the `databox` CLI.
+View organization details, usage, and settings via the `databox` CLI.
 
 ## Prerequisites
 
@@ -15,19 +15,19 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 
 | Task | Command |
 |------|---------|
-| View account info | `databox account info` |
-| View account (JSON) | `databox account info --json` |
-| Update account name | `databox account update --name "New Name"` |
-| View usage stats | `databox account usage` |
-| List timezones | `databox account timezones` |
+| View organization info | `databox organization info` |
+| View organization (JSON) | `databox organization info --json` |
+| Update organization name | `databox organization update --name "New Name"` |
+| View usage stats | `databox organization usage` |
+| List timezones | `databox organization timezones` |
 | List data sources | `databox data-source list` |
 | List datasets | `databox dataset list` |
 
 ## Common Workflow: Discover Resources
 
 ```bash
-# 1. View your account
-databox account info
+# 1. View your organization
+databox organization info
 
 # 2. List data sources
 databox data-source list
@@ -35,16 +35,16 @@ databox data-source list
 # 3. List datasets
 databox dataset list
 
-# 4. For a specific client account (agency model)
+# 4. For a specific account in your organization
 databox data-source list --account-id 12345
 ```
 
-## Multi-Account Access
+## Accounts in Your Organization
 
-For agency accounts managing clients, use `--account-id` on any command to scope it to a specific client account. Use `databox client list` to see your client accounts.
+An organization that manages accounts can scope any command to one of them with `--account-id`. Use `databox account list` to see the accounts, and the `databox-accounts` skill to manage them. With `--account-id`, `organization info` and the other `organization` commands answer for that account.
 
 ## Notes
 
 - All commands support `--json` for machine-readable output
-- Account IDs and data source IDs are numeric (e.g., `12345`)
+- Organization, account and data source IDs are numeric (e.g., `12345`)
 - Dataset IDs are numeric (e.g., `67890`)

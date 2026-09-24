@@ -1,5 +1,5 @@
 import {
-  E2eEnvironment, E2eTarget, KeySource, knownEnvironmentNames, resolveEnvironment, targetOf,
+  E2eEnvironment, E2eTarget, KeySource, resolveEnvironment, targetOf,
 } from './environments.js'
 
 export interface E2eConfig {
@@ -21,10 +21,6 @@ function describeKeySource(source: KeySource): string {
     return 'from DATABOX_E2E_API_KEY'
   }
 
-  case 'default': {
-    return 'from the environment default'
-  }
-
   case 'none': {
     return 'not set'
   }
@@ -41,8 +37,7 @@ function describeKeySource(source: KeySource): string {
 export function describeTarget(target: E2eTarget, extras: {accountId?: string; insecureTls: boolean}): string[] {
   const lines = [
     'databox-cli e2e',
-    `  environment : ${target.name}${target.isProduction ? '  ** PRODUCTION **' : ''}`,
-    `  api url     : ${target.baseUrl}`,
+    `  api url     : ${target.baseUrl}${target.isProduction ? '  ** PRODUCTION **' : ''}`,
     `  api key     : ${describeKeySource(target.keySource)}`,
   ]
 
@@ -87,6 +82,22 @@ export function preflight(): E2eConfig {
   const config = getConfig()
   const {accountId, allowInsecureTls, environment} = config
 
+  const missing = [
+    environment.baseUrl ? undefined : 'DATABOX_E2E_API_URL',
+    environment.apiKey ? undefined : 'DATABOX_E2E_API_KEY',
+  ].filter(name => name !== undefined)
+
+  if (missing.length > 0) {
+    throw new Error(
+      [
+        '',
+        `Not set: ${missing.join(', ')}.`,
+        'The e2e suite needs both DATABOX_E2E_API_URL (the API base URL) and DATABOX_E2E_API_KEY',
+        '(a key valid for it). No key is built in — this repository is public.',
+      ].join('\n'),
+    )
+  }
+
   if (environment.isProduction && process.env.DATABOX_E2E_ALLOW_PROD !== '1') {
     throw new Error(
       [
@@ -94,19 +105,6 @@ export function preflight(): E2eConfig {
         `Refusing to run against PRODUCTION (${environment.baseUrl}).`,
         'These suites create and delete real data sources, datasets, metrics and users.',
         'If that is genuinely what you want, set DATABOX_E2E_ALLOW_PROD=1.',
-      ].join('\n'),
-    )
-  }
-
-  if (!environment.apiKey) {
-    throw new Error(
-      [
-        '',
-        `No API key for environment "${environment.name}" (${environment.baseUrl}).`,
-        'Set DATABOX_E2E_API_KEY to a key valid for that environment.',
-        `Environments with a built-in default key: ${knownEnvironmentNames()
-        .filter(name => resolveEnvironment({DATABOX_E2E_ENV: name}).keySource === 'default')
-        .join(', ')}.`,
       ].join('\n'),
     )
   }

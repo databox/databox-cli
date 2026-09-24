@@ -138,7 +138,7 @@ export interface DataSourceDetail extends DataSourceListItem {
 
 /** ConnectionResponse.cs `ConnectionPermissions`, read by permissions and returned by set-permissions. */
 export interface ConnectionPermissions extends Permissions {
-  sharedWithClients: boolean
+  sharedWithAccounts: boolean
 }
 
 /** ConnectionResponse.cs `ConnectionStatusInfo`. */
@@ -155,7 +155,7 @@ export interface ConnectionListItem {
   integrationKey: null | string
   managedBy: UserRef | null
   name: string
-  sharedWithClients: boolean
+  sharedWithAccounts: boolean
   statusInfo: ConnectionStatusInfo
 }
 
@@ -170,18 +170,26 @@ export interface ConnectionDetail extends ConnectionListItem {
   dataSourcesCount: number
 }
 
-/** ClientResponse.cs `ClientDetail`, returned by client get, create and update. */
-export interface ClientDetail {
-  companyName: null | string
-  createdAt: null | string
+/** ClientResponse.cs `ClientListItem`, published as `AccountListItem`: a row of GET /v2/accounts. */
+export interface AccountListItem {
   id: number
   isSelfManaged: boolean
   managedBy: UserRef | null
   name: string
+}
+
+/**
+ * ClientResponse.cs `ClientDetail`, published as `AccountDetail`, returned by account get, create and
+ * update. The C# class repeats ClientListItem's members rather than inheriting them; the `extends`
+ * here follows the CLI rule that a detail type extends its list item.
+ */
+export interface AccountDetail extends AccountListItem {
+  companyName: null | string
+  createdAt: null | string
   websiteUrl: null | string
 }
 
-/** ProfileResponse.cs `ProfileMetadataModel`: the job details, not the account role. */
+/** ProfileResponse.cs `ProfileMetadataModel`: the job details, not the user's role. */
 export interface ProfileMetadata {
   department: null | string
   role: null | string
@@ -189,18 +197,36 @@ export interface ProfileMetadata {
 }
 
 /**
+ * ProfileResponse.cs `OrganizationRef`: the organization the user belongs to. `name` is null when
+ * the name lookup failed, and `id` is null when an account-level user's organization could not be
+ * resolved.
+ */
+export interface OrganizationRef {
+  id: null | number
+  name: null | string
+}
+
+/** ProfileResponse.cs `AccountRef`: an account within an organization. `name` is null when the name lookup failed. */
+export interface AccountRef {
+  id: number
+  name: null | string
+}
+
+/**
  * ProfileResponse.cs `ProfileResponse`, read by profile info and returned by profile update.
- * `role` is the account role (admin, user, editor or viewer); `metadata.role` is the job role.
+ * `role` is the user's role (admin, user, editor or viewer); `metadata.role` is the job role.
+ * `account` is the user's home account, null for a user at the organization level; neither it
+ * nor `organization` follows --account-id.
  */
 export interface ProfileResponse {
-  accountId: number
-  accountType: string
+  account: AccountRef | null
   createdAt: string
   email: string
   id: number
   isEmailVerified: boolean
   metadata: ProfileMetadata | null
   name: string
+  organization: OrganizationRef
   role: string
   timezone: null | string
 }
@@ -252,8 +278,8 @@ export interface Address {
   zip: null | string
 }
 
-/** Common.cs `V2AccountSettingsModel`. */
-export interface AccountSettings {
+/** Common.cs `V2AccountSettingsModel`: the organization's settings. */
+export interface OrganizationSettings {
   /** gregorian, customFiscal or weekAlignedFiscal. */
   calendar: null | string
   dateFormat: null | string
@@ -263,25 +289,27 @@ export interface AccountSettings {
   numberFormat: null | string
 }
 
-/** Common.cs `V2AccountMetadataModel`. */
-export interface AccountMetadata {
+/** Common.cs `V2AccountMetadataModel`: the organization's metadata. */
+export interface OrganizationMetadata {
   annualRevenue: null | string
   businessType: null | string[]
   companySize: null | string
   industry: null | string[]
 }
 
-/** AccountResponse.cs `AccountResponse`, read by account info and returned by account update. */
-export interface AccountResponse {
-  accountType: string
+/**
+ * AccountResponse.cs `AccountResponse`, published as `OrganizationResponse`: read by organization
+ * info and returned by organization update.
+ */
+export interface OrganizationResponse {
   address: Address | null
   billingName: null | string
   companyName: null | string
   id: number
   managedBy: UserRef | null
-  metadata: AccountMetadata | null
+  metadata: OrganizationMetadata | null
   name: string
-  settings: AccountSettings | null
+  settings: OrganizationSettings | null
   taxNumber: null | string
   websiteUrl: null | string
 }

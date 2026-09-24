@@ -65,6 +65,14 @@ describe('dataset list', () => {
     expect(params.get('sortOrder')).to.equal('desc')
   })
 
+  for (const value of ['abc', '0']) {
+    it(`rejects --data-source-id ${value} with exit 2 and sends nothing`, async () => {
+      const {error} = await runCommand(['dataset', 'list', '--data-source-id', value], {root: process.cwd()})
+      expect(error?.oclif?.exit).to.equal(2)
+      expect(requests()).to.have.length(0)
+    })
+  }
+
   it('rejects a sort field the API does not accept with exit 2', async () => {
     const {error} = await runCommand(['dataset', 'list', '--sort-by', 'title'], {root: process.cwd()})
     expect(error?.oclif?.exit).to.equal(2)

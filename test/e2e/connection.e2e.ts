@@ -14,7 +14,7 @@ interface Connection {
 interface Permissions {
   accessLevel: string
   accessList: Array<{id: number; name: string}> | null
-  sharedWithClients: boolean
+  sharedWithAccounts: boolean
 }
 
 /**
@@ -67,7 +67,7 @@ describe('connection', () => {
     )
 
     expectField(permissions, 'accessLevel', 'string')
-    expectField(permissions, 'sharedWithClients', 'boolean')
+    expectField(permissions, 'sharedWithAccounts', 'boolean')
     expectKey(permissions, 'accessList')
     if (permissions.accessLevel === 'selectedUsers') {
       expect(permissions.accessList).to.be.an('array')
@@ -99,5 +99,33 @@ describe('connection', () => {
         expect(reread.name).to.equal(renamed)
       },
     )
+  })
+
+  // Writes the permissions the connection already has, so the round trip proves the request body
+  // (sharedWithAccounts above all) against the live API without changing who can see it.
+  it('sets the current permissions back unchanged', async function () {
+    if (connections.length === 0) skipWith(this, 'account has no connections')
+
+    const id = String(connections[0].id)
+    const original = json<Permissions>(await cli(['connection', 'permissions', id, '--json']))
+
+    const argv = [
+      'connection', 'set-permissions', id, '--access-level', original.accessLevel,
+      ...(original.accessLevel === 'selectedUsers' ? (original.accessList ?? []).flatMap(user => ['--access-list', String(user.id)]) : []),
+      original.sharedWithAccounts ? '--shared-with-accounts' : '--no-shared-with-accounts',
+      '--json',
+    ]
+
+    await withRestore(`connection.${id}.permissions`, argv, async () => {
+      const updated = json<Permissions>(await cli(argv))
+      expect(updated.sharedWithAccounts).to.equal(original.sharedWithAccounts)
+
+      const reread = json<Permissions>(await cli(['connection', 'permissions', id, '--json']))
+      expect(reread.accessLevel).to.equal(original.accessLevel)
+      expect(reread.sharedWithAccounts).to.equal(original.sharedWithAccounts)
+      // Compared as sorted ids: the API does not promise an order for the list.
+      const ids = (permissions: Permissions) => (permissions.accessList ?? []).map(user => user.id).sort((a, b) => a - b)
+      expect(ids(reread)).to.deep.equal(ids(original))
+    })
   })
 })

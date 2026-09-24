@@ -10,7 +10,7 @@ const entries = [
   {
     action: 'Ada renamed data source Orders',
     createdAt: '2026-09-01T08:00:00+00:00',
-    details: {accountId: 100, newName: 'Orders', oldName: 'Orders v1'},
+    details: {newName: 'Orders', oldName: 'Orders v1'},
     id: 1,
     isSystem: false,
     resourceId: '42',
@@ -35,7 +35,7 @@ describe('activity-log list', () => {
     mockApi([
       {
         method: 'GET',
-        path: '/v2/account/activity-log',
+        path: '/v2/organization/activity-log',
         response: {
           data: {items: entries, pagination: {page: 0, pageSize: 25, totalItems: 2}},
           requestId: 'test',
@@ -67,6 +67,20 @@ describe('activity-log list', () => {
     await runCommand(['activity-log', 'list', '--resource-type', 'dataSource', '--user-id', '31'], {root: process.cwd()})
     expect(requests()[0].search).to.equal('?resourceType=dataSource&userId=31')
   })
+
+  it('sends --resource-type administration', async () => {
+    await runCommand(['activity-log', 'list', '--resource-type', 'administration'], {root: process.cwd()})
+    expect(requests()[0].search).to.equal('?resourceType=administration')
+  })
+
+  // Organization and account events are one category, administration; the API refuses their earlier names.
+  for (const resourceType of ['account', 'client', 'organization']) {
+    it(`rejects the ${resourceType} resource type with exit 2`, async () => {
+      const {error} = await runCommand(['activity-log', 'list', '--resource-type', resourceType], {root: process.cwd()})
+      expect(error?.oclif?.exit).to.equal(2)
+      expect(requests()).to.have.length(0)
+    })
+  }
 
   it('rejects a resource type the API does not know with exit 2', async () => {
     const {error} = await runCommand(['activity-log', 'list', '--resource-type', 'data_source'], {root: process.cwd()})

@@ -19,13 +19,13 @@ import {cleanupTestConfig, setupTestConfig} from '../helpers.js'
 const INVALID = 'not-a-number'
 
 const cases: string[][] = [
-  ['client', 'delete', 'not-a-number'],
-  ['client', 'get', 'not-a-number'],
-  ['client', 'update', 'not-a-number'],
+  ['account', 'delete', 'not-a-number'],
+  ['account', 'get', 'not-a-number'],
+  ['account', 'update', 'not-a-number'],
   ['connection', 'delete', 'not-a-number'],
   ['connection', 'get', 'not-a-number'],
   ['connection', 'permissions', 'not-a-number'],
-  ['connection', 'set-permissions', 'not-a-number', '--access-level', 'everyone', '--no-shared-with-clients'],
+  ['connection', 'set-permissions', 'not-a-number', '--access-level', 'everyone', '--no-shared-with-accounts'],
   ['connection', 'update', 'not-a-number'],
   ['data-source', 'datasets', 'not-a-number'],
   ['data-source', 'delete', 'not-a-number'],

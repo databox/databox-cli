@@ -45,7 +45,7 @@ export function isE2eResource(name: unknown): boolean {
   return typeof name === 'string' && name.startsWith(E2E_PREFIX)
 }
 
-type TrackedKind = 'client' | 'data-source' | 'dataset' | 'metric' | 'user'
+type TrackedKind = 'account' | 'data-source' | 'dataset' | 'metric' | 'user'
 
 interface TrackedResource {
   id: string

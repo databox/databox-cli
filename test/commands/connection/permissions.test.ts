@@ -13,7 +13,7 @@ describe('connection permissions', () => {
         method: 'GET',
         path: '/v2/connections/1/permissions',
         response: {
-          data: {accessLevel: 'selectedUsers', accessList: [{id: 31, name: 'Ada'}], sharedWithClients: false},
+          data: {accessLevel: 'selectedUsers', accessList: [{id: 31, name: 'Ada'}], sharedWithAccounts: false},
           requestId: 'test',
           status: 'success',
         },
@@ -34,6 +34,6 @@ describe('connection permissions', () => {
 
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['connection', 'permissions', '1', '--json'], {root: process.cwd()})
-    expect(JSON.parse(stdout)).to.deep.equal({accessLevel: 'selectedUsers', accessList: [{id: 31, name: 'Ada'}], sharedWithClients: false})
+    expect(JSON.parse(stdout)).to.deep.equal({accessLevel: 'selectedUsers', accessList: [{id: 31, name: 'Ada'}], sharedWithAccounts: false})
   })
 })

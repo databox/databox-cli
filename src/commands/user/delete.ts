@@ -8,7 +8,7 @@ export default class UserDelete extends BaseCommand<typeof UserDelete> {
     userId: Args.string({description: 'The user ID to remove', required: true}),
   }
 
-  static description = 'Remove a user from the account'
+  static description = 'Remove a user from the organization'
 
   static examples = [
     '<%= config.bin %> user delete 12345',

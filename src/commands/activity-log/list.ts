@@ -7,8 +7,8 @@ import {UserRef} from '../../lib/types.js'
 
 /**
  * ActivityLogResponse.cs `ActivityLogEntry`. `details` is the event's own JSON payload, passed
- * through from the tracking service (a top-level `spaceId` renamed to `accountId`); its shape
- * varies by event, and it can be null.
+ * through from the tracking service without the space id, which is always the request's own scope.
+ * Its shape varies by event, and it can be null.
  */
 interface ActivityLogEntry {
   action: string
@@ -46,7 +46,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
     'date-to': Flags.string({description: 'Only entries on or before this date (ISO 8601)'}),
     'resource-type': Flags.string({
       description: 'Filter by resource type',
-      options: ['dataSource', 'dataset', 'metric', 'user', 'account', 'client', 'billing', 'connection'],
+      options: ['dataSource', 'dataset', 'metric', 'user', 'administration', 'billing', 'connection'],
     }),
     search: Flags.string({description: 'Search the log text'}),
     'user-id': Flags.integer({description: 'Filter by the ID of the user who acted'}),
@@ -61,7 +61,7 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
     if (this.flags['date-to']) query.dateTo = this.flags['date-to']
 
     const response = await fetchPaginated(this.flags, query, pageQuery =>
-      this.apiClient.get<ActivityLogResponse>('/v2/account/activity-log', pageQuery, this.accountHeaders), warning => this.warn(warning))
+      this.apiClient.get<ActivityLogResponse>('/v2/organization/activity-log', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,

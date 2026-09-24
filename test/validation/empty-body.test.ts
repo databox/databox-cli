@@ -16,12 +16,12 @@ import {cleanupTestConfig, setupTestConfig} from '../helpers.js'
  */
 
 const cases: string[][] = [
-  ['account', 'update'],
-  ['client', 'update', '1'],
+  ['account', 'update', '1'],
   ['connection', 'update', '1'],
   ['dataset', 'set-metadata', '1'],
   ['dataset', 'update', '1'],
   ['metric', 'update', '42|q'],
+  ['organization', 'update'],
   ['profile', 'update'],
   ['user', 'update', '1'],
 ]

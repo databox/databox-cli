@@ -5,13 +5,13 @@ import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
-describe('client delete', () => {
+describe('account delete', () => {
   beforeEach(() => {
     setupTestConfig()
     mockApi([
       {
         method: 'DELETE',
-        path: '/v2/clients/1',
+        path: '/v2/accounts/1',
         response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
@@ -23,7 +23,7 @@ describe('client delete', () => {
   })
 
   it('deletes with --force', async () => {
-    const {stdout} = await runCommand(['client', 'delete', '1', '--force'], {root: process.cwd()})
-    expect(stdout).to.contain('Client account 1 deleted')
+    const {stdout} = await runCommand(['account', 'delete', '1', '--force'], {root: process.cwd()})
+    expect(stdout).to.contain('Account 1 deleted.')
   })
 })

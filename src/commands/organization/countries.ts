@@ -10,16 +10,16 @@ interface CountriesResponse {
   items: Country[]
 }
 
-export default class AccountCountries extends BaseCommand<typeof AccountCountries> {
+export default class OrganizationCountries extends BaseCommand<typeof OrganizationCountries> {
   static description = 'List available countries'
 
   static examples = [
-    '<%= config.bin %> account countries',
-    '<%= config.bin %> account countries --json',
+    '<%= config.bin %> organization countries',
+    '<%= config.bin %> organization countries --json',
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<CountriesResponse>('/v2/account/countries', undefined, this.accountHeaders)
+    const response = await this.apiClient.get<CountriesResponse>('/v2/organization/countries', undefined, this.accountHeaders)
 
     formatOutput(
       response.items,

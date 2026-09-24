@@ -15,9 +15,6 @@ import {cleanupTestConfig, setupTestConfig} from '../helpers.js'
 const BAD = '{nope'
 
 const cases: Array<{argv: string[]; flag: string}> = [
-  {argv: ['account', 'update', '--address', BAD], flag: 'address'},
-  {argv: ['account', 'update', '--settings', BAD], flag: 'settings'},
-  {argv: ['account', 'update', '--metadata', BAD], flag: 'metadata'},
   {argv: ['dataset', 'create', '--name', 'n', '--data-source-id', '1', '--schema', BAD], flag: 'schema'},
   {argv: ['dataset', 'update-modification', '123', '--data', BAD], flag: 'data'},
   {argv: ['dataset', 'preview-modification', '123', '--data', BAD], flag: 'data'},
@@ -44,6 +41,9 @@ const cases: Array<{argv: string[]; flag: string}> = [
     ],
     flag: 'filters',
   },
+  {argv: ['organization', 'update', '--address', BAD], flag: 'address'},
+  {argv: ['organization', 'update', '--settings', BAD], flag: 'settings'},
+  {argv: ['organization', 'update', '--metadata', BAD], flag: 'metadata'},
   {argv: ['profile', 'update', '--metadata', BAD], flag: 'metadata'},
 ]
 

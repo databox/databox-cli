@@ -17,7 +17,7 @@ interface UsersResponse {
 }
 
 export default class UserList extends BaseCommand<typeof UserList> {
-  static description = 'List users in the account'
+  static description = 'List users in the organization'
 
   static examples = [
     '<%= config.bin %> user list',

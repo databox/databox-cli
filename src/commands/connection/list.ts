@@ -42,7 +42,7 @@ export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
         {header: 'Name', key: 'name'},
         {header: 'Integration', key: 'integrationKey'},
         {get: row => row.statusInfo?.status ?? '', header: 'Status'},
-        {get: row => (row.sharedWithClients ? 'yes' : ''), header: 'Shared'},
+        {get: row => (row.sharedWithAccounts ? 'yes' : ''), header: 'Shared'},
       ],
       this.outputFormat,
     )

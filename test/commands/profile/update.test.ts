@@ -30,6 +30,12 @@ describe('profile update', () => {
     expect(stdout).to.contain('NewName')
   })
 
+  it('spells out the organization and account it returns', async () => {
+    const {stdout} = await runCommand(['profile', 'update', '--name', 'NewName'], {root: process.cwd()})
+    expect(stdout).to.contain('Organization: Acme Org (100)')
+    expect(stdout).to.contain('Account: none (organization level)')
+  })
+
   it('outputs JSON with --json', async () => {
     const {stdout} = await runCommand(['profile', 'update', '--name', 'NewName', '--json'], {root: process.cwd()})
     expect(JSON.parse(stdout)).to.deep.equal(updated)

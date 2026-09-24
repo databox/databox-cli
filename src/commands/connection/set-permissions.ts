@@ -11,12 +11,12 @@ export default class ConnectionSetPermissions extends BaseCommand<typeof Connect
 
   static description = `Update connection permissions
 
---shared-with-clients or --no-shared-with-clients is required: the API replaces the sharing setting on every call, so leaving it out would silently un-share the connection.`
+--shared-with-accounts or --no-shared-with-accounts is required: the API replaces the sharing setting on every call, so leaving it out would silently un-share the connection.`
 
   static examples = [
-    '<%= config.bin %> connection set-permissions 12345 --access-level everyone --shared-with-clients',
-    '<%= config.bin %> connection set-permissions 12345 --access-level private --no-shared-with-clients --json',
-    '<%= config.bin %> connection set-permissions 12345 --access-level selectedUsers --access-list 31 --no-shared-with-clients',
+    '<%= config.bin %> connection set-permissions 12345 --access-level everyone --shared-with-accounts',
+    '<%= config.bin %> connection set-permissions 12345 --access-level private --no-shared-with-accounts --json',
+    '<%= config.bin %> connection set-permissions 12345 --access-level selectedUsers --access-list 31 --no-shared-with-accounts',
   ]
 
   static flags = {
@@ -27,9 +27,9 @@ export default class ConnectionSetPermissions extends BaseCommand<typeof Connect
     }),
     'access-list': Flags.integer({description: 'User ID granted access, with --access-level selectedUsers (repeat for several)', multiple: true}),
     // Required, with no default: the API field is a required bool, and a default would pick a side for the user.
-    'shared-with-clients': Flags.boolean({
+    'shared-with-accounts': Flags.boolean({
       allowNo: true,
-      description: 'Share this connection with client accounts (--no-shared-with-clients to stop sharing)',
+      description: 'Share this connection with the accounts in your organization (--no-shared-with-accounts to stop sharing)',
       required: true,
     }),
   }
@@ -51,7 +51,7 @@ export default class ConnectionSetPermissions extends BaseCommand<typeof Connect
 
     const body: Record<string, unknown> = {
       accessLevel: flags['access-level'],
-      sharedWithClients: flags['shared-with-clients'],
+      sharedWithAccounts: flags['shared-with-accounts'],
     }
     if (accessList.length > 0) body.accessList = accessList
 

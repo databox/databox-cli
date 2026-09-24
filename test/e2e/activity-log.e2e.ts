@@ -7,9 +7,13 @@ import {
 interface ActivityLogEntry {
   action: string
   createdAt: string
+  details: Record<string, unknown> | null
   resourceType: null | string
   user: unknown
 }
+
+/** Names the API has published the event's space id under. It publishes none of them now. */
+const SPACE_ID_KEYS = ['spaceId', 'accountId', 'organizationId']
 
 /** The endpoint is gated on the Advanced Security add-on and admin privileges. */
 function featureUnavailable(stderr: string): boolean {
@@ -33,7 +37,7 @@ describe('activity-log', () => {
     if (outage) {
       unavailableReason = outage
     } else if (featureUnavailable(errorText(result))) {
-      unavailableReason = 'account lacks the Advanced Security add-on or admin rights'
+      unavailableReason = 'organization lacks the Advanced Security add-on or admin rights'
     } else {
       throw new Error(`activity-log list failed unexpectedly: ${errorText(result)}`)
     }
@@ -72,6 +76,30 @@ describe('activity-log', () => {
 
     for (const entry of filtered) {
       expect(entry.resourceType).to.equal(resourceType)
+    }
+  })
+
+  // Company and space events are published as `administration`, and the space an event happened in
+  // is not repeated in `details`: it is always the scope of the request.
+  it('labels administration events, without the space id in details', async function () {
+    if (!entries) skipWith(this, `${unavailableReason}`)
+
+    const administrationEntries = json<ActivityLogEntry[]>(
+      await cli(['activity-log', 'list', '--resource-type', 'administration', '--page-size', '25', '--json']),
+    )
+
+    for (const entry of [...entries!, ...administrationEntries]) {
+      for (const key of SPACE_ID_KEYS) {
+        expect(entry.details ?? {}, `details of "${entry.action}"`).to.not.have.property(key)
+      }
+    }
+
+    for (const entry of administrationEntries) {
+      expect(entry.resourceType).to.equal('administration')
+    }
+
+    if (administrationEntries.length === 0) {
+      console.log('   note: no administration events in the log, so only the first page was checked for space ids')
     }
   })
 })

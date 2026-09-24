@@ -1,6 +1,6 @@
 ---
 name: databox-users
-description: Use when the user wants to manage team members in their Databox account — invite users, update roles, or remove users. Triggers on mentions of user management, invitations, team members, or role changes in Databox.
+description: Use when the user wants to manage team members in their Databox organization — invite users, update roles, or remove users. Triggers on mentions of user management, invitations, team members, or role changes in Databox.
 ---
 
 # Databox User Management
@@ -27,10 +27,10 @@ Must be authenticated with admin privileges. If not, use the `databox-auth` skil
 
 Available roles: `admin`, `user`, `editor`, `viewer`. `--role` on `invite`, `update` and `list` accepts only these.
 
-Inviting an email that is already in the account, invited or active, fails with `duplicate_record`; change that user with `user update` instead.
+Inviting an email that is already in the organization, invited or active, fails with `duplicate_record`; change that user with `user update` instead.
 
 ## Notes
 
 - All commands support `--json` for machine-readable output
 - User management requires admin privileges
-- The account owner cannot be deleted
+- The organization owner cannot be deleted

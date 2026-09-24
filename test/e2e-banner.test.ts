@@ -18,7 +18,7 @@ function bannerFor(processEnv: NodeJS.ProcessEnv): string {
 }
 
 describe('e2e preflight banner', () => {
-  const SECRET = 'pak_11111111-2222-3333-4444-555555555555'
+  const SECRET = 'test-secret-key-0000'
 
   it('never prints a key supplied through the environment', () => {
     const banner = bannerFor({DATABOX_E2E_API_KEY: SECRET})
@@ -27,18 +27,8 @@ describe('e2e preflight banner', () => {
     expect(banner).to.contain('from DATABOX_E2E_API_KEY')
   })
 
-  it('never prints a built-in default key', () => {
-    const environment = resolveEnvironment({})
-    expect(environment.apiKey, 'develop6 should carry a default key').to.not.be.empty
-
-    const banner = describeTarget(targetOf(environment), {insecureTls: false}).join('\n')
-
-    expect(banner).to.not.contain(environment.apiKey)
-    expect(banner).to.contain('from the environment default')
-  })
-
   it('says when no key is set', () => {
-    expect(bannerFor({DATABOX_E2E_ENV: 'develop10'})).to.contain('not set')
+    expect(bannerFor({DATABOX_E2E_API_URL: 'http://localhost:5152'})).to.contain('not set')
   })
 
   it('targetOf drops the credential at runtime, not just in the type', () => {
@@ -60,7 +50,7 @@ describe('e2e preflight banner', () => {
   })
 
   it('still reports the target and flags production', () => {
-    const banner = bannerFor({DATABOX_E2E_API_KEY: SECRET, DATABOX_E2E_ENV: 'production'})
+    const banner = bannerFor({DATABOX_E2E_API_KEY: SECRET, DATABOX_E2E_API_URL: 'https://api.databox.com'})
 
     expect(banner).to.contain('https://api.databox.com')
     expect(banner).to.contain('** PRODUCTION **')

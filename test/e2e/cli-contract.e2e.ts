@@ -36,7 +36,7 @@ describe('cli-contract', () => {
 
   describe('exit codes', () => {
     it('exits 0 on success', async () => {
-      expectOk(await cli(['account', 'info', '--json']))
+      expectOk(await cli(['organization', 'info', '--json']))
     })
 
     it('exits 2 for input validation', async () => {
@@ -46,7 +46,7 @@ describe('cli-contract', () => {
     })
 
     it('exits 1 when unauthenticated', async () => {
-      const result = await cli(['account', 'info'], {withoutCredentials: true})
+      const result = await cli(['organization', 'info'], {withoutCredentials: true})
 
       expectExit(result, 1)
       expect(result.stderr).to.include('databox auth login')
@@ -58,7 +58,7 @@ describe('cli-contract', () => {
     })
 
     it('exits non-zero for an unknown flag', async () => {
-      const result = await cli(['account', 'info', '--not-a-flag'])
+      const result = await cli(['organization', 'info', '--not-a-flag'])
       expect(result.code).to.not.equal(0)
     })
 
@@ -73,7 +73,7 @@ describe('cli-contract', () => {
   describe('output discipline', () => {
     it('puts only JSON on stdout under --json', async () => {
       for (const argv of [
-        ['account', 'info', '--json'],
+        ['organization', 'info', '--json'],
         ['data-source', 'list', '--page-size', '3', '--json'],
         ['integration', 'list', '--page-size', '3', '--json'],
       ]) {
@@ -130,10 +130,10 @@ describe('cli-contract', () => {
 
     it('traces requests to stderr under --verbose, leaving stdout parseable and the key unprinted', async () => {
       const {apiKey} = getConfig().environment
-      const result = await cli(['account', 'info', '--json', '--verbose'])
+      const result = await cli(['organization', 'info', '--json', '--verbose'])
 
       expect(() => JSON.parse(result.stdout), 'stdout under --verbose was not pure JSON').to.not.throw()
-      expect(result.stderr).to.match(/Request: GET https?:\/\/\S+\/v2\/account\b/)
+      expect(result.stderr).to.match(/Request: GET https?:\/\/\S+\/v2\/organization\b/)
       expect(result.stderr).to.include('Headers: x-api-key: <redacted>')
       expect(result.stderr).to.match(/Response: 200 \(\d+ms\)/)
       expect(result.stdout).to.not.match(/Request: |Response: /)
@@ -145,7 +145,7 @@ describe('cli-contract', () => {
     // Port 9 (discard) is closed on a loopback that runs no such service, so the connection is
     // refused at once. A failure to reach the API is exit 2; an API error would be exit 1.
     it('exits 2 when the API cannot be reached', async () => {
-      const result = await cli(['account', 'info', '--api-url', 'http://127.0.0.1:9'])
+      const result = await cli(['organization', 'info', '--api-url', 'http://127.0.0.1:9'])
 
       expectExit(result, 2)
       expect(errorText(result)).to.match(/could not connect to api/i)
@@ -175,11 +175,11 @@ describe('cli-contract', () => {
       const {apiKey} = getConfig().environment
 
       const runs = [
-        await cli(['account', 'info']),
-        await cli(['account', 'info', '--json']),
+        await cli(['organization', 'info']),
+        await cli(['organization', 'info', '--json']),
         await cli(['dataset', 'get', 'not-numeric']),
         await cli(['nonesuch']),
-        await cli(['account', 'info'], {env: {DATABOX_API_KEY: 'pak_bad-key-value'}}),
+        await cli(['organization', 'info'], {env: {DATABOX_API_KEY: 'pak_bad-key-value'}}),
       ]
 
       for (const result of runs) {
@@ -189,7 +189,7 @@ describe('cli-contract', () => {
     })
 
     it('keeps --api-key, --api-url and --account-id out of help output', async () => {
-      const result = expectOk(await cli(['account', 'info', '--help']))
+      const result = expectOk(await cli(['organization', 'info', '--help']))
 
       expect(result.stdout).to.not.include('--api-key')
       expect(result.stdout).to.not.include('--api-url')
@@ -282,7 +282,7 @@ describe('cli-contract', () => {
       const configFile = path.join(os.homedir(), '.config', 'databox-cli', 'config.json')
       const before = fs.existsSync(configFile) ? fs.statSync(configFile).mtimeMs : null
 
-      expectOk(await cli(['account', 'info', '--json']))
+      expectOk(await cli(['organization', 'info', '--json']))
 
       const after = fs.existsSync(configFile) ? fs.statSync(configFile).mtimeMs : null
       expect(after).to.equal(before)
@@ -292,7 +292,8 @@ describe('cli-contract', () => {
       const {accountId} = getConfig()
       if (!accountId) skipWith(this, 'DATABOX_E2E_ACCOUNT_ID is not set, so there is no account to scope to')
 
-      const scoped = json<{id: number}>(await cli(['account', 'info', '--account-id', accountId!, '--json']))
+      // /v2/organization answers for the context space, so with x-account-id it is that account.
+      const scoped = json<{id: number}>(await cli(['organization', 'info', '--account-id', accountId!, '--json']))
       expect(String(scoped.id)).to.equal(accountId)
     })
   })

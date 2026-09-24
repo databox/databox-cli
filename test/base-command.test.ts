@@ -3,12 +3,12 @@ import {expect} from 'chai'
 
 import {dataSourceListItem} from './commands/data-source/fixtures.js'
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, mockApi, requests, restoreApi, setupTestConfig,
 } from './helpers.js'
 
 /**
  * The global behaviour every command inherits from BaseCommand: error rendering and exit
- * codes, --output/--json, --verbose and --no-color. Asserted through real commands, since
+ * codes, --output/--json, --verbose, --no-color and --account-id. Asserted through real commands, since
  * that is the only place the wiring exists.
  */
 
@@ -266,5 +266,35 @@ describe('base command: --no-color', () => {
 
     expect(error).to.equal(undefined)
     expect(stdout).to.contain('A source')
+  })
+})
+
+describe('base command: --account-id', () => {
+  beforeEach(() => {
+    setupTestConfig(KEY)
+    mockApi([{
+      method: 'GET',
+      path: '/v2/data-sources/10',
+      response: {data: DATA_SOURCE, requestId: 'test', status: 'success'},
+    }])
+  })
+
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
+
+  it('sends the account as the x-account-id header', async () => {
+    await runCommand(['data-source', 'get', '10', '--account-id', '200'], {root: process.cwd()})
+
+    expect(requests()[0].headers['x-account-id']).to.equal('200')
+  })
+
+  it('rejects a non-numeric account with exit 2, before any request', async () => {
+    const {error} = await runCommand(['data-source', 'get', '10', '--account-id', 'acme'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--account-id must be a numeric value')
+    expect(requests()).to.have.length(0)
   })
 })

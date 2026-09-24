@@ -5,16 +5,10 @@ import {
   addSorting, fetchPaginated, paginationFlags, sortFlags,
 } from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
+import {AccountListItem} from '../../lib/types.js'
 
-interface Client {
-  id: number
-  isSelfManaged: boolean
-  managedBy: {id: number; name: string} | null
-  name: string
-}
-
-interface ClientsResponse {
-  items: Client[]
+interface AccountsResponse {
+  items: AccountListItem[]
   pagination?: {
     page: number
     pageSize: number
@@ -22,15 +16,15 @@ interface ClientsResponse {
   }
 }
 
-export default class ClientList extends BaseCommand<typeof ClientList> {
-  static description = `List client accounts
+export default class AccountList extends BaseCommand<typeof AccountList> {
+  static description = `List accounts in your organization
 
 --sort-by takes name, website or managedBy. The CLI does not restrict it: the value is passed to the API as given.`
 
   static examples = [
-    '<%= config.bin %> client list',
-    '<%= config.bin %> client list --sort-by name --sort-order asc',
-    '<%= config.bin %> client list --json',
+    '<%= config.bin %> account list',
+    '<%= config.bin %> account list --sort-by name --sort-order asc',
+    '<%= config.bin %> account list --json',
   ]
 
   static flags = {
@@ -45,7 +39,7 @@ export default class ClientList extends BaseCommand<typeof ClientList> {
     addSorting(query, this.flags)
 
     const response = await fetchPaginated(this.flags, query, pageQuery =>
-      this.apiClient.get<ClientsResponse>('/v2/clients', pageQuery, this.accountHeaders), warning => this.warn(warning))
+      this.apiClient.get<AccountsResponse>('/v2/accounts', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
       response.items,

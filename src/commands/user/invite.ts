@@ -7,9 +7,9 @@ import {formatSingle} from '../../lib/output.js'
 import {UserListItem} from '../../lib/types.js'
 
 export default class UserInvite extends BaseCommand<typeof UserInvite> {
-  static description = `Invite a user to the account
+  static description = `Invite a user to the organization
 
-An email already in the account, invited or active, is refused with duplicate_record; change that user with "user update" instead.`
+An email already in the organization, invited or active, is refused with duplicate_record; change that user with "user update" instead.`
 
   static examples = [
     '<%= config.bin %> user invite --email user@example.com --role user',

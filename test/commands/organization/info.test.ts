@@ -4,16 +4,16 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
-import {account} from './fixtures.js'
+import {organization} from './fixtures.js'
 
-describe('account info', () => {
+describe('organization info', () => {
   beforeEach(() => {
     setupTestConfig()
     mockApi([
       {
         method: 'GET',
-        path: '/v2/account',
-        response: {data: account, requestId: 'test', status: 'success'},
+        path: '/v2/organization',
+        response: {data: organization, requestId: 'test', status: 'success'},
       },
     ])
   })
@@ -23,15 +23,15 @@ describe('account info', () => {
     cleanupTestConfig()
   })
 
-  it('shows account details', async () => {
-    const {stdout} = await runCommand(['account', 'info'], {root: process.cwd()})
-    expect(stdout).to.contain('Test Account')
-    expect(stdout).to.contain('standard')
+  it('shows organization details', async () => {
+    const {stdout} = await runCommand(['organization', 'info'], {root: process.cwd()})
+    expect(stdout).to.contain('Test Organization')
+    expect(stdout).to.contain('Company Name: Test Co')
     expect(stdout).to.contain('Tax Number: US123')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['account', 'info', '--json'], {root: process.cwd()})
-    expect(JSON.parse(stdout)).to.deep.equal(account)
+    const {stdout} = await runCommand(['organization', 'info', '--json'], {root: process.cwd()})
+    expect(JSON.parse(stdout)).to.deep.equal(organization)
   })
 })

@@ -2,10 +2,10 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
-import {AccountResponse} from '../../lib/types.js'
+import {OrganizationResponse} from '../../lib/types.js'
 
-export default class AccountUpdate extends BaseCommand<typeof AccountUpdate> {
-  static description = `Update account details
+export default class OrganizationUpdate extends BaseCommand<typeof OrganizationUpdate> {
+  static description = `Update organization details
 
 --settings takes {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}:
 - numberFormat: GroupingCommaDecimalDot (1,234.5), GroupingDotDecimalComma (1.234,5), GroupingSpaceDecimalComma (1 234,5) or GroupingSpaceDecimalDot (1 234.5). An unrecognised value is stored as GroupingCommaDecimalDot.
@@ -14,9 +14,9 @@ export default class AccountUpdate extends BaseCommand<typeof AccountUpdate> {
 - fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.`
 
   static examples = [
-    '<%= config.bin %> account update --name "My Company"',
-    '<%= config.bin %> account update --company-name "Acme Inc" --json',
-    '<%= config.bin %> account update --settings \'{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}\'',
+    '<%= config.bin %> organization update --name "My Company"',
+    '<%= config.bin %> organization update --company-name "Acme Inc" --json',
+    '<%= config.bin %> organization update --settings \'{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}\'',
   ]
 
   static flags = {
@@ -26,7 +26,7 @@ export default class AccountUpdate extends BaseCommand<typeof AccountUpdate> {
     metadata: Flags.string({
       description: 'JSON object: {industry, businessType, companySize, annualRevenue}',
     }),
-    name: Flags.string({description: 'Account name'}),
+    name: Flags.string({description: 'Organization name'}),
     settings: Flags.string({
       description: 'JSON object: {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart: {month, day}}',
     }),
@@ -57,7 +57,7 @@ export default class AccountUpdate extends BaseCommand<typeof AccountUpdate> {
       )
     }
 
-    const response = await this.apiClient.patch<AccountResponse>('/v2/account', body, this.accountHeaders)
+    const response = await this.apiClient.patch<OrganizationResponse>('/v2/organization', body, this.accountHeaders)
 
     formatSingle(response, this.outputFormat)
   }

@@ -205,11 +205,11 @@ describe('--idempotency-key', () => {
   it('is sent as the Idempotency-Key header', async () => {
     mockApi([{
       method: 'POST',
-      path: '/v2/clients',
+      path: '/v2/accounts',
       response: {data: {id: 1, name: 'Acme'}, requestId: 'test', status: 'success'},
     }])
 
-    await runCommand(['client', 'create', '--name', 'Acme', '--idempotency-key', KEY], {root: process.cwd()})
+    await runCommand(['account', 'create', '--name', 'Acme', '--idempotency-key', KEY], {root: process.cwd()})
 
     expect(requests()[0].headers['Idempotency-Key']).to.equal(KEY)
   })
@@ -217,11 +217,11 @@ describe('--idempotency-key', () => {
   it('sends no header without the flag', async () => {
     mockApi([{
       method: 'POST',
-      path: '/v2/clients',
+      path: '/v2/accounts',
       response: {data: {id: 1, name: 'Acme'}, requestId: 'test', status: 'success'},
     }])
 
-    await runCommand(['client', 'create', '--name', 'Acme'], {root: process.cwd()})
+    await runCommand(['account', 'create', '--name', 'Acme'], {root: process.cwd()})
 
     expect(requests()[0].headers).to.not.have.property('Idempotency-Key')
   })
@@ -229,7 +229,7 @@ describe('--idempotency-key', () => {
   // Exactly the routes ingestion-api marks [IdempotencyFilter]; a command outside this list
   // must not offer the flag, since the API would silently ignore it.
   const idempotent: Array<{argv: string[]; method: string; path: string}> = [
-    {argv: ['client', 'create', '--name', 'n'], method: 'POST', path: '/v2/clients'},
+    {argv: ['account', 'create', '--name', 'n'], method: 'POST', path: '/v2/accounts'},
     {argv: ['data-source', 'create', '--name', 'n'], method: 'POST', path: '/v2/data-sources'},
     {argv: ['data-source', 'purge', '5', '--force'], method: 'POST', path: '/v2/data-sources/5/purge'},
     {
@@ -271,7 +271,7 @@ describe('--idempotency-key', () => {
   })
 
   it('is not offered by a command whose route is not idempotent', async () => {
-    const {error} = await runCommand(['client', 'update', '1', '--name', 'n', '--idempotency-key', KEY], {root: process.cwd()})
+    const {error} = await runCommand(['account', 'update', '1', '--name', 'n', '--idempotency-key', KEY], {root: process.cwd()})
 
     expect(error?.message).to.contain('Nonexistent flag')
   })

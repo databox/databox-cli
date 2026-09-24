@@ -1,4 +1,5 @@
 import {expect} from 'chai'
+import {randomUUID} from 'node:crypto'
 
 import {
   cli, expectExit, expectOk, json,
@@ -17,7 +18,8 @@ describe('auth', () => {
   })
 
   it('rejects an invalid API key with exit 1', async () => {
-    const result = await cli(['auth', 'validate'], {env: {DATABOX_API_KEY: 'pak_00000000-0000-0000-0000-000000000000'}})
+    // Well-formed but unissued — generated, so no key-shaped literal lives in the repo.
+    const result = await cli(['auth', 'validate'], {env: {DATABOX_API_KEY: `pak_${randomUUID()}`}})
 
     expectExit(result, 1)
     expect(result.stderr).to.not.be.empty

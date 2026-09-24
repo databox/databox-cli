@@ -5,12 +5,12 @@ import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
-describe('account metadata-options', () => {
+describe('organization metadata-options', () => {
   beforeEach(() => {
     setupTestConfig()
     mockApi([{
       method: 'GET',
-      path: '/v2/account/metadata-options',
+      path: '/v2/organization/metadata-options',
       response: {
         data: {
           annualRevenues: [{label: '$0-$1M', value: '$0-$1M'}],
@@ -28,12 +28,12 @@ describe('account metadata-options', () => {
   })
 
   it('shows metadata options', async () => {
-    const {stdout} = await runCommand(['account', 'metadata-options'])
+    const {stdout} = await runCommand(['organization', 'metadata-options'])
     expect(stdout).to.include('B2B')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['account', 'metadata-options', '--json'])
+    const {stdout} = await runCommand(['organization', 'metadata-options', '--json'])
     const json = JSON.parse(stdout)
     expect(json.businessTypes).to.be.an('array')
   })

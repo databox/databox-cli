@@ -16,8 +16,9 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
   ]
 
   static flags = {
-    'data-source-id': Flags.string({
+    'data-source-id': Flags.integer({
       description: 'ID of the data source to associate with',
+      min: 1,
       required: true,
     }),
     ...idempotencyFlags,
@@ -38,7 +39,7 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
     const {flags} = await this.parse(DatasetCreate)
 
     const body: Record<string, unknown> = {
-      dataSourceId: Number(flags['data-source-id']),
+      dataSourceId: flags['data-source-id'],
       name: flags.name,
     }
 

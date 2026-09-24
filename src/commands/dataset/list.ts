@@ -24,7 +24,7 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
   ]
 
   static flags = {
-    'data-source-id': Flags.string({description: 'Filter by data source ID'}),
+    'data-source-id': Flags.integer({description: 'Filter by data source ID', min: 1}),
     ...paginationFlags,
     search: Flags.string({description: 'Search by name'}),
     ...sortFlags(['name', 'createdAt', 'lastActivityAt']),
@@ -33,7 +33,7 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
   async run(): Promise<void> {
     const query: Record<string, number | string | undefined> = {}
     if (this.flags.search) query.search = this.flags.search
-    if (this.flags['data-source-id']) query.dataSourceId = this.flags['data-source-id']
+    if (this.flags['data-source-id'] !== undefined) query.dataSourceId = this.flags['data-source-id']
     addSorting(query, this.flags)
 
     const response = await fetchPaginated(this.flags, query, pageQuery =>

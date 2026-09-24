@@ -1,13 +1,15 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, errorText, expectExit, expectField, expectOk, json, skipWith,
+  cli, cliWithRetry, errorText, expectExit, expectField, expectKey, expectOk, json, skipWith,
 } from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
 interface Profile {
+  account?: {id: number; name: string} | null
   id?: number
   name?: null | string
+  organization?: {id: number; name: string}
   timezone?: null | string
 }
 
@@ -23,9 +25,25 @@ describe('profile', () => {
     expectField(profile, 'name', 'string')
   })
 
+  // organization is always set; account is the user's home account, null at the organization level.
+  it('returns the organization and the account', () => {
+    expectField(profile, 'organization', 'object')
+    expectField(profile.organization!, 'id', 'number')
+    expectField(profile.organization!, 'name', 'string')
+    expectKey(profile, 'account')
+    expect(profile).to.not.have.property('accountId')
+    expect(profile).to.not.have.property('accountType')
+    if (profile.account) {
+      expectField(profile.account, 'id', 'number')
+      expectField(profile.account, 'name', 'string')
+    }
+  })
+
   it('renders the profile as labelled output', async () => {
     const result = expectOk(await cli(['profile', 'info']))
     expect(result.stdout).to.include('Name:')
+    expect(result.stdout).to.include(`Organization: ${profile.organization!.name} (${profile.organization!.id})`)
+    expect(result.stdout).to.match(/^Account: /m)
   })
 
   it('returns metadata options', async () => {

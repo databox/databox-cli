@@ -147,7 +147,7 @@ databox dataset update-modification 67890 --data "$(cat mod.json)"
 
 ## Permissions
 
-`--access-level` is `everyone`, `selectedUsers` or `private`. `--access-list USER_ID` (repeatable) is only accepted with `selectedUsers`. Admins and the account owner always keep access.
+`--access-level` is `everyone`, `selectedUsers` or `private`. `--access-list USER_ID` (repeatable) is only accepted with `selectedUsers`. Admins and the organization owner always keep access.
 
 ## Destructive Operations
 

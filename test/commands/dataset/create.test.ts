@@ -2,7 +2,7 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, lastBody, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 import {datasetDetail, envelope} from './fixtures.js'
 
@@ -22,6 +22,19 @@ describe('dataset create', () => {
     expect(stdout).to.contain('Orders')
     expect(stdout).to.contain('123')
   })
+
+  it('sends dataSourceId as an integer', async () => {
+    await runCommand(['dataset', 'create', '--name', 'Orders', '--data-source-id', '42'], {root: process.cwd()})
+    expect(lastBody('POST', '/v2/datasets')).to.deep.equal({dataSourceId: 42, name: 'Orders'})
+  })
+
+  for (const value of ['abc', '0']) {
+    it(`rejects --data-source-id ${value} with exit 2 and sends nothing`, async () => {
+      const {error} = await runCommand(['dataset', 'create', '--name', 'Orders', '--data-source-id', value], {root: process.cwd()})
+      expect(error?.oclif?.exit).to.equal(2)
+      expect(requests()).to.have.length(0)
+    })
+  }
 
   it('outputs the created dataset with --json', async () => {
     const {stdout} = await runCommand(['dataset', 'create', '--name', 'Orders', '--data-source-id', '42', '--json'], {root: process.cwd()})

@@ -13,7 +13,7 @@ export type Flags<T extends typeof Command> = Interfaces.InferredFlags<T['flags'
 export abstract class BaseCommand<T extends typeof Command = typeof Command> extends Command {
   static baseFlags = {
     'account-id': Flags.string({
-      description: 'Target account ID (for multi-account access)',
+      description: 'Target an account in your organization',
       env: 'DATABOX_ACCOUNT_ID',
       hidden: true,
     }),

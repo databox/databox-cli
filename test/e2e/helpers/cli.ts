@@ -243,6 +243,9 @@ export function errorText(result: CliResult): string {
   .trim()
 }
 
+/** The API's refusal of the account routes for an organization that manages no accounts (not an agency). */
+export const NO_MANAGED_ACCOUNTS = /only available for organizations that manage accounts/
+
 /** Returns a skip reason when the failure is the environment's, otherwise undefined. */
 export function serviceUnavailable(result: CliResult): string | undefined {
   if (result.code === 0) return undefined

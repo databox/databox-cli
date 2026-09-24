@@ -5,7 +5,7 @@ import {REPO_ROOT, cli, describeResult} from './cli.js'
 import {getConfig} from './env.js'
 
 /**
- * Undo log for mutations to resources the suite did not create — the account, the
+ * Undo log for mutations to resources the suite did not create — the organization, the
  * signed-in profile, an existing connection. A `finally` block covers the normal
  * path, but it does not survive Ctrl-C or a machine dying mid-run, and a shared
  * environment left renamed is everyone's problem.

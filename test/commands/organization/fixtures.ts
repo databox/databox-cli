@@ -1,9 +1,9 @@
 /**
- * The account as ingestion-api returns it (Contracts/Response/V2/AccountResponse.cs `AccountResponse`),
- * shared by account info and account update. Nullable members are present as null.
+ * The organization as ingestion-api returns it (Contracts/Response/V2/AccountResponse.cs `AccountResponse`,
+ * published as `OrganizationResponse`), shared by organization info and organization update. Nullable
+ * members are present as null.
  */
-export const account = {
-  accountType: 'standard',
+export const organization = {
   address: {
     city: 'Boston', country: 'US', state: 'MA', street: '1 Main St', zip: '02110',
   },
@@ -14,7 +14,7 @@ export const account = {
   metadata: {
     annualRevenue: '$1M-$10M', businessType: ['B2B'], companySize: '11-50', industry: ['Technology'],
   },
-  name: 'Test Account',
+  name: 'Test Organization',
   settings: {
     calendar: 'customFiscal',
     dateFormat: 'DD/MM/YYYY',

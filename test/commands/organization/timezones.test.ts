@@ -5,13 +5,13 @@ import {
   cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
-describe('account timezones', () => {
+describe('organization timezones', () => {
   beforeEach(() => {
     setupTestConfig()
     mockApi([
       {
         method: 'GET',
-        path: '/v2/account/timezones',
+        path: '/v2/organization/timezones',
         response: {
           data: {items: [{offset: 'UTC+1', timezone: 'Europe/Berlin'}]},
           requestId: 'test',
@@ -27,13 +27,13 @@ describe('account timezones', () => {
   })
 
   it('lists timezones', async () => {
-    const {stdout} = await runCommand(['account', 'timezones'], {root: process.cwd()})
+    const {stdout} = await runCommand(['organization', 'timezones'], {root: process.cwd()})
     expect(stdout).to.contain('Europe/Berlin')
     expect(stdout).to.contain('UTC+1')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['account', 'timezones', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['organization', 'timezones', '--json'], {root: process.cwd()})
     const parsed = JSON.parse(stdout)
     expect(parsed).to.be.an('array')
     expect(parsed).to.have.lengthOf(1)

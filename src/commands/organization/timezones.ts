@@ -11,16 +11,16 @@ interface TimezoneListResponse {
   items: Timezone[]
 }
 
-export default class AccountTimezones extends BaseCommand<typeof AccountTimezones> {
+export default class OrganizationTimezones extends BaseCommand<typeof OrganizationTimezones> {
   static description = 'List all supported timezones'
 
   static examples = [
-    '<%= config.bin %> account timezones',
-    '<%= config.bin %> account timezones --json',
+    '<%= config.bin %> organization timezones',
+    '<%= config.bin %> organization timezones --json',
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<TimezoneListResponse>('/v2/account/timezones', undefined, this.accountHeaders)
+    const response = await this.apiClient.get<TimezoneListResponse>('/v2/organization/timezones', undefined, this.accountHeaders)
 
     formatOutput(
       response.items,

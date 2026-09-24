@@ -5,7 +5,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 
 import {
-  cleanupTestConfig, mockApi, requests, restoreApi, setupTestConfig,
+  cleanupTestConfig, lastBody, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 
 describe('dataset ingest', () => {
@@ -48,6 +48,7 @@ describe('dataset ingest', () => {
     const {stdout} = await runCommand(['dataset', 'ingest', '123', '--records', '[{"date":"2024-01-01","value":42}]'], {root: process.cwd()})
     expect(stdout).to.contain('ing-1')
     expect(stdout).to.contain('accepted')
+    expect(lastBody('POST', '/v2/datasets/123/data')).to.deep.equal({records: [{date: '2024-01-01', value: 42}]})
   })
 
   it('ingests from --file', async () => {

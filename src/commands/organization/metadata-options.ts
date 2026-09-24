@@ -7,24 +7,24 @@ interface MetadataOption {
   value: string
 }
 
-/** AccountMetadataOptionsResponse.cs: the values account update --metadata accepts. */
-interface AccountMetadataOptionsResponse {
+/** AccountMetadataOptionsResponse.cs: the values organization update --metadata accepts. */
+interface OrganizationMetadataOptionsResponse {
   annualRevenues: MetadataOption[]
   businessTypes: MetadataOption[]
   companySizes: MetadataOption[]
   industries: MetadataOption[]
 }
 
-export default class AccountMetadataOptions extends BaseCommand<typeof AccountMetadataOptions> {
-  static description = 'List available metadata options for account settings'
+export default class OrganizationMetadataOptions extends BaseCommand<typeof OrganizationMetadataOptions> {
+  static description = 'List available metadata options for organization settings'
 
   static examples = [
-    '<%= config.bin %> account metadata-options',
-    '<%= config.bin %> account metadata-options --json',
+    '<%= config.bin %> organization metadata-options',
+    '<%= config.bin %> organization metadata-options --json',
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<AccountMetadataOptionsResponse>('/v2/account/metadata-options', undefined, this.accountHeaders)
+    const response = await this.apiClient.get<OrganizationMetadataOptionsResponse>('/v2/organization/metadata-options', undefined, this.accountHeaders)
 
     formatSingle(response, this.outputFormat)
   }

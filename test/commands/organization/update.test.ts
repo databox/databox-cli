@@ -4,17 +4,17 @@ import {expect} from 'chai'
 import {
   cleanupTestConfig, lastBody, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
-import {account} from './fixtures.js'
+import {organization} from './fixtures.js'
 
-const updated = {...account, name: 'UpdatedName'}
+const updated = {...organization, name: 'UpdatedName'}
 
-describe('account update', () => {
+describe('organization update', () => {
   beforeEach(() => {
     setupTestConfig()
     mockApi([
       {
         method: 'PATCH',
-        path: '/v2/account',
+        path: '/v2/organization',
         response: {data: updated, requestId: 'test', status: 'success'},
       },
     ])
@@ -25,19 +25,19 @@ describe('account update', () => {
     cleanupTestConfig()
   })
 
-  it('updates account name', async () => {
-    const {stdout} = await runCommand(['account', 'update', '--name', 'UpdatedName'], {root: process.cwd()})
+  it('updates organization name', async () => {
+    const {stdout} = await runCommand(['organization', 'update', '--name', 'UpdatedName'], {root: process.cwd()})
     expect(stdout).to.contain('UpdatedName')
   })
 
   it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['account', 'update', '--name', 'UpdatedName', '--json'], {root: process.cwd()})
+    const {stdout} = await runCommand(['organization', 'update', '--name', 'UpdatedName', '--json'], {root: process.cwd()})
     expect(JSON.parse(stdout)).to.deep.equal(updated)
   })
 
   it('sends the full contract surface', async () => {
     await runCommand([
-      'account', 'update',
+      'organization', 'update',
       '--name', 'N', '--company-name', 'C', '--website-url', 'W',
       '--tax-number', 'T', '--billing-name', 'B',
       '--address', '{"city":"Boston"}',
@@ -45,7 +45,7 @@ describe('account update', () => {
       '--metadata', '{"companySize":"10"}',
     ], {root: process.cwd()})
 
-    expect(lastBody('PATCH', '/v2/account')).to.deep.equal({
+    expect(lastBody('PATCH', '/v2/organization')).to.deep.equal({
       address: {city: 'Boston'}, billingName: 'B', companyName: 'C', metadata: {companySize: '10'}, name: 'N',
       settings: {calendar: 'gregorian'}, taxNumber: 'T', websiteUrl: 'W',
     })
@@ -53,17 +53,17 @@ describe('account update', () => {
 
   it('sends a fiscal calendar with its fiscalYearStart', async () => {
     await runCommand([
-      'account', 'update', '--settings', '{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}',
+      'organization', 'update', '--settings', '{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}',
     ], {root: process.cwd()})
 
-    expect(lastBody('PATCH', '/v2/account')).to.deep.equal({
+    expect(lastBody('PATCH', '/v2/organization')).to.deep.equal({
       settings: {calendar: 'customFiscal', fiscalYearStart: {day: 1, month: 4}},
     })
   })
 
   // runCommand refuses an empty-string flag value, so a quoted blank stands in; the check trims.
   it('rejects a blank --name with exit 2', async () => {
-    const {error} = await runCommand(['account', 'update', '--name', '" "'], {root: process.cwd()})
+    const {error} = await runCommand(['organization', 'update', '--name', '" "'], {root: process.cwd()})
     expect(error?.oclif?.exit).to.equal(2)
     expect(error?.message).to.contain('--name cannot be empty')
     expect(requests()).to.have.length(0)
@@ -72,7 +72,7 @@ describe('account update', () => {
   // An empty JSON flag is parsed, not skipped, so it fails as invalid JSON rather than sending nothing.
   for (const flag of ['address', 'settings', 'metadata']) {
     it(`rejects an empty --${flag} with exit 2`, async () => {
-      const {error} = await runCommand(['account', 'update', `--${flag}`, '""'], {root: process.cwd()})
+      const {error} = await runCommand(['organization', 'update', `--${flag}`, '""'], {root: process.cwd()})
       expect(error?.oclif?.exit).to.equal(2)
       expect(error?.message).to.contain(`Invalid JSON for --${flag}`)
       expect(requests()).to.have.length(0)

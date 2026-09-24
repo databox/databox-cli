@@ -1,7 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatSingle} from '../../lib/output.js'
+import {printProfile} from '../../lib/profile.js'
 import {ProfileResponse} from '../../lib/types.js'
 
 export default class ProfileUpdate extends BaseCommand<typeof ProfileUpdate> {
@@ -42,6 +42,6 @@ export default class ProfileUpdate extends BaseCommand<typeof ProfileUpdate> {
 
     const response = await this.apiClient.patch<ProfileResponse>('/v2/profile', body, this.accountHeaders)
 
-    formatSingle(response, this.outputFormat)
+    printProfile(response, this.outputFormat)
   }
 }

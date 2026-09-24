@@ -11,58 +11,56 @@ CLI does what we *believe* the API does. These suites confirm what it *actually*
 ## Running
 
 ```bash
-npm run test:e2e                       # develop6, with its built-in key — zero setup
-npm run test:e2e -- --grep "^dataset " # one suite
-npm run test:e2e:cleanup               # sweep resources left by an interrupted run
+DATABOX_E2E_API_URL=https://… DATABOX_E2E_API_KEY=pak_… npm run test:e2e   # every suite
+DATABOX_E2E_API_URL=https://… DATABOX_E2E_API_KEY=pak_… \
+  npm run test:e2e -- --grep "^dataset "                                    # one suite
+DATABOX_E2E_API_URL=https://… DATABOX_E2E_API_KEY=pak_… \
+  npm run test:e2e:cleanup                  # sweep resources left by an interrupted run
 ```
 
 `test:e2e` builds first — `bin/run.js` loads from `lib/`, which is gitignored.
 
 ## Choosing a target
 
+There are no named environments and no built-in key: every run says where it goes and
+with which key. The preflight refuses to start, naming what is missing, unless both
+`DATABOX_E2E_API_URL` and `DATABOX_E2E_API_KEY` are set.
+
 | Variable | Purpose |
 |---|---|
-| `DATABOX_E2E_ENV` | Named environment. Defaults to `develop6`. |
-| `DATABOX_E2E_API_URL` | Explicit base URL. Wins over `DATABOX_E2E_ENV`. |
-| `DATABOX_E2E_API_KEY` | API key. Wins over an environment's built-in default. |
+| `DATABOX_E2E_API_URL` | **Required.** Base URL of the API under test. |
+| `DATABOX_E2E_API_KEY` | **Required.** An API key valid for that URL. |
 | `DATABOX_E2E_ACCOUNT_ID` | Sent as `x-account-id` on every command. |
 | `DATABOX_E2E_ALLOW_PROD` | Required (`=1`) to run against production. |
 | `DATABOX_E2E_ALLOW_INSECURE_TLS` | `=1` disables TLS verification, for local self-signed certs. |
 | `DATABOX_E2E_AGENTIC_URL` | Enables the `analyze ask-genie` suite (separate service). |
 
 ```bash
-npm run test:e2e                                            # develop6 + built-in key
-
-DATABOX_E2E_ENV=develop10 DATABOX_E2E_API_KEY=pak_… \
-  npm run test:e2e                                          # another named environment
+DATABOX_E2E_API_URL=http://localhost:5152 \
+DATABOX_E2E_API_KEY=pak_… npm run test:e2e                  # a local ingestion-api
 
 DATABOX_E2E_API_URL=https://ingestion-api-pr-482.databox.com \
-DATABOX_E2E_API_KEY=pak_… npm run test:e2e                  # any URL, no code change
+DATABOX_E2E_API_KEY=pak_… npm run test:e2e                  # any other environment
 
-DATABOX_E2E_ENV=production DATABOX_E2E_API_KEY=pak_… \
+DATABOX_E2E_API_URL=https://api.databox.com DATABOX_E2E_API_KEY=pak_… \
 DATABOX_E2E_ALLOW_PROD=1 npm run test:e2e                   # production
 ```
 
-`helpers/environments.ts` holds the registry. An environment name that isn't in it is
-turned into `https://ingestion-api-<name>.databox.com`, so ephemeral environments work
-without a code change. When environment resolution becomes dynamic, `resolveEnvironment()`
-is the only function that changes.
+`helpers/environments.ts` reads the two variables; `resolveEnvironment()` is the only
+function that does.
 
 Every run prints its target before the first test. Read that banner — it is the
-difference between a develop run and a production one.
+difference between a test run and a production one.
 
 ### Keys
 
-`develop6` and `local` carry a default key, matching the ingestion-api convention.
-Everything else must supply one, and **production never inherits a default**.
-
-Two rules: `helpers/environments.ts` is the only file a key may appear in, and no
-production key is ever committed.
+**No API key is ever committed** — this repository is public. Keys come from
+`DATABOX_E2E_API_KEY` only, and the banner reports where the key came from, never the key.
 
 ## Safety
 
-- **Production is a two-step opt-in** — naming it *and* `DATABOX_E2E_ALLOW_PROD=1`. These
-  suites create and delete real resources.
+- **Production is a two-step opt-in** — a URL on `api.databox.com` *and*
+  `DATABOX_E2E_ALLOW_PROD=1`. These suites create and delete real resources.
 - **The resolved URL is always passed explicitly** to the CLI. `ApiClient` defaults to
   `https://api.databox.com`, so an unset URL would mean production.
 - **The child environment is scrubbed** of every `DATABOX_*` variable before the harness
@@ -74,16 +72,16 @@ production key is ever committed.
 ## Undoing changes to shared resources
 
 Almost everything the suites touch is a `cli-e2e-*` fixture they created and delete.
-Three things are not: the **account**, the signed-in **profile**, and an existing
-**connection** — there is no way to exercise `account update`, `profile update` or
+Three things are not: the **organization**, the signed-in **profile**, and an existing
+**connection** — there is no way to exercise `organization update`, `profile update` or
 `connection update` without changing something real.
 
 For those, `withRestore()` writes the undoing command to `.e2e-restore.json`
 **before** the mutation, and removes it only once the value is back:
 
 ```typescript
-await withRestore('account.name', ['account', 'update', '--name', original, '--json'], async () => {
-  expectOk(await cli(['account', 'update', '--name', renamed, '--json']))
+await withRestore('organization.name', ['organization', 'update', '--name', original, '--json'], async () => {
+  expectOk(await cli(['organization', 'update', '--name', renamed, '--json']))
   // ...assertions...
 })
 ```
@@ -111,8 +109,8 @@ same: `npm run test:e2e:cleanup`.
   assertions and teardown all shell out. The e2e layer has no API client to drift.
 - Destructive commands always take `--force`: stdin is `'ignore'`, so an interactive
   `confirm()` prompt would hang until the mocha timeout.
-- Environment-dependent suites skip with `skipWith(this, reason)` rather than failing (no
-  agency account, add-on not enabled, no databoards). It prints the reason; never call a
+- Environment-dependent suites skip with `skipWith(this, reason)` rather than failing (an
+  organization that manages no accounts, add-on not enabled, no databoards). It prints the reason; never call a
   bare `this.skip()`, which is indistinguishable from a pass.
 - Reads that race the API's cache use `retryRead`. Never wrap a create in it — mocha
   `--retries` and `--parallel` are off for the same reason.
@@ -154,7 +152,7 @@ they mean quite different things:
 | Marker | Meaning | What to do |
 |---|---|---|
 | `skip: API reported a service-side failure …` | The target environment is unhealthy, not the CLI. | Re-run later, or point at a healthier environment. |
-| `skip: account has no …` / `is not an agency` / `lacks the … add-on` | The account cannot exercise this path. | Nothing, unless you expected it to. |
+| `skip: account has no …` / `organization does not manage accounts` / `lacks the … add-on` | The target cannot exercise this path. | Nothing, unless you expected it to. |
 | `[BROKEN: …]` in the title | A confirmed CLI defect, skipped so the suite stays green. **None currently.** | Fix the command, then unskip. |
 
 A confirmed CLI defect should be fixed, not left skipped — a skipped test is green, and
@@ -198,7 +196,7 @@ Every one of these passed in the unit suite, because its mocks supplied the shap
 command expected. `test/helpers.ts` now records request bodies (`lastBody()`), and the
 five commands above assert on theirs, so this family cannot silently return.
 
-The two stale types once listed here (`account usage` buckets, `data-source get`'s
+The two stale types once listed here (`organization usage` buckets, `data-source get`'s
 `title`) now mirror the contract, and `metric create` takes `--aggregation-function` and
 `--dimension`, which the metric suite exercises.
 

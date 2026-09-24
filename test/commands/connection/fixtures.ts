@@ -8,7 +8,7 @@ export const connectionListItem = {
   integrationKey: 'GoogleAnalytics4',
   managedBy: {id: 31, name: 'Ada'},
   name: 'GA4 Connection',
-  sharedWithClients: true,
+  sharedWithAccounts: true,
   statusInfo: {
     description: null, reason: null, status: 'active', userAction: null,
   },

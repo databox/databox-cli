@@ -1,6 +1,6 @@
 # databox-cli
 
-Command-line interface for the [Databox](https://databox.com) API. Manage data sources, datasets and the data in them, custom metrics, databoards, users, client accounts, connections and billing — from the terminal, from scripts, or through an AI agent.
+Command-line interface for the [Databox](https://databox.com) API. Manage data sources, datasets and the data in them, custom metrics, databoards, users, your organization and its accounts, connections and billing — from the terminal, from scripts, or through an AI agent.
 
 Version 1.0 targets the Databox V2 API. Upgrading from 0.x? The [1.0.0 migration guide](https://github.com/databox/databox-cli/blob/main/CHANGELOG.md) lists every renamed command and flag.
 
@@ -71,7 +71,7 @@ Every command accepts these:
 | `--no-color` | `NO_COLOR` | Disable coloured output. A non-empty `NO_COLOR` does the same. |
 | `--api-key` | `DATABOX_API_KEY` | Use this API key instead of the stored one. |
 | `--api-url` | `DATABOX_API_URL` | Override the API base URL (default `https://api.databox.com`). |
-| `--account-id` | `DATABOX_ACCOUNT_ID` | Run the command against another account you manage (see [Multi-Account Access](#multi-account-access)). |
+| `--account-id` | `DATABOX_ACCOUNT_ID` | Target an account in your organization (see [Organizations and accounts](#organizations-and-accounts)). |
 | `-h`, `--help` | — | Show help for a command or topic. |
 
 `--api-key`, `--api-url` and `--account-id` do not appear in each command's `--help`, but work on every command that calls the API.
@@ -96,7 +96,7 @@ databox dataset ingest 67890 --file orders.json --idempotency-key "$KEY"
 databox dataset ingest 67890 --file orders.json --idempotency-key "$KEY"
 ```
 
-It is available on `client create`, `data-source create`, `data-source purge`, `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`, `metric create` and `user invite`. The value must be a UUID.
+It is available on `account create`, `data-source create`, `data-source purge`, `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`, `metric create` and `user invite`. The value must be a UUID.
 
 ## Output Formats
 
@@ -144,17 +144,19 @@ If you contact Databox support about a failed command, quote the **Request ID**:
 | `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, or a network failure or timeout. |
 | `130` | A confirmation prompt was interrupted with Ctrl-C. |
 
-## Multi-Account Access
+## Organizations and accounts
 
-For agency accounts managing client accounts, `--account-id` scopes any command to a specific client:
+Your **organization** is the top level: `databox organization info`, `organization update` and `organization usage` read and change it. An organization that manages several accounts (an agency) lists and manages them with the `account` commands, and `--account-id` scopes any command to one of them:
 
 ```bash
-# List your client accounts
-databox client list
+# List the accounts in your organization
+databox account list
 
-# List data sources for a specific client
+# List data sources in one account
 databox data-source list --account-id 12345
 ```
+
+With `--account-id`, the `organization` commands answer for that account. `databox profile info` always shows your own organization, and your home account if you belong to one.
 
 ## Agent Skills
 
@@ -165,12 +167,12 @@ This package includes skills that let AI agents (like [Claude Code](https://clau
 | Skill | Description |
 |-------|-------------|
 | `databox-auth` | Authentication setup and API key validation |
-| `databox-account` | Account info, usage, settings, timezones |
+| `databox-organization` | Organization info, usage, settings, timezones |
 | `databox-data-sources` | Data source CRUD, timezone, sync frequency, permissions, purge |
 | `databox-datasets` | Dataset CRUD, schema, data ingestion, metadata, verification, modifications, lineage |
 | `databox-metrics` | Custom metric CRUD, dimension values, drilldown, lineage, usages, verification |
 | `databox-users` | User invites, roles, removal |
-| `databox-clients` | Client account management (agency model) |
+| `databox-accounts` | Managing the accounts in your organization |
 | `databox-connections` | Connection management and permissions |
 | `databox-integrations` | Browse the integration catalog |
 | `databox-billing` | Plan details and invoices |
@@ -188,19 +190,19 @@ Or install individual skills:
 
 ```bash
 npx skills add databox/databox-cli --skill databox-auth
-npx skills add databox/databox-cli --skill databox-account
+npx skills add databox/databox-cli --skill databox-organization
 npx skills add databox/databox-cli --skill databox-data-sources
 npx skills add databox/databox-cli --skill databox-datasets
 npx skills add databox/databox-cli --skill databox-metrics
 npx skills add databox/databox-cli --skill databox-users
-npx skills add databox/databox-cli --skill databox-clients
+npx skills add databox/databox-cli --skill databox-accounts
 npx skills add databox/databox-cli --skill databox-connections
 npx skills add databox/databox-cli --skill databox-integrations
 npx skills add databox/databox-cli --skill databox-billing
 npx skills add databox/databox-cli --skill databox-analyze
 ```
 
-Once installed, Claude Code can manage your Databox resources directly — accounts, data sources, datasets, metrics, users, connections and billing — and analyze data with Genie AI.
+Once installed, Claude Code can manage your Databox resources directly — your organization and its accounts, data sources, datasets, metrics, users, connections and billing — and analyze data with Genie AI.
 
 ## Changelog
 
@@ -209,23 +211,17 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 ## Commands
 
 <!-- commands -->
-* [`databox account countries`](#databox-account-countries)
-* [`databox account info`](#databox-account-info)
-* [`databox account metadata-options`](#databox-account-metadata-options)
-* [`databox account timezones`](#databox-account-timezones)
-* [`databox account update`](#databox-account-update)
-* [`databox account usage`](#databox-account-usage)
+* [`databox account create`](#databox-account-create)
+* [`databox account delete ACCOUNTID`](#databox-account-delete-accountid)
+* [`databox account get ACCOUNTID`](#databox-account-get-accountid)
+* [`databox account list`](#databox-account-list)
+* [`databox account update ACCOUNTID`](#databox-account-update-accountid)
 * [`databox activity-log list`](#databox-activity-log-list)
 * [`databox analyze ask-genie DATASETID QUESTION`](#databox-analyze-ask-genie-datasetid-question)
 * [`databox auth login`](#databox-auth-login)
 * [`databox auth validate`](#databox-auth-validate)
 * [`databox billing info`](#databox-billing-info)
 * [`databox billing invoices`](#databox-billing-invoices)
-* [`databox client create`](#databox-client-create)
-* [`databox client delete CLIENTID`](#databox-client-delete-clientid)
-* [`databox client get CLIENTID`](#databox-client-get-clientid)
-* [`databox client list`](#databox-client-list)
-* [`databox client update CLIENTID`](#databox-client-update-clientid)
 * [`databox connection delete CONNECTIONID`](#databox-connection-delete-connectionid)
 * [`databox connection get CONNECTIONID`](#databox-connection-get-connectionid)
 * [`databox connection list`](#databox-connection-list)
@@ -293,6 +289,12 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox metric update METRICID`](#databox-metric-update-metricid)
 * [`databox metric usages METRICID`](#databox-metric-usages-metricid)
 * [`databox metric verification METRICID`](#databox-metric-verification-metricid)
+* [`databox organization countries`](#databox-organization-countries)
+* [`databox organization info`](#databox-organization-info)
+* [`databox organization metadata-options`](#databox-organization-metadata-options)
+* [`databox organization timezones`](#databox-organization-timezones)
+* [`databox organization update`](#databox-organization-update)
+* [`databox organization usage`](#databox-organization-usage)
 * [`databox profile info`](#databox-profile-info)
 * [`databox profile metadata-options`](#databox-profile-metadata-options)
 * [`databox profile update`](#databox-profile-update)
@@ -302,13 +304,80 @@ See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.m
 * [`databox user list`](#databox-user-list)
 * [`databox user update USERID`](#databox-user-update-userid)
 
-## `databox account countries`
+## `databox account create`
 
-List available countries
+Create an account in your organization
 
 ```
 USAGE
-  $ databox account countries [--no-color] [--output table|json|csv | --json] [--verbose]
+  $ databox account create --name <value> [--no-color] [--output table|json|csv | --json] [--verbose]
+    [--idempotency-key <value>] [--managed-by-id <value>] [--website-url <value>]
+
+FLAGS
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
+                             returns the first response instead of repeating the action
+  --json                     Output as JSON (shorthand for --output json)
+  --managed-by-id=<value>    User ID of the account manager
+  --name=<value>             (required) Name of the account
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
+  --website-url=<value>      Website URL for the account
+
+DESCRIPTION
+  Create an account in your organization
+
+EXAMPLES
+  $ databox account create --name "Acme Inc"
+
+  $ databox account create --name "Acme Inc" --managed-by-id 12345
+
+  $ databox account create --name "Acme Inc" --json
+```
+
+_See code: [src/commands/account/create.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/create.ts)_
+
+## `databox account delete ACCOUNTID`
+
+Delete an account from your organization
+
+```
+USAGE
+  $ databox account delete ACCOUNTID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
+
+ARGUMENTS
+  ACCOUNTID  The account ID to delete
+
+FLAGS
+  --force            Skip confirmation prompt
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  Delete an account from your organization
+
+EXAMPLES
+  $ databox account delete 12345
+
+  $ databox account delete 12345 --force
+```
+
+_See code: [src/commands/account/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/delete.ts)_
+
+## `databox account get ACCOUNTID`
+
+Get account details
+
+```
+USAGE
+  $ databox account get ACCOUNTID [--no-color] [--output table|json|csv | --json] [--verbose]
+
+ARGUMENTS
+  ACCOUNTID  The account ID
 
 FLAGS
   --json             Output as JSON (shorthand for --output json)
@@ -318,166 +387,88 @@ FLAGS
   --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List available countries
+  Get account details
 
 EXAMPLES
-  $ databox account countries
+  $ databox account get 12345
 
-  $ databox account countries --json
+  $ databox account get 12345 --json
 ```
 
-_See code: [src/commands/account/countries.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/countries.ts)_
+_See code: [src/commands/account/get.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/get.ts)_
 
-## `databox account info`
+## `databox account list`
 
-Show your account details
+List accounts in your organization
 
 ```
 USAGE
-  $ databox account info [--no-color] [--output table|json|csv | --json] [--verbose]
+  $ databox account list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--search <value>] [--sort-by <value>] [--sort-order asc|desc]
 
 FLAGS
-  --json             Output as JSON (shorthand for --output json)
-  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>  [default: table] Output format
-                     <options: table|json|csv>
-  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+  --all                  Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json                 Output as JSON (shorthand for --output json)
+  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>      [default: table] Output format
+                         <options: table|json|csv>
+  --page=<value>         Page number (0-indexed)
+  --page-size=<value>    Number of items per page (max 100)
+  --search=<value>       Search by name
+  --sort-by=<value>      Field to sort by
+  --sort-order=<option>  Sort direction
+                         <options: asc|desc>
+  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Show your account details
+  List accounts in your organization
+
+  --sort-by takes name, website or managedBy. The CLI does not restrict it: the value is passed to the API as given.
 
 EXAMPLES
-  $ databox account info
+  $ databox account list
 
-  $ databox account info --json
+  $ databox account list --sort-by name --sort-order asc
+
+  $ databox account list --json
 ```
 
-_See code: [src/commands/account/info.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/info.ts)_
+_See code: [src/commands/account/list.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/list.ts)_
 
-## `databox account metadata-options`
+## `databox account update ACCOUNTID`
 
-List available metadata options for account settings
+Update an account
 
 ```
 USAGE
-  $ databox account metadata-options [--no-color] [--output table|json|csv | --json] [--verbose]
+  $ databox account update ACCOUNTID [--no-color] [--output table|json|csv | --json] [--verbose] [--managed-by-id
+    <value>] [--name <value>] [--website-url <value>]
+
+ARGUMENTS
+  ACCOUNTID  The account ID to update
 
 FLAGS
-  --json             Output as JSON (shorthand for --output json)
-  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>  [default: table] Output format
-                     <options: table|json|csv>
-  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+  --json                   Output as JSON (shorthand for --output json)
+  --managed-by-id=<value>  User ID of the account manager
+  --name=<value>           New name for the account
+  --no-color               Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>        [default: table] Output format
+                           <options: table|json|csv>
+  --verbose                Print each request and response (method, URL, status, duration, request ID) to stderr
+  --website-url=<value>    New website URL
 
 DESCRIPTION
-  List available metadata options for account settings
+  Update an account
 
 EXAMPLES
-  $ databox account metadata-options
+  $ databox account update 12345 --name "New Name"
 
-  $ databox account metadata-options --json
-```
+  $ databox account update 12345 --managed-by-id 67890
 
-_See code: [src/commands/account/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/metadata-options.ts)_
-
-## `databox account timezones`
-
-List all supported timezones
-
-```
-USAGE
-  $ databox account timezones [--no-color] [--output table|json|csv | --json] [--verbose]
-
-FLAGS
-  --json             Output as JSON (shorthand for --output json)
-  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>  [default: table] Output format
-                     <options: table|json|csv>
-  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
-
-DESCRIPTION
-  List all supported timezones
-
-EXAMPLES
-  $ databox account timezones
-
-  $ databox account timezones --json
-```
-
-_See code: [src/commands/account/timezones.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/timezones.ts)_
-
-## `databox account update`
-
-Update account details
-
-```
-USAGE
-  $ databox account update [--no-color] [--output table|json|csv | --json] [--verbose] [--address <value>]
-    [--billing-name <value>] [--company-name <value>] [--metadata <value>] [--name <value>] [--settings <value>]
-    [--tax-number <value>] [--website-url <value>]
-
-FLAGS
-  --address=<value>       JSON object: {street, zip, city, state, country}
-  --billing-name=<value>  Billing name
-  --company-name=<value>  Company name
-  --json                  Output as JSON (shorthand for --output json)
-  --metadata=<value>      JSON object: {industry, businessType, companySize, annualRevenue}
-  --name=<value>          Account name
-  --no-color              Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>       [default: table] Output format
-                          <options: table|json|csv>
-  --settings=<value>      JSON object: {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart: {month,
-                          day}}
-  --tax-number=<value>    Tax number
-  --verbose               Print each request and response (method, URL, status, duration, request ID) to stderr
-  --website-url=<value>   Website URL
-
-DESCRIPTION
-  Update account details
-
-  --settings takes {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}:
-  - numberFormat: GroupingCommaDecimalDot (1,234.5), GroupingDotDecimalComma (1.234,5), GroupingSpaceDecimalComma (1
-  234,5) or GroupingSpaceDecimalDot (1 234.5). An unrecognised value is stored as GroupingCommaDecimalDot.
-  - firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value keeps the
-  current day.
-  - calendar: gregorian, customFiscal or weekAlignedFiscal.
-  - fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.
-
-EXAMPLES
-  $ databox account update --name "My Company"
-
-  $ databox account update --company-name "Acme Inc" --json
-
-  $ databox account update --settings '{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}'
+  $ databox account update 12345 --name "New Name" --json
 ```
 
 _See code: [src/commands/account/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/update.ts)_
-
-## `databox account usage`
-
-Show account usage statistics
-
-```
-USAGE
-  $ databox account usage [--no-color] [--output table|json|csv | --json] [--verbose]
-
-FLAGS
-  --json             Output as JSON (shorthand for --output json)
-  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>  [default: table] Output format
-                     <options: table|json|csv>
-  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
-
-DESCRIPTION
-  Show account usage statistics
-
-EXAMPLES
-  $ databox account usage
-
-  $ databox account usage --json
-```
-
-_See code: [src/commands/account/usage.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/account/usage.ts)_
 
 ## `databox activity-log list`
 
@@ -487,7 +478,7 @@ List activity log entries
 USAGE
   $ databox activity-log list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
     [--page-size <value>] [--date-from <value>] [--date-to <value>] [--resource-type
-    dataSource|dataset|metric|user|account|client|billing|connection] [--search <value>] [--user-id <value>]
+    dataSource|dataset|metric|user|administration|billing|connection] [--search <value>] [--user-id <value>]
 
 FLAGS
   --all                     Fetch every page (100 items per request unless --page-size is given) and print them as one
@@ -501,7 +492,7 @@ FLAGS
   --page=<value>            Page number (0-indexed)
   --page-size=<value>       Number of items per page (max 100)
   --resource-type=<option>  Filter by resource type
-                            <options: dataSource|dataset|metric|user|account|client|billing|connection>
+                            <options: dataSource|dataset|metric|user|administration|billing|connection>
   --search=<value>          Search the log text
   --user-id=<value>         Filter by the ID of the user who acted
   --verbose                 Print each request and response (method, URL, status, duration, request ID) to stderr
@@ -656,172 +647,6 @@ EXAMPLES
 
 _See code: [src/commands/billing/invoices.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/billing/invoices.ts)_
 
-## `databox client create`
-
-Create a client account
-
-```
-USAGE
-  $ databox client create --name <value> [--no-color] [--output table|json|csv | --json] [--verbose]
-    [--idempotency-key <value>] [--managed-by-id <value>] [--website-url <value>]
-
-FLAGS
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
-  --json                     Output as JSON (shorthand for --output json)
-  --managed-by-id=<value>    User ID of the account manager
-  --name=<value>             (required) Name of the client account
-  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>          [default: table] Output format
-                             <options: table|json|csv>
-  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
-  --website-url=<value>      Website URL for the client account
-
-DESCRIPTION
-  Create a client account
-
-EXAMPLES
-  $ databox client create --name "Client Company"
-
-  $ databox client create --name "Client Company" --managed-by-id 12345
-
-  $ databox client create --name "Client Company" --json
-```
-
-_See code: [src/commands/client/create.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/client/create.ts)_
-
-## `databox client delete CLIENTID`
-
-Delete a client account
-
-```
-USAGE
-  $ databox client delete CLIENTID [--no-color] [--output table|json|csv | --json] [--verbose] [--force]
-
-ARGUMENTS
-  CLIENTID  The client account ID to delete
-
-FLAGS
-  --force            Skip confirmation prompt
-  --json             Output as JSON (shorthand for --output json)
-  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>  [default: table] Output format
-                     <options: table|json|csv>
-  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
-
-DESCRIPTION
-  Delete a client account
-
-EXAMPLES
-  $ databox client delete 12345
-
-  $ databox client delete 12345 --force
-```
-
-_See code: [src/commands/client/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/client/delete.ts)_
-
-## `databox client get CLIENTID`
-
-Get client account details
-
-```
-USAGE
-  $ databox client get CLIENTID [--no-color] [--output table|json|csv | --json] [--verbose]
-
-ARGUMENTS
-  CLIENTID  The client account ID
-
-FLAGS
-  --json             Output as JSON (shorthand for --output json)
-  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>  [default: table] Output format
-                     <options: table|json|csv>
-  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
-
-DESCRIPTION
-  Get client account details
-
-EXAMPLES
-  $ databox client get 12345
-
-  $ databox client get 12345 --json
-```
-
-_See code: [src/commands/client/get.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/client/get.ts)_
-
-## `databox client list`
-
-List client accounts
-
-```
-USAGE
-  $ databox client list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
-    [--page-size <value>] [--search <value>] [--sort-by <value>] [--sort-order asc|desc]
-
-FLAGS
-  --all                  Fetch every page (100 items per request unless --page-size is given) and print them as one list
-  --json                 Output as JSON (shorthand for --output json)
-  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>      [default: table] Output format
-                         <options: table|json|csv>
-  --page=<value>         Page number (0-indexed)
-  --page-size=<value>    Number of items per page (max 100)
-  --search=<value>       Search by name
-  --sort-by=<value>      Field to sort by
-  --sort-order=<option>  Sort direction
-                         <options: asc|desc>
-  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
-
-DESCRIPTION
-  List client accounts
-
-  --sort-by takes name, website or managedBy. The CLI does not restrict it: the value is passed to the API as given.
-
-EXAMPLES
-  $ databox client list
-
-  $ databox client list --sort-by name --sort-order asc
-
-  $ databox client list --json
-```
-
-_See code: [src/commands/client/list.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/client/list.ts)_
-
-## `databox client update CLIENTID`
-
-Update a client account
-
-```
-USAGE
-  $ databox client update CLIENTID [--no-color] [--output table|json|csv | --json] [--verbose] [--managed-by-id
-    <value>] [--name <value>] [--website-url <value>]
-
-ARGUMENTS
-  CLIENTID  The client account ID to update
-
-FLAGS
-  --json                   Output as JSON (shorthand for --output json)
-  --managed-by-id=<value>  User ID of the account manager
-  --name=<value>           New name for the client account
-  --no-color               Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>        [default: table] Output format
-                           <options: table|json|csv>
-  --verbose                Print each request and response (method, URL, status, duration, request ID) to stderr
-  --website-url=<value>    New website URL
-
-DESCRIPTION
-  Update a client account
-
-EXAMPLES
-  $ databox client update 12345 --name "New Name"
-
-  $ databox client update 12345 --managed-by-id 67890
-
-  $ databox client update 12345 --name "New Name" --json
-```
-
-_See code: [src/commands/client/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/client/update.ts)_
-
 ## `databox connection delete CONNECTIONID`
 
 Delete a connection
@@ -949,36 +774,36 @@ Update connection permissions
 
 ```
 USAGE
-  $ databox connection set-permissions CONNECTIONID --access-level everyone|selectedUsers|private --shared-with-clients
+  $ databox connection set-permissions CONNECTIONID --access-level everyone|selectedUsers|private --shared-with-accounts
     [--no-color] [--output table|json|csv | --json] [--verbose] [--access-list <value>...]
 
 ARGUMENTS
   CONNECTIONID  The connection ID
 
 FLAGS
-  --access-level=<option>     (required) Access level for the connection
-                              <options: everyone|selectedUsers|private>
-  --access-list=<value>...    User ID granted access, with --access-level selectedUsers (repeat for several)
-  --json                      Output as JSON (shorthand for --output json)
-  --no-color                  Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>           [default: table] Output format
-                              <options: table|json|csv>
-  --[no-]shared-with-clients  (required) Share this connection with client accounts (--no-shared-with-clients to stop
-                              sharing)
-  --verbose                   Print each request and response (method, URL, status, duration, request ID) to stderr
+  --access-level=<option>      (required) Access level for the connection
+                               <options: everyone|selectedUsers|private>
+  --access-list=<value>...     User ID granted access, with --access-level selectedUsers (repeat for several)
+  --json                       Output as JSON (shorthand for --output json)
+  --no-color                   Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>            [default: table] Output format
+                               <options: table|json|csv>
+  --[no-]shared-with-accounts  (required) Share this connection with the accounts in your organization
+                               (--no-shared-with-accounts to stop sharing)
+  --verbose                    Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Update connection permissions
 
-  --shared-with-clients or --no-shared-with-clients is required: the API replaces the sharing setting on every call, so
-  leaving it out would silently un-share the connection.
+  --shared-with-accounts or --no-shared-with-accounts is required: the API replaces the sharing setting on every call,
+  so leaving it out would silently un-share the connection.
 
 EXAMPLES
-  $ databox connection set-permissions 12345 --access-level everyone --shared-with-clients
+  $ databox connection set-permissions 12345 --access-level everyone --shared-with-accounts
 
-  $ databox connection set-permissions 12345 --access-level private --no-shared-with-clients --json
+  $ databox connection set-permissions 12345 --access-level private --no-shared-with-accounts --json
 
-  $ databox connection set-permissions 12345 --access-level selectedUsers --access-list 31 --no-shared-with-clients
+  $ databox connection set-permissions 12345 --access-level selectedUsers --access-list 31 --no-shared-with-accounts
 ```
 
 _See code: [src/commands/connection/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/connection/set-permissions.ts)_
@@ -1279,8 +1104,8 @@ FLAGS
 DESCRIPTION
   Set permissions for a data source
 
-  everyone grants every user in the account; selectedUsers grants only the users in --access-list; private grants no one
-  explicitly. Admins and the account owner always keep access.
+  everyone grants every user in the organization; selectedUsers grants only the users in --access-list; private grants
+  no one explicitly. Admins and the organization owner always keep access.
 
 EXAMPLES
   $ databox data-source set-permissions 12345 --access-level everyone
@@ -1733,14 +1558,14 @@ ARGUMENTS
   DATASETID  The dataset ID to ingest data into
 
 FLAGS
-  --file=<value>             Path to a JSON file containing records array
+  --file=<value>             Path to a JSON file containing a records array (at least one record)
   --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
                              returns the first response instead of repeating the action
   --json                     Output as JSON (shorthand for --output json)
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>          [default: table] Output format
                              <options: table|json|csv>
-  --records=<value>          Inline JSON array of records
+  --records=<value>          Inline JSON array of records (at least one record)
   --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
@@ -2196,7 +2021,8 @@ ARGUMENTS
   DATASETID  The dataset ID
 
 FLAGS
-  --columns=<value>  (required) JSON array of column metadata updates ({id, description?, conceptType?, synonyms?})
+  --columns=<value>  (required) JSON array of at least one column metadata update ({id, description?, conceptType?,
+                     synonyms?})
   --json             Output as JSON (shorthand for --output json)
   --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>  [default: table] Output format
@@ -2206,9 +2032,9 @@ FLAGS
 DESCRIPTION
   Update column metadata for a dataset
 
-  Each column is {id, description?, conceptType?, synonyms?}. conceptType is measure, dimension or timeDimension;
-  synonyms is an array of alternative names. Display names are not set here: rename a column through "dataset
-  update-modification" (displayNames). Prints the dataset's column metadata after the update.
+  --columns takes at least one column. Each column is {id, description?, conceptType?, synonyms?}. conceptType is
+  measure, dimension or timeDimension; synonyms is an array of alternative names. Display names are not set here: rename
+  a column through "dataset update-modification" (displayNames). Prints the dataset's column metadata after the update.
 
 EXAMPLES
   $ databox dataset set-column-metadata 12345 --columns '[{"id":"revenue","description":"Order value in USD","conceptType":"measure"}]'
@@ -2279,8 +2105,8 @@ FLAGS
 DESCRIPTION
   Set permissions for a dataset
 
-  everyone grants every user in the account; selectedUsers grants only the users in --access-list; private grants no one
-  explicitly. Admins and the account owner always keep access.
+  everyone grants every user in the organization; selectedUsers grants only the users in --access-list; private grants
+  no one explicitly. Admins and the organization owner always keep access.
 
 EXAMPLES
   $ databox dataset set-permissions 12345 --access-level everyone
@@ -3105,6 +2931,183 @@ EXAMPLES
 
 _See code: [src/commands/metric/verification.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/verification.ts)_
 
+## `databox organization countries`
+
+List available countries
+
+```
+USAGE
+  $ databox organization countries [--no-color] [--output table|json|csv | --json] [--verbose]
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  List available countries
+
+EXAMPLES
+  $ databox organization countries
+
+  $ databox organization countries --json
+```
+
+_See code: [src/commands/organization/countries.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/organization/countries.ts)_
+
+## `databox organization info`
+
+Show your organization details
+
+```
+USAGE
+  $ databox organization info [--no-color] [--output table|json|csv | --json] [--verbose]
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  Show your organization details
+
+EXAMPLES
+  $ databox organization info
+
+  $ databox organization info --json
+```
+
+_See code: [src/commands/organization/info.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/organization/info.ts)_
+
+## `databox organization metadata-options`
+
+List available metadata options for organization settings
+
+```
+USAGE
+  $ databox organization metadata-options [--no-color] [--output table|json|csv | --json] [--verbose]
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  List available metadata options for organization settings
+
+EXAMPLES
+  $ databox organization metadata-options
+
+  $ databox organization metadata-options --json
+```
+
+_See code: [src/commands/organization/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/organization/metadata-options.ts)_
+
+## `databox organization timezones`
+
+List all supported timezones
+
+```
+USAGE
+  $ databox organization timezones [--no-color] [--output table|json|csv | --json] [--verbose]
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  List all supported timezones
+
+EXAMPLES
+  $ databox organization timezones
+
+  $ databox organization timezones --json
+```
+
+_See code: [src/commands/organization/timezones.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/organization/timezones.ts)_
+
+## `databox organization update`
+
+Update organization details
+
+```
+USAGE
+  $ databox organization update [--no-color] [--output table|json|csv | --json] [--verbose] [--address <value>]
+    [--billing-name <value>] [--company-name <value>] [--metadata <value>] [--name <value>] [--settings <value>]
+    [--tax-number <value>] [--website-url <value>]
+
+FLAGS
+  --address=<value>       JSON object: {street, zip, city, state, country}
+  --billing-name=<value>  Billing name
+  --company-name=<value>  Company name
+  --json                  Output as JSON (shorthand for --output json)
+  --metadata=<value>      JSON object: {industry, businessType, companySize, annualRevenue}
+  --name=<value>          Organization name
+  --no-color              Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>       [default: table] Output format
+                          <options: table|json|csv>
+  --settings=<value>      JSON object: {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart: {month,
+                          day}}
+  --tax-number=<value>    Tax number
+  --verbose               Print each request and response (method, URL, status, duration, request ID) to stderr
+  --website-url=<value>   Website URL
+
+DESCRIPTION
+  Update organization details
+
+  --settings takes {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}:
+  - numberFormat: GroupingCommaDecimalDot (1,234.5), GroupingDotDecimalComma (1.234,5), GroupingSpaceDecimalComma (1
+  234,5) or GroupingSpaceDecimalDot (1 234.5). An unrecognised value is stored as GroupingCommaDecimalDot.
+  - firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value keeps the
+  current day.
+  - calendar: gregorian, customFiscal or weekAlignedFiscal.
+  - fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.
+
+EXAMPLES
+  $ databox organization update --name "My Company"
+
+  $ databox organization update --company-name "Acme Inc" --json
+
+  $ databox organization update --settings '{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}'
+```
+
+_See code: [src/commands/organization/update.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/organization/update.ts)_
+
+## `databox organization usage`
+
+Show organization usage statistics
+
+```
+USAGE
+  $ databox organization usage [--no-color] [--output table|json|csv | --json] [--verbose]
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  Show organization usage statistics
+
+EXAMPLES
+  $ databox organization usage
+
+  $ databox organization usage --json
+```
+
+_See code: [src/commands/organization/usage.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/organization/usage.ts)_
+
 ## `databox profile info`
 
 Show your profile
@@ -3199,7 +3202,7 @@ _See code: [src/commands/profile/update.ts](https://github.com/databox/databox-c
 
 ## `databox user delete USERID`
 
-Remove a user from the account
+Remove a user from the organization
 
 ```
 USAGE
@@ -3217,7 +3220,7 @@ FLAGS
   --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Remove a user from the account
+  Remove a user from the organization
 
 EXAMPLES
   $ databox user delete 12345
@@ -3258,7 +3261,7 @@ _See code: [src/commands/user/get.ts](https://github.com/databox/databox-cli/blo
 
 ## `databox user invite`
 
-Invite a user to the account
+Invite a user to the organization
 
 ```
 USAGE
@@ -3279,9 +3282,9 @@ FLAGS
   --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Invite a user to the account
+  Invite a user to the organization
 
-  An email already in the account, invited or active, is refused with duplicate_record; change that user with "user
+  An email already in the organization, invited or active, is refused with duplicate_record; change that user with "user
   update" instead.
 
 EXAMPLES
@@ -3294,7 +3297,7 @@ _See code: [src/commands/user/invite.ts](https://github.com/databox/databox-cli/
 
 ## `databox user list`
 
-List users in the account
+List users in the organization
 
 ```
 USAGE
@@ -3319,7 +3322,7 @@ FLAGS
   --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List users in the account
+  List users in the organization
 
 EXAMPLES
   $ databox user list

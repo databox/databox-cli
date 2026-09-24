@@ -26,10 +26,10 @@
     "topicSeparator": " ",
     "topics": {
       "account": {
-        "description": "Manage Databox accounts"
+        "description": "Manage accounts in your organization"
       },
       "activity-log": {
-        "description": "View the account activity log"
+        "description": "View the organization activity log"
       },
       "analyze": {
         "description": "Analyze datasets with Genie AI"
@@ -39,9 +39,6 @@
       },
       "billing": {
         "description": "View plan details and invoices"
-      },
-      "client": {
-        "description": "Manage client accounts (agency model)"
       },
       "connection": {
         "description": "Manage integration connections and their permissions"
@@ -60,6 +57,9 @@
       },
       "metric": {
         "description": "Create, query and manage metrics"
+      },
+      "organization": {
+        "description": "Manage your organization"
       },
       "profile": {
         "description": "View and update your user profile"

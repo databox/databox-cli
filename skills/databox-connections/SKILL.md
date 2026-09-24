@@ -21,12 +21,12 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | Update connection name | `databox connection update CONNECTION_ID --name "New Name"` |
 | Delete connection | `databox connection delete CONNECTION_ID --force` |
 | View permissions | `databox connection permissions CONNECTION_ID` |
-| Set permissions | `databox connection set-permissions CONNECTION_ID --access-level everyone --shared-with-clients` |
-| Restrict, not shared with clients | `databox connection set-permissions CONNECTION_ID --access-level selectedUsers --access-list 31 --no-shared-with-clients` |
+| Set permissions | `databox connection set-permissions CONNECTION_ID --access-level everyone --shared-with-accounts` |
+| Restrict, not shared with accounts | `databox connection set-permissions CONNECTION_ID --access-level selectedUsers --access-list 31 --no-shared-with-accounts` |
 
 ## Permissions
 
-`set-permissions` takes `--access-level everyone|selectedUsers|private`, and `--access-list USER_ID` (repeatable) with `selectedUsers` only. Either `--shared-with-clients` or `--no-shared-with-clients` is required: every call replaces the sharing setting, so read the current one with `connection permissions` first if you only mean to change the access level.
+`set-permissions` takes `--access-level everyone|selectedUsers|private`, and `--access-list USER_ID` (repeatable) with `selectedUsers` only. Either `--shared-with-accounts` or `--no-shared-with-accounts` is required: every call replaces the sharing setting, so read the current one with `connection permissions` first if you only mean to change the access level.
 
 ## Notes
 

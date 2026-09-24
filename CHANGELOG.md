@@ -10,7 +10,7 @@ What breaks for a 0.x user, in short:
 - **`--title` is now `--name`** on `data-source create` and `dataset create`.
 - **`dataset create --primary-keys` is now `--primary-key`** (still repeatable), and each `--schema` column is `{"id", "dataType"}` instead of `{"name", "dataType"}`.
 - **`data-source create --key` is now `--integration-key`.**
-- **`account list`, `account data-sources` and `account datasets` are gone.** Use `account info`, `data-source list` and `dataset list`; `--account-id` is now a global flag that targets another account on any command.
+- **Your organization has its own topic, and `account` means the accounts in it.** `organization info`, `organization update`, `organization usage` and `organization timezones` cover your organization; `account list` lists the accounts in it. `account data-sources` and `account datasets` are gone: use `data-source list` and `dataset list`, with `--account-id`, now a global flag, to target an account on any command.
 - **JSON output uses the V2 API's field names.** Scripts that parse `--json` output need updating; see "JSON Output" below.
 
 Beyond that, 1.0.0 adds commands across the whole V2 API, CSV output, `--all` pagination, `--verbose` tracing, idempotent retries, and structured errors with distinct exit codes. All of it is described below.
@@ -27,10 +27,10 @@ Every 0.x command maps to a 1.0 command:
 
 | v0.x command | v1.0 equivalent | What changed |
 |---|---|---|
-| `account list` | `account info` | **Replaced.** V2 returns your own account as a single object. To list the client accounts you manage, use `client list`; to act on one, pass `--account-id` to any command. |
-| `account data-sources ACCOUNTID` | `data-source list` | **Removed.** Use `data-source list`, with `--account-id` to target another account. |
-| `account datasets ACCOUNTID` | `dataset list` | **Removed.** Use `dataset list`, with `--account-id` to target another account. The `--type` filter is gone; `--data-source-id`, `--search` and `--sort-by` are new. |
-| `account timezones` | `account timezones` | No change. |
+| `account list` | `account list` | **Changed.** Lists the accounts in your organization, which `account get`, `create`, `update` and `delete` manage. It works only for an organization that manages accounts; any other gets an error, and reads its own details with `organization info`. To act inside an account, pass `--account-id` to any command. |
+| `account data-sources ACCOUNTID` | `data-source list` | **Removed.** Use `data-source list`, with `--account-id` to target an account in your organization. |
+| `account datasets ACCOUNTID` | `dataset list` | **Removed.** Use `dataset list`, with `--account-id` to target an account in your organization. The `--type` filter is gone; `--data-source-id`, `--search` and `--sort-by` are new. |
+| `account timezones` | `organization timezones` | **Moved** to the `organization` topic. |
 | `data-source create` | `data-source create` | `--title` → `--name`. `--key` → `--integration-key` (for third-party integrations such as Datadoo). `--account-id` is now the global flag. |
 | `data-source datasets ID` | `data-source datasets ID` | Now paginated, and takes `--search`, `--sort-by` and `--sort-order`. |
 | `data-source delete ID` | `data-source delete ID` | No change. |
@@ -65,6 +65,17 @@ v1.0:
 databox dataset list --search "My Dataset"
 ```
 
+#### Agent Skills
+
+The bundled skills follow the new topics. 0.3.1's `databox-accounts` covered account listing, timezones, and an account's data sources and datasets. In 1.0.0:
+
+- `databox-organization` covers your organization: details, usage, settings and timezones.
+- `databox-accounts` covers the accounts in your organization: listing, creating, updating and deleting them.
+- `databox-data-sources` and `databox-datasets` cover listing data sources and datasets, with `--account-id` for an account.
+- `databox-metrics`, `databox-users`, `databox-connections`, `databox-integrations` and `databox-billing` are new.
+
+Reinstall them with `npx skills add databox/databox-cli --skill '*'`.
+
 #### JSON Output
 
 `--json` still prints JSON on every command, but the objects are the V2 API's own. For example, `dataset ingestions` items carry `id`, `initiatedAt`, `status`, `duration` and `initiatedBy`, and `data-source datasets` items carry `id`, `name`, `dataSourceId`, `createdAt`, `lastActivityAt` and status details. Check the output of the commands your scripts use.
@@ -75,7 +86,7 @@ The rules for what `--json` prints are under "JSON Output Rules" below.
 
 | Feature | Why | Alternative |
 |---|---|---|
-| Multi-account listing (`account list`) | V2 scopes every call to one account | `client list` for the accounts you manage, `account info` for your own |
+| Listing accounts across organizations (`account list`) | V2 scopes every call to one organization or account | `account list` for the accounts in your organization, `organization info` for your own |
 | `--type` filter on dataset listing | Not part of the V2 API | `dataset list`, optionally filtered by `--data-source-id` or `--search` |
 | GUID dataset IDs | V2 identifies datasets and data sources by numeric ID | `dataset list` to find the numeric ID |
 | `ACCOUNTID` positional argument | Replaced by account scoping on every command | The global `--account-id` flag |
@@ -92,7 +103,7 @@ Every command accepts these:
 | `--no-color` | `NO_COLOR` | Disable coloured output. **New.** |
 | `--api-key` | `DATABOX_API_KEY` | Use this API key instead of the stored one. |
 | `--api-url` | `DATABOX_API_URL` | Override the API base URL. |
-| `--account-id` | `DATABOX_ACCOUNT_ID` | Run the command against another account you manage (agency/client model). Replaces the `ACCOUNTID` argument from 0.x. **New.** |
+| `--account-id` | `DATABOX_ACCOUNT_ID` | Target an account in your organization. Replaces the `ACCOUNTID` argument from 0.x. **New.** |
 
 `--api-key`, `--api-url` and `--account-id` are not listed in each command's `--help`.
 
@@ -109,7 +120,7 @@ Commands that return a list also take:
 
 `--idempotency-key <uuid>` sends an `Idempotency-Key` header, so a retried command is not carried out twice: a retry with the same key within 24 hours returns the first response. The value must be a UUID. It is accepted by:
 
-- `client create`
+- `account create`
 - `data-source create`, `data-source purge`
 - `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`
 - `metric create`
@@ -148,15 +159,17 @@ Quote the request ID when you contact Databox support about a failed command.
 
 91 commands in all, covering the V2 API. New in 1.0.0:
 
-#### Account
-- `account info` — Show your account details
-- `account update` — Update the account name, company, address, billing details, metadata and settings (date and number format, first day of week, `gregorian`/`customFiscal`/`weekAlignedFiscal` calendar)
-- `account usage` — Show usage statistics, including AI credits
-- `account countries` — List available countries
-- `account metadata-options` — List the metadata options for account settings
+#### Organization
+- `organization info` — Show your organization's details
+- `organization update` — Update the organization name, company, address, billing details, metadata and settings (date and number format, first day of week, `gregorian`/`customFiscal`/`weekAlignedFiscal` calendar)
+- `organization usage` — Show usage statistics: users, data sources, accounts and AI credits
+- `organization countries` — List available countries
+- `organization metadata-options` — List the metadata options for organization settings
+
+With `--account-id`, the `organization` commands answer for that account.
 
 #### Profile
-- `profile info` — Show your profile
+- `profile info` — Show your profile, with your organization and, if you belong to one, your home account
 - `profile update` — Update your name, timezone or metadata (department, title, role)
 - `profile metadata-options` — List the departments and roles `profile update --metadata` accepts
 
@@ -171,12 +184,11 @@ Quote the request ID when you contact Databox support about a failed command.
 - `user update` — Change a user's name or role
 - `user delete` — Remove a user
 
-#### Clients (agency accounts)
-- `client list` — List client accounts
-- `client get` — Get client account details
-- `client create` — Create a client account
-- `client update` — Update a client account
-- `client delete` — Delete a client account
+#### Accounts (organizations that manage accounts)
+- `account get` — Get account details
+- `account create` — Create an account
+- `account update` — Update an account's name, manager or website
+- `account delete` — Delete an account
 
 #### Connections
 - `connection list` — List connections
@@ -184,7 +196,7 @@ Quote the request ID when you contact Databox support about a failed command.
 - `connection update` — Rename a connection
 - `connection delete` — Delete a connection
 - `connection permissions` — Show permissions
-- `connection set-permissions` — Set `--access-level everyone|selectedUsers|private` (with `--access-list` user IDs for `selectedUsers`). `--shared-with-clients` or `--no-shared-with-clients` is required, because every call replaces the sharing setting.
+- `connection set-permissions` — Set `--access-level everyone|selectedUsers|private` (with `--access-list` user IDs for `selectedUsers`). `--shared-with-accounts` or `--no-shared-with-accounts` is required, because every call replaces the sharing setting.
 
 #### Integrations
 - `integration list` — Browse the integration catalog

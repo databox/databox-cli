@@ -4,7 +4,9 @@
 import * as path from 'node:path'
 import {fileURLToPath} from 'node:url'
 
-import {cli, cliWithRetry, errorText} from './cli.js'
+import {
+  NO_MANAGED_ACCOUNTS, cli, cliWithRetry, errorText,
+} from './cli.js'
 import {preflight} from './env.js'
 import {E2E_PREFIX, isE2eResource} from './resources.js'
 import {pendingRestores, runPendingRestores} from './restore.js'
@@ -18,6 +20,11 @@ interface SweepTarget {
   /** Argv prefix, e.g. ['data-source'] -> `databox data-source list|delete`. */
   command: string
   label: string
+  /**
+   * A listing failure matching this means the organization cannot have the resource at all, so
+   * there is nothing to sweep: skipped, not reported as unchecked.
+   */
+  notApplicable?: RegExp
 }
 
 /** How long one sweep listing may take, and how many times a transient failure is retried. */
@@ -27,19 +34,23 @@ export interface SweepBudget {
 }
 
 /**
- * For the root after() hook, whose own timeout is 300s. A timed-out call ends within 65s (its 60s
- * plus cli()'s 5s kill grace), so two listings of 2 attempts and a 3s retry delay each take 266s at
- * worst, leaving room for the restores that run first.
+ * For the root after() hook, whose own timeout is 300s. A timed-out call ends within 40s (its 35s
+ * plus cli()'s 5s kill grace), so three listings of 2 attempts and a 3s retry delay each take 249s
+ * at worst, leaving room for the restores that run first.
  */
-const HOOK_BUDGET: SweepBudget = {attempts: 2, timeoutMs: 60_000}
+const HOOK_BUDGET: SweepBudget = {attempts: 2, timeoutMs: 35_000}
 
 /** For the standalone cleanup script, which has no hook timeout to fit inside. */
 const STANDALONE_BUDGET: SweepBudget = {attempts: 3, timeoutMs: 180_000}
 
-/** Deleting a data source cascades to its datasets, so datasets need no sweep of their own. */
+/**
+ * Deleting a data source cascades to its datasets, so datasets need no sweep of their own. Only an
+ * organization that manages accounts (an agency) has accounts; any other refuses the listing.
+ */
 const SWEEP_TARGETS: SweepTarget[] = [
   {command: 'data-source', label: 'data sources'},
   {command: 'metric', label: 'metrics'},
+  {command: 'account', label: 'accounts', notApplicable: NO_MANAGED_ACCOUNTS},
 ]
 
 export interface SweepResult {
@@ -58,12 +69,14 @@ export async function sweepOrphans({attempts, timeoutMs}: SweepBudget = HOOK_BUD
   let failed = 0
   const unchecked: string[] = []
 
-  for (const {command, label} of SWEEP_TARGETS) {
+  for (const {command, label, notApplicable} of SWEEP_TARGETS) {
     // --all, not one large page: the API clamps page size to 100, so a single page misses
     // every orphan past the first hundred. --search narrows it to the prefix server-side, so a
-    // large shared account is not paged through in full; the name check below still decides.
+    // large shared organization is not paged through in full; the name check below still decides.
     // eslint-disable-next-line no-await-in-loop
     const listed = await cliWithRetry([command, 'list', '--search', E2E_PREFIX, '--all', '--json'], {attempts, timeoutMs})
+
+    if (listed.code !== 0 && notApplicable?.test(errorText(listed))) continue
 
     if (listed.code !== 0) {
       unchecked.push(label)

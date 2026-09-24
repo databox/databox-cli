@@ -29,13 +29,14 @@ Never rename an e2e file to `.test.ts`, and never add `test/e2e` to `.mocharc.ym
 - **Match error text with `errorText(result)`**, never `result.stderr` directly — the
   CLI hard-wraps messages, so a phrase can be split across lines with padding.
 - **Never add mocha `--retries` or `--parallel`.** Mocha retries re-run the whole test,
-  creating resources twice; parallel suites collide on shared account state. Retry belongs
+  creating resources twice; parallel suites collide on shared organization state. Retry belongs
   in `retryRead` (poll a read until the API's cache catches up) and `cliWithRetry` (re-run
   a command whose failure matches a transient environment fault). `cliWithRetry` is safe
   for assertions too — a genuine failure does not match a transient pattern, and a matched
   one is still returned once attempts run out. Shared dev environments do fail in bursts,
   including spurious 401s on a valid key.
-- **No API key outside `helpers/environments.ts`**, and never a production key.
+- **No API key in the repository** — this repo is public; keys come from
+  `DATABOX_E2E_API_KEY` only.
 - **Never mutate a resource the suite did not create without `withRestore()`.** It
   records the undo on disk before the change, so an interrupted run can be repaired
   with `npm run test:e2e:cleanup`. A bare `finally` does not survive Ctrl-C.
@@ -52,8 +53,8 @@ A failing e2e test means one of three things. Say which, in the test:
 2. **An environment outage** — `this.skip()` at runtime via `serviceUnavailable(result)`,
    which recognises the API's own 5xx/service-down messages. Never hard-code an outage
    as expected behaviour.
-3. **A capability the account lacks** — `this.skip()` with a logged reason: no agency
-   account, no Advanced Security add-on, no databoards, no connections.
+3. **A capability the organization lacks** — `this.skip()` with a logged reason: it manages
+   no accounts, no Advanced Security add-on, no databoards, no connections.
 
 A skip must always print or carry its reason. A silent skip is worse than a failure.
 

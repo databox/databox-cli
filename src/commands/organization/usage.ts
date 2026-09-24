@@ -20,10 +20,13 @@ interface AiCreditsUsage {
   used: null | number
 }
 
-/** AccountResponse.cs `AccountUsageResponse`. `aiCredits` is null when the credits read failed. */
-interface AccountUsageResponse {
+/**
+ * AccountResponse.cs `AccountUsageResponse`, published as `OrganizationUsageResponse`. `aiCredits`
+ * is null when the credits read failed.
+ */
+interface OrganizationUsageResponse {
+  accounts: UsageBucket
   aiCredits: AiCreditsUsage | null
-  clients: UsageBucket
   dataSources: UsageBucket
   users: UsageBucket
 }
@@ -44,16 +47,16 @@ function aiCreditLines(credits: AiCreditsUsage | null): string[] {
   ]
 }
 
-export default class AccountUsage extends BaseCommand<typeof AccountUsage> {
-  static description = 'Show account usage statistics'
+export default class OrganizationUsage extends BaseCommand<typeof OrganizationUsage> {
+  static description = 'Show organization usage statistics'
 
   static examples = [
-    '<%= config.bin %> account usage',
-    '<%= config.bin %> account usage --json',
+    '<%= config.bin %> organization usage',
+    '<%= config.bin %> organization usage --json',
   ]
 
   async run(): Promise<void> {
-    const response = await this.apiClient.get<AccountUsageResponse>('/v2/account/usage', undefined, this.accountHeaders)
+    const response = await this.apiClient.get<OrganizationUsageResponse>('/v2/organization/usage', undefined, this.accountHeaders)
 
     if (this.outputFormat !== 'table') {
       formatSingle(response, this.outputFormat)
@@ -64,7 +67,7 @@ export default class AccountUsage extends BaseCommand<typeof AccountUsage> {
     const lines = [
       bucketLine('Users', response.users),
       bucketLine('Data sources', response.dataSources),
-      bucketLine('Clients', response.clients),
+      bucketLine('Accounts', response.accounts),
       ...aiCreditLines(response.aiCredits),
     ]
     for (const line of lines) this.log(line)
