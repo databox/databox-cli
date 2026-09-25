@@ -20,7 +20,7 @@ export const organization = {
     dateFormat: 'DD/MM/YYYY',
     firstDayOfWeek: 'monday',
     fiscalYearStart: {day: 1, month: 4},
-    numberFormat: 'GroupingCommaDecimalDot',
+    numberFormat: 'groupingCommaDecimalDot',
   },
   taxNumber: 'US123',
   websiteUrl: 'https://example.com',

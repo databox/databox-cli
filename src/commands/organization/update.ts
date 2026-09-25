@@ -8,8 +8,8 @@ export default class OrganizationUpdate extends BaseCommand<typeof OrganizationU
   static description = `Update organization details
 
 --settings takes {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}:
-- numberFormat: GroupingCommaDecimalDot (1,234.5), GroupingDotDecimalComma (1.234,5), GroupingSpaceDecimalComma (1 234,5) or GroupingSpaceDecimalDot (1 234.5). An unrecognised value is stored as GroupingCommaDecimalDot.
-- firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value keeps the current day.
+- numberFormat: groupingCommaDecimalDot (1,234.5), groupingDotDecimalComma (1.234,5), groupingSpaceDecimalComma (1 234,5) or groupingSpaceDecimalDot (1 234.5). An unrecognised value is rejected.
+- firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value is rejected.
 - calendar: gregorian, customFiscal or weekAlignedFiscal.
 - fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.`
 
@@ -20,7 +20,7 @@ export default class OrganizationUpdate extends BaseCommand<typeof OrganizationU
   ]
 
   static flags = {
-    address: Flags.string({description: 'JSON object: {street, zip, city, state, country}'}),
+    address: Flags.string({description: 'JSON object: {street, zip, city, state, country}. Omitted fields keep their value; "" clears one'}),
     'billing-name': Flags.string({description: 'Billing name'}),
     'company-name': Flags.string({description: 'Company name'}),
     metadata: Flags.string({

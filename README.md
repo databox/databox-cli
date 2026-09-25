@@ -3168,7 +3168,8 @@ USAGE
     [--tax-number <value>] [--website-url <value>]
 
 FLAGS
-  --address=<value>       JSON object: {street, zip, city, state, country}
+  --address=<value>       JSON object: {street, zip, city, state, country}. Omitted fields keep their value; "" clears
+                          one
   --billing-name=<value>  Billing name
   --company-name=<value>  Company name
   --json                  Output as JSON (shorthand for --output json)
@@ -3187,10 +3188,9 @@ DESCRIPTION
   Update organization details
 
   --settings takes {dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}:
-  - numberFormat: GroupingCommaDecimalDot (1,234.5), GroupingDotDecimalComma (1.234,5), GroupingSpaceDecimalComma (1
-  234,5) or GroupingSpaceDecimalDot (1 234.5). An unrecognised value is stored as GroupingCommaDecimalDot.
-  - firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value keeps the
-  current day.
+  - numberFormat: groupingCommaDecimalDot (1,234.5), groupingDotDecimalComma (1.234,5), groupingSpaceDecimalComma (1
+  234,5) or groupingSpaceDecimalDot (1 234.5). An unrecognised value is rejected.
+  - firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value is rejected.
   - calendar: gregorian, customFiscal or weekAlignedFiscal.
   - fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.
 
