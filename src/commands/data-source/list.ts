@@ -47,7 +47,7 @@ export default class DataSourceList extends BaseCommand<typeof DataSourceList> {
         {header: 'Timezone', key: 'timezone'},
         {get: row => row.connectionId ? String(row.connectionId) : '', header: 'Connection ID'},
         {get: row => row.statusInfo?.status ?? '', header: 'Status'},
-        {get: row => row.lastActivityAt ?? '', header: 'Last activity'},
+        {get: row => row.lastActivityAt ?? '', header: 'Last Activity'},
       ],
       this.outputFormat,
     )

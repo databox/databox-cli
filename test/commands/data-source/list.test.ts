@@ -37,7 +37,7 @@ describe('data-source list', () => {
     const {stdout} = await runCommand(['data-source', 'list'], {root: process.cwd()})
     // Header, rule, then one line per data source; cells are separated by │.
     const [header, , ...rows] = stdout.trim().split('\n').slice(0, 4).map(line => line.split('│').map(cell => cell.trim()))
-    expect(header).to.deep.equal(['ID', 'Name', 'Integration', 'Timezone', 'Connection ID', 'Status', 'Last activity'])
+    expect(header).to.deep.equal(['ID', 'Name', 'Integration', 'Timezone', 'Connection ID', 'Status', 'Last Activity'])
     expect(rows).to.deep.equal([
       ['42', 'My Source', 'DataboxAPI', 'UTC', '7', 'error', '2026-09-01T08:00:00+00:00'],
       ['43', 'Pushed', 'DataboxAPI', 'UTC', '', 'active', ''],

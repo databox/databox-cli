@@ -47,8 +47,8 @@ export default class DatasetList extends BaseCommand<typeof DatasetList> {
         {get: row => (row.dataSourceId === null ? '' : String(row.dataSourceId)), header: 'Data Source'},
         {get: row => (row.ingestionSupported ? 'yes' : 'no'), header: 'Ingestion'},
         {get: row => row.statusInfo?.status ?? '', header: 'Status'},
-        {get: row => row.syncInfo?.status ?? '', header: 'Sync status'},
-        {get: row => row.lastActivityAt ?? '', header: 'Last activity'},
+        {get: row => row.syncInfo?.status ?? '', header: 'Sync Status'},
+        {get: row => row.lastActivityAt ?? '', header: 'Last Activity'},
       ],
       this.outputFormat,
     )

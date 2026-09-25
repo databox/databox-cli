@@ -31,7 +31,7 @@ describe('data-source datasets', () => {
   it('lists datasets for data source', async () => {
     const {stdout} = await runCommand(['data-source', 'datasets', '42'], {root: process.cwd()})
     expect(stdout).to.contain('Orders')
-    expect(stdout).to.contain('Sync status')
+    expect(stdout).to.contain('Sync Status')
     expect(stdout).to.contain('success')
   })
 

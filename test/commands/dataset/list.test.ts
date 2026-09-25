@@ -34,7 +34,7 @@ describe('dataset list', () => {
     expect(stdout).to.include('123')
     expect(stdout).to.include('Data Source')
     expect(stdout).to.include('42')
-    expect(stdout).to.include('Sync status')
+    expect(stdout).to.include('Sync Status')
     expect(stdout).to.include('2026-09-01T08:00:00+00:00')
   })
 

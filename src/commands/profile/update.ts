@@ -32,7 +32,7 @@ export default class ProfileUpdate extends BaseCommand<typeof ProfileUpdate> {
     const body: Record<string, unknown> = {}
     if (this.flags.name !== undefined) body.name = this.flags.name
     if (this.flags.timezone !== undefined) body.timezone = this.flags.timezone
-    if (this.flags.metadata) {
+    if (this.flags.metadata !== undefined) {
       body.metadata = this.parseJsonFlag(this.flags.metadata, 'metadata', '{"department":"...","title":"...","role":"..."}')
     }
 

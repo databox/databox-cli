@@ -55,8 +55,8 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
         {header: 'Name', key: 'name'},
         {get: row => (row.ingestionSupported ? 'yes' : 'no'), header: 'Ingestion'},
         {get: row => row.statusInfo?.status ?? '', header: 'Status'},
-        {get: row => row.syncInfo?.status ?? '', header: 'Sync status'},
-        {get: row => row.lastActivityAt ?? '', header: 'Last activity'},
+        {get: row => row.syncInfo?.status ?? '', header: 'Sync Status'},
+        {get: row => row.lastActivityAt ?? '', header: 'Last Activity'},
       ],
       this.outputFormat,
     )

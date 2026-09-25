@@ -2,7 +2,7 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import {
-  cleanupTestConfig, lastBody, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, lastBody, mockApi, requests, restoreApi, setupTestConfig,
 } from '../../helpers.js'
 import {datasetDetail, envelope} from './fixtures.js'
 
@@ -33,5 +33,13 @@ describe('dataset duplicate', () => {
   it('outputs the new dataset with --json', async () => {
     const {stdout} = await runCommand(['dataset', 'duplicate', '123', '--json'], {root: process.cwd()})
     expect(JSON.parse(stdout)).to.deep.equal(duplicate)
+  })
+
+  // runCommand refuses an empty-string flag value, so a quoted blank stands in; the check trims.
+  it('rejects a blank --name with exit 2', async () => {
+    const {error} = await runCommand(['dataset', 'duplicate', '123', '--name', '" "'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--name cannot be empty')
+    expect(requests()).to.have.length(0)
   })
 })

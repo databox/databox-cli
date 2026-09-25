@@ -30,7 +30,7 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
 
     const body: Record<string, unknown> = {}
     if (flags.description !== undefined) body.description = flags.description
-    if (flags.synonyms) {
+    if (flags.synonyms !== undefined) {
       body.synonyms = this.parseJsonFlag<string[]>(flags.synonyms, 'synonyms', '["name1","name2"]')
     }
 

@@ -163,7 +163,7 @@ describe('base command: --output', () => {
     const {stdout} = await runCommand(['data-source', 'list', '--output', 'csv'], {root: process.cwd()})
 
     expect(stdout.trimEnd().split('\n')).to.deep.equal([
-      'ID,Name,Integration,Timezone,Connection ID,Status,Last activity',
+      'ID,Name,Integration,Timezone,Connection ID,Status,Last Activity',
       '10,A source,DataboxAPI,UTC,,error,2026-09-01T08:00:00+00:00',
       '11,"Sales, ""EU""",DataboxAPI,UTC,,error,2026-09-01T08:00:00+00:00',
     ])
@@ -178,7 +178,7 @@ describe('base command: --output', () => {
 
     const {stdout} = await runCommand(['data-source', 'list', '--output', 'csv'], {root: process.cwd()})
 
-    expect(stdout.trimEnd()).to.equal('ID,Name,Integration,Timezone,Connection ID,Status,Last activity')
+    expect(stdout.trimEnd()).to.equal('ID,Name,Integration,Timezone,Connection ID,Status,Last Activity')
   })
 
   it('prints a single record as field,value rows', async () => {

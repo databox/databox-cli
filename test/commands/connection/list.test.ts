@@ -33,6 +33,10 @@ describe('connection list', () => {
   it('lists connections', async () => {
     const {stdout} = await runCommand(['connection', 'list'], {root: process.cwd()})
     expect(stdout).to.include('GA4 Connection')
+
+    // Header, rule, then one line per row; cells are separated by │.
+    const [header, , row] = stdout.trim().split('\n').slice(0, 3).map(line => line.split('│').map(cell => cell.trim()))
+    expect(row[header.indexOf('Shared')]).to.equal('yes')
   })
 
   it('outputs JSON with --json', async () => {

@@ -7,7 +7,7 @@ import {MetricListItem} from '../../lib/types.js'
 
 interface MetricsResponse {
   items: MetricListItem[]
-  pagination: Pagination
+  pagination?: Pagination
 }
 
 export default class MetricList extends BaseCommand<typeof MetricList> {

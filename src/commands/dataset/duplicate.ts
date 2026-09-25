@@ -27,9 +27,14 @@ export default class DatasetDuplicate extends BaseCommand<typeof DatasetDuplicat
 
     this.requireNumericId(args.datasetId, 'Dataset ID')
 
+    // Omitting --name falls back to a server-generated name; a blank one would silently do the same instead of erroring.
+    if (flags.name !== undefined && flags.name.trim() === '') {
+      this.error('--name cannot be empty.', {exit: 2})
+    }
+
     const response = await this.apiClient.post<DatasetDetail>(
       `/v2/datasets/${args.datasetId}/duplicate`,
-      flags.name ? {name: flags.name} : undefined,
+      flags.name === undefined ? undefined : {name: flags.name},
       {...this.accountHeaders, ...idempotencyHeaders(this.flags)},
     )
 
