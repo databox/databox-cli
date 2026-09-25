@@ -107,8 +107,9 @@ same: `npm run test:e2e:cleanup`.
   standalone after an interrupted one.
 - **Everything goes through the CLI.** No suite makes a direct HTTP call — setup,
   assertions and teardown all shell out. The e2e layer has no API client to drift.
-- Destructive commands always take `--force`: stdin is `'ignore'`, so an interactive
-  `confirm()` prompt would hang until the mocha timeout.
+- Destructive commands always take `--force`: stdin is `'ignore'`, so nothing is piped,
+  and an unforced `confirm()` exits 2 at once ("Refusing to prompt: stdin is not a
+  terminal and no confirmation was piped") and the command does nothing.
 - Environment-dependent suites skip with `skipWith(this, reason)` rather than failing (an
   organization that manages no accounts, add-on not enabled, no databoards). It prints the reason; never call a
   bare `this.skip()`, which is indistinguishable from a pass.

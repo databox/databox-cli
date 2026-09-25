@@ -25,7 +25,8 @@ Never rename an e2e file to `.test.ts`, and never add `test/e2e` to `.mocharc.ym
 - **Name every created resource** with `e2eName(label)` and register it on a
   `ResourceTracker`; tear it down in the suite's `after()`.
 - **Always pass `--force`** to destructive commands. Child stdin is `'ignore'`, so an
-  interactive `confirm()` would hang until the mocha timeout.
+  unforced `confirm()` exits 2 at once ("Refusing to prompt: stdin is not a terminal") and
+  the command does nothing.
 - **Match error text with `errorText(result)`**, never `result.stderr` directly — the
   CLI hard-wraps messages, so a phrase can be split across lines with padding.
 - **Never add mocha `--retries` or `--parallel`.** Mocha retries re-run the whole test,

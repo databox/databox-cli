@@ -1,6 +1,6 @@
 # databox-cli
 
-Command-line interface for the [Databox](https://databox.com) API. Manage data sources, datasets and the data in them, custom metrics, databoards, users, your organization and its accounts, connections and billing — from the terminal, from scripts, or through an AI agent.
+Command-line interface for the [Databox](https://databox.com) API. Manage data sources, datasets and the data in them, custom metrics, databoards, users, your organization and its accounts, connections and billing — from the terminal, from scripts, or through an AI agent. Running it from a script or an agent? Read [Scripts and AI Agents](#scripts-and-ai-agents) first.
 
 Version 1.0 targets the Databox V2 API. Upgrading from 0.x? The [1.0.0 migration guide](https://github.com/databox/databox-cli/blob/main/CHANGELOG.md) lists every renamed command and flag.
 
@@ -8,60 +8,122 @@ Version 1.0 targets the Databox V2 API. Upgrading from 0.x? The [1.0.0 migration
 
 ```bash
 npm install -g databox-cli
+databox --version
 ```
 
-Requires Node.js 18 or later.
+This installs the `databox` command. Requires Node.js 18 or later.
+
+## How It Fits Together
+
+A **data source** holds **datasets**. You push rows into a dataset, then build custom **metrics** on it.
+
+- Data source and dataset IDs are numbers. See [Finding IDs](#finding-ids).
+- Metric IDs are strings such as `67890|custom_query_100`. The `|` is special in the shell, so always quote them: `--metric-id "67890|custom_query_100"`.
+- Timestamps differ per command:
+
+| Where | Format | Example |
+|---|---|---|
+| Datetime values in ingested records | ISO 8601 | `"2026-01-15"`, `"2026-01-15T10:30:00Z"` |
+| `metric drilldown --start-timestamp` / `--end-timestamp` | Unix seconds | `1767225600` (2026-01-01 00:00 UTC). Convert with `date -u -d 2026-01-01 +%s` (Linux) or `date -u -j -f '%F %T' '2026-01-01 00:00:00' +%s` (macOS) |
+| `activity-log list --date-from` / `--date-to` | Date, `YYYY-MM-DD` | `2026-01-31`. A bare date means the start of that day (UTC), so `--date-to 2026-01-31` leaves out most of the 31st; pass `--date-to 2026-02-01` to include it |
+
+### Finding IDs
+
+Most commands take the ID of a data source, a dataset or a metric. Every one of them is shown by a list command, and returned as `id` by the command that creates it.
+
+| ID | What it is | Where to find it |
+|---|---|---|
+| Data source ID | A number, e.g. `12345`. The container your datasets live in. | `databox data-source list`; `id` from `data-source create`. In the Databox app, open the data source in **Data Manager**: the number in the page URL, `app.databox.com/data-manager/connected/12345/datasets/view`, is its ID. |
+| Dataset ID | A number, e.g. `67890`. Each dataset has its own ID, separate from its data source's. | `databox dataset list --search "Orders"`, or `databox data-source datasets 12345` for one data source's datasets; `id` from `dataset create`. In the Databox app, open the dataset in **Data Manager** and read the number from the URL, as above. |
+| Metric ID | A string: `<data source ID>\|<metric key>`, e.g. `12345\|custom_query_100`. | `databox metric list --search revenue`; `id` from `metric create`. Quote it in the shell. |
+| Ingestion ID | A UUID. One ingest request, not a dataset. | Returned as `ingestionId` by `dataset ingest`; `databox dataset ingestions DATASETID` lists them. |
+| Account ID | A number. An account your organization manages, for `--account-id`. | `databox account list`. |
+
+Data source and dataset IDs share one ID space, so a number names exactly one of them: pass a dataset ID to `dataset` commands and a data source ID to `data-source` commands. The dataset GUIDs that 0.x used (`a1b2c3d4-e5f6-…`) are not accepted; look the dataset up by name with `databox dataset list --search`.
 
 ## Getting Started
 
+A complete run, from an empty organization to a metric's rows. It uses [jq](https://jqlang.org) to capture each new ID; without jq, copy the ID from the command's table output.
+
 ```bash
-# Authenticate with your API key, and check it works
+# 1. Authenticate, and check the key works (scripts: export DATABOX_API_KEY instead)
 databox auth login
 databox auth validate
 
-# Create a data source, then a dataset under it with a schema
-databox data-source create --name "My App"
-databox dataset create --name "Orders" --data-source-id 12345 \
+# 2. Create a data source, then a dataset in it
+SOURCE=$(databox data-source create --name "My App" --json | jq -r .id)
+DATASET=$(databox dataset create --name "Orders" --data-source-id "$SOURCE" \
   --primary-key order_id \
-  --schema '[{"id":"order_id","dataType":"string"},{"id":"date","dataType":"datetime"},{"id":"country","dataType":"string"},{"id":"amount","dataType":"number"}]'
+  --schema '[{"id":"order_id","dataType":"string"},{"id":"date","dataType":"datetime"},{"id":"country","dataType":"string"},{"id":"amount","dataType":"number"}]' \
+  --json | jq -r .id)
 
-# Push rows into the dataset: inline, from a file, or piped on stdin
-databox dataset ingest 67890 --records '[{"order_id":"A-1","date":"2026-01-15","country":"US","amount":42}]'
-databox dataset ingest 67890 --file orders.json
-cat orders.json | databox dataset ingest 67890
+# 3. Push rows: a bare JSON array of objects keyed by column id (not {"records": [...]};
+#    the CLI adds that wrapper). Inline with --records, from a file with --file, or piped on stdin.
+INGESTION=$(databox dataset ingest "$DATASET" \
+  --records '[{"order_id":"A-1","date":"2026-01-15","country":"US","amount":42}]' \
+  --json | jq -r .ingestionId)
 
-# Check what arrived
-databox dataset ingestions 67890
-databox dataset data 67890
+# 4. Ingestion is asynchronous. Poll until the status is success, or failed, in which case
+#    its errors name each rejected record (purged means the data was purged meanwhile);
+#    give up after 2 minutes. A poll that fails
+#    (a network blip) just polls again. Then read the rows.
+for attempt in $(seq 1 60); do
+  STATUS=$(databox dataset ingestion "$DATASET" "$INGESTION" --json | jq -r .status)
+  case "$STATUS" in success|failed|purged) break ;; esac
+  sleep 2
+done
+databox dataset ingestion "$DATASET" "$INGESTION"
+databox dataset data "$DATASET"
 
-# Build a custom metric on the dataset. Column references are {"id","displayName"},
-# with the id taken from "dataset schema".
-databox metric create --name "Revenue" --dataset-id 67890 \
+# 5. Build a custom metric on the dataset. Column references are {"id","displayName"},
+#    with the id taken from "dataset schema".
+METRIC=$(databox metric create --name "Revenue" --dataset-id "$DATASET" \
   --measure '{"id":"amount","displayName":"Amount"}' \
   --date '{"id":"date","displayName":"Date"}' \
-  --dimension '{"id":"country","displayName":"Country"}'
+  --dimension '{"id":"country","displayName":"Country"}' \
+  --json | jq -r .id)
 
-# List the dataset's metrics, then read the rows behind one for January 2026
-databox metric list --source-id 67890
-databox metric drilldown --metric-id "67890|custom_query_100" --source-id 67890 \
+# 6. Read the rows behind the metric for January 2026, broken down by country
+databox metric drilldown --metric-id "$METRIC" --source-id "$DATASET" \
   --start-timestamp 1767225600 --end-timestamp 1769904000 --dimension-id country
 ```
 
-`metric create` prints the new metric, including its ID; use that ID in place of `67890|custom_query_100`.
-
 ## Authentication
 
-All commands except `auth login` need an API key. `databox auth login` prompts for it and stores it in `~/.config/databox-cli/config.json`, readable only by you. You can also pass it inline:
+### Getting an API Key
 
-```bash
-databox auth login --api-key YOUR_API_KEY
-```
+The CLI authenticates with your **personal API key**, a string starting with `pak_`. To create it, in the Databox app open **Account Management → Security** (the page is titled **Password & Security**) and, under **API key**, click **Create**.
 
-In CI, set `DATABOX_API_KEY` instead; it takes precedence over the stored key.
+Prerequisites:
+
+- **You are an admin.** Only admin users can create a key.
+- **Your plan includes API access.** If the **API key** section does not appear on the Security page, your plan does not include it, or you are not an admin.
+
+What to know about the key:
+
+- **One key per user.** It never expires. To rotate it, delete it on the same page and create a new one.
+- **It acts as you.** Every command runs with your user's permissions, in your organization and in any account you can reach with `--account-id`.
+- **It can be limited to IP addresses.** Under **Manage allowed IPs**, choose **Selected IPs only** to accept requests from listed IPv4/IPv6 addresses only. A request from anywhere else is rejected as unauthenticated (exit 1), so add the IP of every machine or CI runner that uses the CLI.
+- **Treat it like a password.** Anyone holding it can act as you until you delete it.
+
+### Using the Key
+
+All commands except `auth login` need the key. There are four ways to supply it:
+
+| How | Use it for |
+|---|---|
+| `databox auth login` | Interactive use. Prompts for the key without echoing it, which keeps it out of your shell history. |
+| `pass show databox \| databox auth login` | Storing a key read from stdin, e.g. from a password manager or `< keyfile`. |
+| `databox auth login --api-key YOUR_API_KEY` | Storing a key without a prompt. |
+| `DATABOX_API_KEY=YOUR_API_KEY` in the environment | Scripts, CI and AI agents. Nothing is stored, and it takes precedence over the stored key. |
+
+`auth login` stores the key in `~/.config/databox-cli/config.json`, readable only by you. It then checks the key, but saves it even if that check fails: it prints `Warning: API key could not be validated.` and still exits 0. Run `databox auth validate` to be sure; exit 0 means the key works.
+
+Off a terminal (stdin piped or closed, as in scripts and agent shells), `auth login` without `--api-key` does not prompt: it reads the key from the first line of stdin. When nothing is piped, it exits 2 and saves nothing. `auth login` itself does not read `DATABOX_API_KEY`; set that variable instead of logging in. An open stdin that nobody writes to makes it wait, so in agent shells pass `--api-key` or use `DATABOX_API_KEY`.
 
 ## Global Flags
 
-Every command accepts these:
+Every command except `auth login` accepts these:
 
 | Flag | Env var | Description |
 |------|---------|-------------|
@@ -70,13 +132,20 @@ Every command accepts these:
 | `--verbose` | — | Print each request and response (method, URL, status, duration, request ID) to stderr. The API key is never printed. |
 | `--no-color` | `NO_COLOR` | Disable coloured output. A non-empty `NO_COLOR` does the same. |
 | `--api-key` | `DATABOX_API_KEY` | Use this API key instead of the stored one. |
-| `--api-url` | `DATABOX_API_URL` | Override the API base URL (default `https://api.databox.com`). |
-| `--account-id` | `DATABOX_ACCOUNT_ID` | Target an account in your organization (see [Organizations and accounts](#organizations-and-accounts)). |
+| `--api-url` | `DATABOX_API_URL` | Override the API base URL (default `https://api.databox.com`). `auth login` saves the URL it was given to the config file, and later commands keep using it. |
+| `--account-id` | `DATABOX_ACCOUNT_ID` | Target an account in your organization (see [Organizations and Accounts](#organizations-and-accounts)). |
 | `-h`, `--help` | — | Show help for a command or topic. |
 
 `--api-key`, `--api-url` and `--account-id` do not appear in each command's `--help`, but work on every command that calls the API.
 
-Commands that return a list also take:
+Two exceptions:
+
+- `auth login` takes only `--api-key` (and `--api-url`); `--json` and the other flags are rejected with exit 2.
+- `analyze ask-genie` talks to Databox's Genie service rather than the API. It takes `--service-url` (`DATABOX_AGENTIC_SERVICE_URL`) instead of `--api-url`, ignores `--account-id`, prints no `--verbose` trace, and its errors carry no request ID.
+
+### List Flags
+
+Commands that return a list page by page also take these. `metric dimension-values`, `organization timezones`, `organization countries` and `databoard metrics` return everything at once and take none of them.
 
 | Flag | Description |
 |------|-------------|
@@ -85,9 +154,11 @@ Commands that return a list also take:
 | `--all` | Fetch every page and print them as one list. Cannot be combined with `--page`. |
 | `--search`, `--sort-by`, `--sort-order` | On the commands that support them; `--help` lists the accepted sort fields. |
 
-### Safe retries with `--idempotency-key`
+**Without `--page` or `--all`, a list command returns only the first page**: 25 items, or 200 rows for `dataset data` and `metric drilldown`. Table mode prints a `Page 1 of N (T total items)` footer. `--output csv` prints no total, and neither does `--json`, apart from the `pagination` object in `dataset data` and `metric drilldown`. Pass `--all` whenever you need every item.
 
-Commands that create something, or start work that should not happen twice, accept `--idempotency-key <uuid>`. The key is sent as the `Idempotency-Key` header: a retry with the same key within 24 hours returns the first response instead of repeating the action.
+### Safe Retries with `--idempotency-key`
+
+Commands that create something, or start work that should not happen twice, accept `--idempotency-key <uuid>`. The key is sent as the `Idempotency-Key` header: a retry with the same key within 24 hours returns the first response instead of repeating the action. Only a successful response is kept, so a retry after an error runs the request again. Keys are scoped to the account (`--account-id`), and the request body is not compared: reuse a key only for a retry of the same request.
 
 ```bash
 KEY=$(uuidgen)
@@ -98,13 +169,30 @@ databox dataset ingest 67890 --file orders.json --idempotency-key "$KEY"
 
 It is available on `account create`, `data-source create`, `data-source purge`, `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`, `metric create` and `user invite`. The value must be a UUID.
 
+## JSON Input
+
+Several flags take JSON. Quote it in single quotes. Each command's `--help` has a full example.
+
+| Flag | Shape and example |
+|---|---|
+| `dataset create --schema` | Array of columns; `dataType` is `string`, `number` or `datetime`. Optional: without it, the first ingest defines the schema. `'[{"id":"amount","dataType":"number"}]'` |
+| `dataset ingest --records`, `--file`, stdin | A bare array of row objects, keyed by column `id`. `'[{"order_id":"A-1","amount":42}]'` |
+| `metric create` / `update` `--measure`, `--date`, `--dimension` | A column reference. `'{"id":"amount","displayName":"Amount"}'` |
+| `metric create` / `update` `--filters` | One group of conditions, lower-case `logicalOperator`, values as strings. `'{"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","values":["US"]}]}'` |
+| `metric drilldown --filters` | **A different shape**: upper-case, nested `groups`, each condition with a `type`. Copy it from `databoard metrics --json`. `'{"logicalOperator":"AND","groups":[{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}'` |
+| `dataset update-modification` / `preview-modification` `--data` | Any of `filters`, `formulas`, `displayNames`, `dataTypes`, `order`, `visibility`. `update-modification` replaces the whole definition, so start from `dataset modifications ID --json`. `'{"formulas":{"totalWithTax":"$amount * 1.2"},"displayNames":{"amount":"Revenue"}}'` |
+| `dataset set-column-metadata --columns` | Array of `{id, description?, conceptType?, synonyms?}`. `'[{"id":"country","conceptType":"dimension","synonyms":["nation"]}]'` |
+| `organization update --settings` | `{dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}`. `'{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}'` |
+| `organization update --address` / `--metadata` | `{street, zip, city, state, country}` / `{industry, businessType, companySize, annualRevenue}` |
+| `profile update --metadata` | `{department, title, role}`, with values from `profile metadata-options`. `'{"department":"engineering","role":"software_engineer"}'` |
+
 ## Output Formats
 
 Commands print a table by default. `--output json` (or `--json`) and `--output csv` are for scripts:
 
 ```bash
-# JSON, filtered with jq
-databox dataset list --json | jq '.[] | {id, name}'
+# JSON, filtered with jq (--all: see List Flags)
+databox dataset list --all --json | jq '.[] | {id, name}'
 
 # Every data source as CSV, across all pages
 databox data-source list --all --output csv > data-sources.csv
@@ -115,14 +203,29 @@ databox dataset data 67890 --all --output csv > orders.csv
 
 What `--json` prints:
 
-- **Lists** print a JSON array of the items, each exactly as the API returned it. With `--all`, the array holds every page.
-- **Responses that carry more than a list** print the whole response object: `dataset schema` (`{items, primaryKey}`), `dataset data` (`{items, pagination, schema, lastUpdatedAt}`), `dataset preview-modification` and `metric drilldown` (`{items, schema, pagination}`), `databoard metrics`.
-- **Single resources** print the object the API returned. Commands that change a resource and get it back — `metric create`, `metric update`, `set-timezone`, `set-sync-frequency`, `set-verification` and the like — print the updated resource. In table mode they print a one-line confirmation instead.
+- **Lists** print a JSON array of the items, each exactly as the API returned it. With `--all`, the array holds every page; without it, only the first (see [List Flags](#list-flags)).
+- **Responses that carry more than a list** print the whole response object: `dataset schema` (`{items, primaryKey}`), `dataset data` (`{items, pagination, schema, lastUpdatedAt}`), `dataset preview-modification` and `metric drilldown` (`{items, schema, pagination}`), `dataset lineage` and `metric lineage` (`{parents, children}`), `metric dimension-values`, `dataset modifications`, `dataset modification-rules` and `databoard metrics`. A command's `--help` says when `--json` returns the whole response. Under `--all`, `dataset data` and `metric drilldown` leave out `pagination`.
+- **Single resources** print the object the API returned.
+- **`metric create` and `metric update`** print the metric as `metric get` does, in every format.
+- **`set-timezone`, `set-sync-frequency` and `set-verification`** print a one-line confirmation in table mode, and the updated resource with `--json` or `--output csv`. Every other `set-*` command prints what the API returned in every format: the updated resource, or for `dataset set-column-metadata` the dataset's columns.
 - **Deletes, purges and clears** print a one-line confirmation in every format.
 
 CSV uses the same columns as the table, with a header row even when there are no results. A single resource prints as `field,value` rows.
 
 Stdout carries only the result. Pagination footers appear in table mode only, and `--verbose` traces, warnings and errors go to stderr, so piping stays clean.
+
+## Limits
+
+| Limit | Value |
+|---|---|
+| Records per `dataset ingest` | 500. The CLI refuses a larger batch before sending it (exit 2); split it. |
+| Payload per `dataset ingest` | 30 MB (30,000,000 bytes) of JSON, checked the same way. |
+| Columns per dataset | 100 |
+| Dataset size | Set per dataset: `maxSize` in `dataset get`. |
+| Rate limit, per API key | 10 requests per second, 10,000 per hour, enforced by Databox's gateway. Over it you get HTTP 429 (exit 1), possibly with no error code: back off and retry, with `--idempotency-key` on writes. |
+| Request timeout | 30 seconds, or 5 minutes for `dataset ingest` (exit 2). |
+
+With a primary key (`dataset create --primary-key`), ingesting a row whose key already exists overwrites it. Without one, every ingest appends, so sending the same rows twice duplicates them.
 
 ## Errors and Exit Codes
 
@@ -130,37 +233,52 @@ When the API rejects a request, the CLI prints the error code, the message, the 
 
 ```
  ›   Error: invalid_input
- ›     Unknown timezone.
+ ›     Invalid timezone value
  ›     Field: timezone
- ›     Request ID: 0HN7A2B3C4D5E:00000001
+ ›     Request ID: 9ea537f4-27bc-4662-a4e2-48744ea9b7bd
 ```
 
-If you contact Databox support about a failed command, quote the **Request ID**: it identifies the exact request in Databox's logs. `--verbose` prints the request ID of successful requests too.
+Errors are always plain text on stderr, even with `--json`; on failure, stdout is empty. If you contact Databox support about a failed command, quote the **Request ID**: it identifies the exact request in Databox's logs. `--verbose` prints the request ID of successful requests too.
 
 | Exit code | Meaning |
 |-----------|---------|
-| `0` | Success. Declining a confirmation prompt also exits 0, after printing `Aborted.`, and so does a prompt whose input closes unanswered: a script that forgets `--force` deletes nothing. |
-| `1` | The API returned an error (4xx or 5xx). Also: no API key is configured, the stored config file is not valid JSON, the response was not JSON (usually a wrong `--api-url`), or an update command was given no field to change. |
-| `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, or a network failure or timeout. |
+| `0` | Success. Answering anything but `y` or `yes` to a confirmation prompt, at a terminal or piped, also exits 0 after printing `Aborted.`. |
+| `1` | The API returned an error (4xx or 5xx, including the rate limit). Also: no API key is configured, the stored config file is not valid JSON, the response was not JSON (usually a wrong `--api-url`), an update command was given no field to change, or `dataset ingest` was run at a terminal with no `--records` or `--file`. |
+| `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, an ingest over the limits, or a network failure or timeout. Also a command that would prompt when stdin is not a terminal and nothing is piped: a delete, purge or clear without `--force`, or `auth login` without `--api-key` (see [Authentication](#authentication)). |
 | `130` | A prompt (a confirmation, or the API key at `auth login`) was interrupted with Ctrl-C. |
 
-## Organizations and accounts
+## Scripts and AI Agents
+
+- **Authenticate with `DATABOX_API_KEY`**, not a bare `auth login` (see [Authentication](#authentication)).
+- **Use `--json`, and `--all` on lists** (see [List Flags](#list-flags)).
+- **Branch on the exit code**, not the output: `0` ok, `1` API error, `2` bad input or network. Errors are plain text on stderr even with `--json`, and stdout is then empty.
+- **Pass `--force`** to `account delete`, `connection delete`, `data-source delete`, `data-source purge`, `dataset delete`, `dataset purge`, `dataset clear-modifications`, `metric delete` and `user delete`. Without it, off a terminal, they read `y`/`yes` from stdin, and exit 2 having done nothing when nothing is piped.
+- **`set-timezone --purge-data` deletes data without asking**, on both `data-source` and `dataset`.
+- **Give `dataset ingest` its input explicitly** with `--records` or `--file`. With neither, it reads stdin, and an open stdin that nobody writes to waits forever.
+- **Ingestion is asynchronous**: poll `dataset ingestion DATASETID INGESTIONID` until its status is `success`, `failed` or `purged` (see [Getting Started](#getting-started)).
+- **Make retries safe** with `--idempotency-key "$(uuidgen)"` on creates and ingests, reusing the key when you retry.
+- **Report failures with the request ID** from the error. `--verbose` adds a request ID for every request, on stderr.
+
+## Organizations and Accounts
 
 Your **organization** is the top level: `databox organization info`, `organization update` and `organization usage` read and change it. An organization that manages several accounts (an agency) lists and manages them with the `account` commands, and `--account-id` scopes any command to one of them:
 
 ```bash
 # List the accounts in your organization
-databox account list
+databox account list --all
 
 # List data sources in one account
 databox data-source list --account-id 12345
 ```
 
-With `--account-id`, the `organization` commands answer for that account. `databox profile info` always shows your own organization, and your home account if you belong to one.
+- `account` commands work only for an organization that manages accounts. Any other organization gets `invalid_input` on field `organization` from `account list` and `account create`. `account get`, `update` and `delete` answer `not_found` for any account your organization does not manage.
+- `--account-id` takes a numeric account ID. It matters on list and create commands, where it picks the account to list or create in. A command given a resource ID acts on that resource wherever it lives.
+- A `DATABOX_ACCOUNT_ID` in your environment applies to every command.
+- With `--account-id`, the `organization` commands answer for that account. `databox profile info` always shows your own organization, and your home account if you belong to one.
 
 ## Agent Skills
 
-This package includes skills that let AI agents (like [Claude Code](https://claude.ai/claude-code)) use the CLI on your behalf.
+This package includes skills that let AI agents (like [Claude Code](https://claude.com/claude-code)) use the CLI on your behalf.
 
 ### Bundled Skills
 
@@ -180,7 +298,7 @@ This package includes skills that let AI agents (like [Claude Code](https://clau
 
 ### Install Skills
 
-Install all skills at once using [npx skills](https://github.com/anthropics/skills):
+Install all skills at once using [npx skills](https://github.com/vercel-labs/skills):
 
 ```bash
 npx skills add databox/databox-cli --skill '*'
@@ -203,10 +321,6 @@ npx skills add databox/databox-cli --skill databox-analyze
 ```
 
 Once installed, Claude Code can manage your Databox resources directly — your organization and its accounts, data sources, datasets, metrics, users, connections and billing — and analyze data with Genie AI.
-
-## Changelog
-
-See the [changelog](https://github.com/databox/databox-cli/blob/main/CHANGELOG.md) for migration guides and version history.
 
 ## Commands
 
@@ -484,7 +598,8 @@ FLAGS
   --all                     Fetch every page (100 items per request unless --page-size is given) and print them as one
                             list
   --date-from=<value>       Only entries on or after this date (ISO 8601)
-  --date-to=<value>         Only entries on or before this date (ISO 8601)
+  --date-to=<value>         Only entries up to this date (ISO 8601). A bare date means the start of that day, UTC: to
+                            include all of it, pass the next day
   --json                    Output as JSON (shorthand for --output json)
   --no-color                Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>         [default: table] Output format
@@ -557,7 +672,7 @@ USAGE
   $ databox auth login [--api-key <value>]
 
 FLAGS
-  --api-key=<value>  API key (if not provided, you will be prompted)
+  --api-key=<value>  API key. If omitted, you are prompted at a terminal; otherwise the first line of stdin is read
 
 DESCRIPTION
   Authenticate with Databox by providing your API key
@@ -566,6 +681,8 @@ EXAMPLES
   $ databox auth login
 
   $ databox auth login --api-key YOUR_KEY
+
+  pass show databox | databox auth login
 ```
 
 _See code: [src/commands/auth/login.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/auth/login.ts)_
@@ -1393,7 +1510,7 @@ FLAGS
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>          [default: table] Output format
                              <options: table|json|csv>
-  --primary-key=<value>...   Primary key column names
+  --primary-key=<value>...   Primary key column ids
   --schema=<value>           JSON array of schema columns, each {id, dataType} with dataType one of string, number,
                              datetime
   --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
@@ -1563,7 +1680,7 @@ ARGUMENTS
   DATASETID  The dataset ID to ingest data into
 
 FLAGS
-  --file=<value>             Path to a JSON file containing a records array (at least one record)
+  --file=<value>             Path to a JSON file holding an array of records (at least one record)
   --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
                              returns the first response instead of repeating the action
   --json                     Output as JSON (shorthand for --output json)
@@ -3328,6 +3445,9 @@ FLAGS
 
 DESCRIPTION
   List users in the organization
+
+  --sort-by takes name, createdAt, lastSeenAt or role. The CLI does not restrict it: the value is passed to the API as
+  given.
 
 EXAMPLES
   $ databox user list

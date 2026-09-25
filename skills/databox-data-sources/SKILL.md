@@ -56,12 +56,12 @@ databox dataset ingest 67890 --file data.json
 
 ## Destructive Operations
 
-These commands prompt for confirmation. Use `--force` to skip when scripting:
+These commands prompt for confirmation at a terminal. Off a terminal (scripts, agents) they read the answer from stdin instead, and when nothing is piped they exit 2 without doing anything. Agents should always pass `--force`:
 - `data-source delete` — removes the data source entirely
 - `data-source purge` — removes all data but keeps the data source
 
 ## Notes
 
 - All commands support `--json` for machine-readable output
-- Data source IDs are numeric (e.g., `42`)
+- Data source IDs are numeric (e.g., `42`). Find one with `databox data-source list`; in the Databox app it is the number in the Data Manager page URL (`/data-manager/connected/42/datasets/view`). A data source ID is not a dataset ID: list its datasets with `databox data-source datasets 42`.
 - The `--integration-key` flag on create sets the integration key for third-party integrations (e.g., Datadoo)

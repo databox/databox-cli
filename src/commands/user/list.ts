@@ -17,7 +17,9 @@ interface UsersResponse {
 }
 
 export default class UserList extends BaseCommand<typeof UserList> {
-  static description = 'List users in the organization'
+  static description = `List users in the organization
+
+--sort-by takes name, createdAt, lastSeenAt or role. The CLI does not restrict it: the value is passed to the API as given.`
 
   static examples = [
     '<%= config.bin %> user list',

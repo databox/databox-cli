@@ -2,24 +2,26 @@
 
 ## 1.0.0 — V2 API
 
-**Breaking change.** The CLI now uses the Databox V2 API exclusively; every V1 call is gone. You need a Databox account with V2 API access.
+**Breaking change.** The CLI now uses the Databox V2 API exclusively; every V1 call is gone. It needs your personal Databox API key (`pak_…`), created under **Account Management → Security**. Creating one takes an admin role and a plan that includes API access; see [Getting an API Key](https://github.com/databox/databox-cli#getting-an-api-key).
 
 What breaks for a 0.x user, in short:
 
-- **Dataset IDs are numeric.** GUIDs are rejected. Find the new ID with `databox dataset list`.
+- **Dataset IDs are numeric.** GUIDs are rejected. Find the new ID with `databox dataset list`, or see [Finding IDs](https://github.com/databox/databox-cli#finding-ids).
 - **`--title` is now `--name`** on `data-source create` and `dataset create`.
 - **`dataset create --primary-keys` is now `--primary-key`** (still repeatable), and each `--schema` column is `{"id", "dataType"}` instead of `{"name", "dataType"}`.
 - **`data-source create --key` is now `--integration-key`.**
 - **Your organization has its own topic, and `account` means the accounts in it.** `organization info`, `organization update`, `organization usage` and `organization timezones` cover your organization; `account list` lists the accounts in it. `account data-sources` and `account datasets` are gone: use `data-source list` and `dataset list`, with `--account-id`, now a global flag, to target an account on any command.
 - **JSON output uses the V2 API's field names.** Scripts that parse `--json` output need updating; see "JSON Output" below.
+- **Lists are paginated.** 0.x printed every item; 1.0 prints the first page unless you pass `--all`. See [List Flags](https://github.com/databox/databox-cli#list-flags).
+- **Off a terminal, a prompt needs piped input.** A delete, purge or clear without `--force` reads its `y`/`yes` from stdin, as before, and `auth login` without `--api-key` now reads the key from stdin. When nothing is piped, both exit 2 and do nothing. See [Authentication](https://github.com/databox/databox-cli#authentication) and [Errors and Exit Codes](https://github.com/databox/databox-cli#errors-and-exit-codes).
 
-Beyond that, 1.0.0 adds commands across the whole V2 API, CSV output, `--all` pagination, `--verbose` tracing, idempotent retries, and structured errors with distinct exit codes. All of it is described below.
+Beyond that, 1.0.0 adds commands across the whole V2 API, CSV output, `--all` pagination, `--verbose` tracing, idempotent retries, and structured errors with distinct exit codes. The [README](https://github.com/databox/databox-cli#readme) is the reference for all of it; this guide lists what changed.
 
 ### Migration Guide
 
 #### Authentication
 
-Unchanged. `databox auth login`, the stored key in `~/.config/databox-cli/config.json`, and the `DATABOX_API_KEY` environment variable all work as before.
+`databox auth login` at a terminal, the stored key in `~/.config/databox-cli/config.json`, and the `DATABOX_API_KEY` environment variable work as before. New: off a terminal, `auth login` reads the key from stdin (`pass show databox | databox auth login`), and exits 2 when nothing is piped. See [Authentication](https://github.com/databox/databox-cli#authentication) for the details, including when the key is saved.
 
 #### Command Changes — Where Did My Stuff Go?
 
@@ -31,7 +33,7 @@ Every 0.x command maps to a 1.0 command:
 | `account data-sources ACCOUNTID` | `data-source list` | **Removed.** Use `data-source list`, with `--account-id` to target an account in your organization. |
 | `account datasets ACCOUNTID` | `dataset list` | **Removed.** Use `dataset list`, with `--account-id` to target an account in your organization. The `--type` filter is gone; `--data-source-id`, `--search` and `--sort-by` are new. |
 | `account timezones` | `organization timezones` | **Moved** to the `organization` topic. |
-| `data-source create` | `data-source create` | `--title` → `--name`. `--key` → `--integration-key` (for third-party integrations such as Datadoo). `--account-id` is now the global flag. |
+| `data-source create` | `data-source create` | `--title` → `--name`. `--key` → `--integration-key` (for third-party integrations such as Datadoo; omit it for a normal ingestion data source, since it now sets the integration type rather than a free-form key). `--account-id` is now the global flag. |
 | `data-source datasets ID` | `data-source datasets ID` | Now paginated, and takes `--search`, `--sort-by` and `--sort-order`. |
 | `data-source delete ID` | `data-source delete ID` | No change. |
 | `dataset create` | `dataset create` | `--title` → `--name`. `--primary-keys` → `--primary-key` (repeat for several). Schema columns are `{"id", "dataType"}`; see the schema example below. |
@@ -65,6 +67,8 @@ v1.0:
 databox dataset list --search "My Dataset"
 ```
 
+The README's [Finding IDs](https://github.com/databox/databox-cli#finding-ids) explains every ID the CLI takes, including where the Databox app shows them.
+
 #### Agent Skills
 
 The bundled skills follow the new topics. 0.3.1's `databox-accounts` covered account listing, timezones, and an account's data sources and datasets. In 1.0.0:
@@ -80,7 +84,7 @@ Reinstall them with `npx skills add databox/databox-cli --skill '*'`.
 
 `--json` still prints JSON on every command, but the objects are the V2 API's own. For example, `dataset ingestions` items carry `id`, `initiatedAt`, `status`, `duration` and `initiatedBy`, and `data-source datasets` items carry `id`, `name`, `dataSourceId`, `createdAt`, `lastActivityAt` and status details. Check the output of the commands your scripts use.
 
-The rules for what `--json` prints are under "JSON Output Rules" below.
+A list prints a bare array of the API's items; a few commands print the whole response object. The rules are under [Output Formats](https://github.com/databox/databox-cli#output-formats).
 
 #### Summary of Removed Features
 
@@ -91,69 +95,15 @@ The rules for what `--json` prints are under "JSON Output Rules" below.
 | GUID dataset IDs | V2 identifies datasets and data sources by numeric ID | `dataset list` to find the numeric ID |
 | `ACCOUNTID` positional argument | Replaced by account scoping on every command | The global `--account-id` flag |
 
-### Global Flags
+### New Flags
 
-Every command accepts these:
-
-| Flag | Env var | Description |
-|---|---|---|
-| `--output table\|json\|csv` | — | Output format. Default `table`. **New.** |
-| `--json` | — | Shorthand for `--output json`. Cannot be combined with `--output`. |
-| `--verbose` | — | Print each request and response (method, URL, status, duration, request ID) to stderr. The API key is never printed. **New.** |
-| `--no-color` | `NO_COLOR` | Disable coloured output. **New.** |
-| `--api-key` | `DATABOX_API_KEY` | Use this API key instead of the stored one. |
-| `--api-url` | `DATABOX_API_URL` | Override the API base URL. |
-| `--account-id` | `DATABOX_ACCOUNT_ID` | Target an account in your organization. Replaces the `ACCOUNTID` argument from 0.x. **New.** |
-
-`--api-key`, `--api-url` and `--account-id` are not listed in each command's `--help`.
-
-Commands that return a list also take:
-
-| Flag | Description |
-|---|---|
-| `--page` | Page number, starting at 0. |
-| `--page-size` | Items per page: at most 100, or 1000 on `dataset data` and `metric drilldown`. |
-| `--all` | Fetch every page and print them as one list. Cannot be combined with `--page`. **New.** |
-| `--search`, `--sort-by`, `--sort-order` | On the commands that support them. Where the API accepts a fixed set of sort fields, `--sort-by` only takes those; `--help` lists them. |
-
-#### `--idempotency-key`
-
-`--idempotency-key <uuid>` sends an `Idempotency-Key` header, so a retried command is not carried out twice: a retry with the same key within 24 hours returns the first response. The value must be a UUID. It is accepted by:
-
-- `account create`
-- `data-source create`, `data-source purge`
-- `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`
-- `metric create`
-- `user invite`
-
-### JSON Output Rules
-
-- **Lists** print a JSON array of the items, each exactly as the API returned it. With `--all`, the array holds every page.
-- **Responses that carry more than a list** print the whole response object: `dataset schema` (`{items, primaryKey}`), `dataset data` (`{items, pagination, schema, lastUpdatedAt}`), `dataset preview-modification` and `metric drilldown` (`{items, schema, pagination}`).
-- **Single resources** print the object the API returned. **Commands that change a resource and get it back print it**: `metric create`, `metric update`, `dataset set-timezone`, `dataset set-sync-frequency`, `dataset set-verification`, `data-source set-timezone`, `data-source set-sync-frequency`, `metric set-verification`, `dataset set-column-metadata` and `dataset update-modification`, among others. In table mode they print a one-line confirmation, or a table, instead.
-- **Deletes, purges and clears** print a one-line confirmation in every format.
-
-`--output csv` uses the same columns as the table, with a header row even when there are no results; a single resource prints as `field,value` rows. Pagination footers appear in table mode only. Warnings, `--verbose` traces and errors go to stderr, so stdout stays parseable.
+- **On every command** except `auth login`: `--output table|json|csv` (CSV is new), `--verbose` (request tracing on stderr), `--no-color`, and `--account-id` / `DATABOX_ACCOUNT_ID`, which replaces 0.x's `ACCOUNTID` argument. See [Global Flags](https://github.com/databox/databox-cli#global-flags).
+- **On list commands**: `--page`, `--page-size`, `--all`, and on some `--search`, `--sort-by` and `--sort-order`. See [List Flags](https://github.com/databox/databox-cli#list-flags).
+- **`--idempotency-key <uuid>`** on `account create`, `data-source create`, `data-source purge`, `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`, `metric create` and `user invite`: a retry with the same key within 24 hours returns the first response instead of repeating the action.
 
 ### Errors and Exit Codes
 
-An error from the API is printed on stderr with its code, message, the field at fault (when there is one), and the request ID:
-
-```
- ›   Error: invalid_input
- ›     Unknown timezone.
- ›     Field: timezone
- ›     Request ID: 0HN7A2B3C4D5E:00000001
-```
-
-Quote the request ID when you contact Databox support about a failed command.
-
-| Exit code | Meaning |
-|---|---|
-| `0` | Success. Declining a confirmation prompt also exits 0, after printing `Aborted.`, and so does a prompt whose input closes unanswered: a script that forgets `--force` deletes nothing. |
-| `1` | The API returned an error (4xx or 5xx). Also: no API key is configured, the stored config file is not valid JSON, the response was not JSON (usually a wrong `--api-url`), or an update command was given no field to change. |
-| `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, or a network failure or timeout. |
-| `130` | A prompt (a confirmation, or the API key at `auth login`) was interrupted with Ctrl-C. |
+An API error now prints its code, message, the field at fault and the request ID on stderr, and exit codes tell failures apart: `1` for an API error, `2` for input that never reached the API or a network failure, `130` for Ctrl-C at a prompt. See [Errors and Exit Codes](https://github.com/databox/databox-cli#errors-and-exit-codes).
 
 ### New Commands
 
@@ -208,7 +158,7 @@ With `--account-id`, the `organization` commands answer for that account.
 - `data-source update` — Rename a data source
 - `data-source set-timezone` — Set the timezone, optionally for its datasets too
 - `data-source sync-frequency-options` — List the sync intervals the data source can use, and which your plan includes
-- `data-source set-sync-frequency` — Set `--interval` in minutes: 1, 15, 60, 240, 360, 480 or 1440
+- `data-source set-sync-frequency` — Set `--interval` in minutes: 1, 15, 60, 240, 360, 480 or 1440. For an ingestion data source this sets how often metrics sync; the data itself arrives when you push it
 - `data-source permissions` — Show permissions
 - `data-source set-permissions` — Set `--access-level everyone|selectedUsers|private`
 - `data-source purge` — Purge all data, keeping the data source
@@ -216,13 +166,13 @@ With `--account-id`, the `organization` commands answer for that account.
 #### Datasets
 - `dataset list` — List datasets, with `--search`, `--data-source-id` and sorting
 - `dataset update` — Rename a dataset
-- `dataset duplicate` — Duplicate a dataset
+- `dataset duplicate` — Duplicate a dataset (not supported for datasets created through the API)
 - `dataset data` — Page through a dataset's rows, sorted by any column
 - `dataset schema` — Show columns and the primary key
 - `dataset lineage` — Show what a dataset is built from, and what is built from it
 - `dataset set-timezone` — Set the timezone
 - `dataset sync-frequency-options` — List the sync intervals the dataset can use, and which your plan includes
-- `dataset set-sync-frequency` — Set `--interval` in minutes: 1, 15, 60, 240, 360, 480 or 1440
+- `dataset set-sync-frequency` — Set `--interval` in minutes: 1, 15, 60, 240, 360, 480 or 1440. For an ingestion dataset this sets how often metrics sync; the data itself arrives when you push it
 - `dataset sync-history` — Show sync history
 - `dataset sync-statistics` — Show sync statistics
 - `dataset ingestion-statistics` — Show ingestion statistics
@@ -244,11 +194,11 @@ With `--account-id`, the `organization` commands answer for that account.
 #### Metrics
 - `metric list` — List metrics, filtered by `--source-id` (a data source or dataset) or `--search`
 - `metric get` — Get a metric's details, including a custom metric's measure, date, aggregation and filters
-- `metric create` — Create a custom metric on a dataset. `--measure`, `--date` and `--dimension` take column references as `{"id","displayName"}`; `--filters` takes `{"logicalOperator","conditions"}`; `--aggregation-function` is `sum`, `avg`, `min`, `max` or `count`.
+- `metric create` — Create a custom metric on a dataset. `--measure`, `--date` and `--dimension` take column references as `{"id","displayName"}`; `--filters` takes one group, `{"logicalOperator":"and","conditions":[{"field","operator","values"}]}`; `--aggregation-function` is `sum`, `avg`, `min`, `max` or `count`.
 - `metric update` — Update a custom metric; `--clear-dimensions` removes all its dimensions
 - `metric delete` — Delete a custom metric
-- `metric drilldown` — Get the rows behind a metric's value for a period, by `--source-id`, with repeatable `--dimension-id` and `--filters` as `databoard metrics` reports them
-- `metric dimension-values` — List the values of one dimension (`--source-id`, `--dimension-id`)
+- `metric drilldown` — Get the rows behind a metric's value for a period, by `--source-id`, with repeatable `--dimension-id` and `--filters` as `databoard metrics` reports them. Its `--filters` is a **different shape** from `metric create`'s; [JSON Input](https://github.com/databox/databox-cli#json-input) has an example of each
+- `metric dimension-values` — List the values of one dimension (`--metric-id`, `--source-id`, `--dimension-id`)
 - `metric lineage` — Show what a metric is built from, and which calculated metrics read it
 - `metric usages` — Show where a custom metric is used (databoards, alerts, goals, reports and more)
 - `metric verification` — Show verification status
@@ -263,7 +213,7 @@ With `--account-id`, the `organization` commands answer for that account.
 
 ### Unchanged
 
-- `auth login` and `auth validate`
+- `auth validate`, and `auth login` at a terminal
 - `analyze ask-genie` — Genie AI questions about a dataset
 - The config file location, `~/.config/databox-cli/config.json`
 - The `DATABOX_API_KEY` and `DATABOX_API_URL` environment variables

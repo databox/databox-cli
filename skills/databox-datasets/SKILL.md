@@ -151,7 +151,7 @@ databox dataset update-modification 67890 --data "$(cat mod.json)"
 
 ## Destructive Operations
 
-These commands prompt for confirmation. Use `--force` to skip:
+These commands prompt for confirmation at a terminal. Off a terminal (scripts, agents) they read the answer from stdin instead, and when nothing is piped they exit 2 without doing anything. Agents should always pass `--force`:
 - `dataset delete` — removes the dataset entirely
 - `dataset purge` — removes all data but keeps the dataset
 - `dataset clear-modifications` — clears all modifications
@@ -160,6 +160,6 @@ These commands prompt for confirmation. Use `--force` to skip:
 
 - All commands support `--json` and `--output csv` for machine-readable output
 - `dataset schema`, `dataset data` and `dataset preview-modification` return the whole response under `--json` (rows or columns under `items`, plus `schema`/`primaryKey`)
-- Dataset IDs are numeric (e.g., `67890`)
+- Dataset IDs are numeric (e.g., `67890`), separate from the data source ID. Find one with `databox dataset list --search NAME` or `databox data-source datasets DATASOURCEID`; in the Databox app it is the number in the Data Manager page URL (`/data-manager/connected/67890/datasets/view`). 0.x GUIDs are rejected.
 - Ingestion IDs are UUIDs returned by the `ingest` command
 - `--interval` on `set-sync-frequency` is in minutes: 1, 15, 60, 240, 360, 480 or 1440; `sync-frequency-options` shows which your plan includes

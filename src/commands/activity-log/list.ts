@@ -43,7 +43,10 @@ export default class ActivityLogList extends BaseCommand<typeof ActivityLogList>
   static flags = {
     ...paginationFlags,
     'date-from': Flags.string({description: 'Only entries on or after this date (ISO 8601)'}),
-    'date-to': Flags.string({description: 'Only entries on or before this date (ISO 8601)'}),
+    'date-to': Flags.string({
+      description: 'Only entries up to this date (ISO 8601). A bare date means the start of that day, UTC: '
+        + 'to include all of it, pass the next day',
+    }),
     'resource-type': Flags.string({
       description: 'Filter by resource type',
       options: ['dataSource', 'dataset', 'metric', 'user', 'administration', 'billing', 'connection'],

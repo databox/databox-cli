@@ -80,6 +80,11 @@ Delete, purge, and clear commands require:
 3. `this.log('Aborted.')` when user declines
 4. Success message: `"Resource ID past-tense."` (e.g., `"Dataset 123 deleted."`)
 
+Off a terminal, `confirm()` writes its question to stderr and reads the answer from the first line
+of stdin: `y`/`yes` proceeds, anything else is declined (`Aborted.`, exit 0), and an empty first line
+or a stdin that ends with nothing throws exit 2 ("Refusing to prompt: … Pass --force to confirm.").
+Commands need no handling of their own.
+
 ## Error codes
 
 - `this.error(msg, {exit: 1})` — general errors (missing auth, API failures)

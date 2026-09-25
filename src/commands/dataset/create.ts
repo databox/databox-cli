@@ -27,7 +27,7 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
       required: true,
     }),
     'primary-key': Flags.string({
-      description: 'Primary key column names',
+      description: 'Primary key column ids',
       multiple: true,
     }),
     schema: Flags.string({
