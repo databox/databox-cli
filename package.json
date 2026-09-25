@@ -5,8 +5,6 @@
   "description": "CLI for the Databox public API",
   "author": "Databox",
   "license": "MIT",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
   "bin": {
     "databox": "./bin/run.js"
   },
@@ -14,7 +12,8 @@
     "/bin",
     "/lib",
     "/oclif.manifest.json",
-    "/skills"
+    "/skills",
+    "/CHANGELOG.md"
   ],
   "oclif": {
     "bin": "databox",
@@ -82,7 +81,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "postpack": "rm -f oclif.manifest.json",
-    "prepack": "npm run build && oclif manifest",
+    "prepack": "npm run clean && npm run build && oclif manifest",
     "pretest": "npm run lint",
     "test": "TS_NODE_PROJECT=tsconfig.test.json mocha --forbid-only \"test/**/*.test.ts\"",
     "test:watch": "TS_NODE_PROJECT=tsconfig.test.json mocha --watch \"test/**/*.test.ts\"",
