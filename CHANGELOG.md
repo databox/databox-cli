@@ -43,7 +43,7 @@ Every 0.x command maps to a 1.0 command:
 | `dataset ingestion GUID ING_ID` | `dataset ingestion NUMERIC_ID ING_ID` | **The dataset ID is now numeric.** The ingestion ID is the UUID that `dataset ingest` returns. |
 | `dataset ingestions GUID` | `dataset ingestions NUMERIC_ID` | **IDs are now numeric.** |
 | `dataset purge GUID` | `dataset purge NUMERIC_ID` | **IDs are now numeric.** |
-| `analyze ask-genie` | `analyze ask-genie` | No change. |
+| `analyze ask-genie` | — | **Temporarily unavailable.** It has returned 403 in every version since 2026-08-20, 0.3.1 included, because the Genie service now requires internal authentication the CLI cannot provide. 1.0.0 hides it and exits 1 with that reason; it will return in a later release. |
 
 #### Schema Definition Change
 
@@ -77,6 +77,7 @@ The bundled skills follow the new topics. 0.3.1's `databox-accounts` covered acc
 - `databox-accounts` covers the accounts in your organization: listing, creating, updating and deleting them.
 - `databox-data-sources` and `databox-datasets` cover listing data sources and datasets, with `--account-id` for an account.
 - `databox-metrics`, `databox-users`, `databox-connections`, `databox-integrations` and `databox-billing` are new.
+- `databox-analyze` is removed for now, until `analyze ask-genie` returns.
 
 Reinstall them with `npx skills add databox/databox-cli --skill '*'`.
 
@@ -216,6 +217,5 @@ With `--account-id`, the `organization` commands answer for that account.
 ### Unchanged
 
 - `auth validate`, and `auth login` at a terminal
-- `analyze ask-genie` — Genie AI questions about a dataset
 - The config file location, `~/.config/databox-cli/config.json`
 - The `DATABOX_API_KEY` and `DATABOX_API_URL` environment variables

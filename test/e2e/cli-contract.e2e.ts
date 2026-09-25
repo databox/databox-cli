@@ -68,6 +68,15 @@ describe('cli-contract', () => {
       expect(result.code).to.not.equal(0)
       expect(errorText(result)).to.match(/name/i)
     })
+
+    // Gated off in 1.0 (see ask-genie.ts); the child env never carries DATABOX_ENABLE_ASK_GENIE.
+    // The closed loopback port means a broken gate fails as exit 2 instead of reaching Genie.
+    it('exits 1 for analyze ask-genie, which is unavailable, without a request', async () => {
+      const result = await cli(['analyze', 'ask-genie', '1', 'q'], {env: {DATABOX_AGENTIC_SERVICE_URL: 'http://127.0.0.1:9'}})
+
+      expectExit(result, 1)
+      expect(errorText(result)).to.include('analyze ask-genie is unavailable in this version')
+    })
   })
 
   describe('output discipline', () => {

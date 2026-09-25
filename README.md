@@ -138,10 +138,7 @@ Every command except `auth login` accepts these:
 
 `--api-key`, `--api-url` and `--account-id` do not appear in each command's `--help`, but work on every command that calls the API.
 
-Two exceptions:
-
-- `auth login` takes only `--api-key` (and `--api-url`); `--json` and the other flags are rejected with exit 2.
-- `analyze ask-genie` talks to Databox's Genie service rather than the API. It takes `--service-url` (`DATABOX_AGENTIC_SERVICE_URL`) instead of `--api-url`, ignores `--account-id`, prints no `--verbose` trace, and its errors carry no request ID.
+One exception: `auth login` takes only `--api-key` (and `--api-url`); `--json` and the other flags are rejected with exit 2.
 
 ### List Flags
 
@@ -294,7 +291,6 @@ This package includes skills that let AI agents (like [Claude Code](https://clau
 | `databox-connections` | Connection management and permissions |
 | `databox-integrations` | Browse the integration catalog |
 | `databox-billing` | Plan details and invoices |
-| `databox-analyze` | Dataset analysis with Genie AI, conversational data Q&A |
 
 ### Install Skills
 
@@ -317,12 +313,13 @@ npx skills add databox/databox-cli --skill databox-accounts
 npx skills add databox/databox-cli --skill databox-connections
 npx skills add databox/databox-cli --skill databox-integrations
 npx skills add databox/databox-cli --skill databox-billing
-npx skills add databox/databox-cli --skill databox-analyze
 ```
 
-Once installed, Claude Code can manage your Databox resources directly — your organization and its accounts, data sources, datasets, metrics, users, connections and billing — and analyze data with Genie AI.
+Once installed, Claude Code can manage your Databox resources directly — your organization and its accounts, data sources, datasets, metrics, users, connections and billing.
 
 ## Commands
+
+`analyze ask-genie` is temporarily unavailable in 1.0: the Genie service now requires authentication the CLI cannot provide yet. It will return in a later release.
 
 <!-- commands -->
 * [`databox account create`](#databox-account-create)
@@ -331,7 +328,6 @@ Once installed, Claude Code can manage your Databox resources directly — your 
 * [`databox account list`](#databox-account-list)
 * [`databox account update ACCOUNTID`](#databox-account-update-accountid)
 * [`databox activity-log list`](#databox-activity-log-list)
-* [`databox analyze ask-genie DATASETID QUESTION`](#databox-analyze-ask-genie-datasetid-question)
 * [`databox auth login`](#databox-auth-login)
 * [`databox auth validate`](#databox-auth-validate)
 * [`databox billing info`](#databox-billing-info)
@@ -626,42 +622,6 @@ EXAMPLES
 ```
 
 _See code: [src/commands/activity-log/list.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/activity-log/list.ts)_
-
-## `databox analyze ask-genie DATASETID QUESTION`
-
-Ask Genie AI a question about a dataset
-
-```
-USAGE
-  $ databox analyze ask-genie DATASETID QUESTION [--no-color] [--output table|json|csv | --json] [--verbose]
-    [--service-url <value>] [--thread-id <value>]
-
-ARGUMENTS
-  DATASETID  The dataset ID to query
-  QUESTION   The question to ask Genie
-
-FLAGS
-  --json                 Output as JSON
-  --no-color             Disable coloured output (a non-empty NO_COLOR environment variable does the same)
-  --output=<option>      [default: table] Output format
-                         <options: table|json|csv>
-  --service-url=<value>  [default: https://agentic-service.databox.com, env: DATABOX_AGENTIC_SERVICE_URL] Override the
-                         agentic service base URL
-  --thread-id=<value>    Continue an existing conversation thread
-  --verbose              Print each request and response (method, URL, status, duration, request ID) to stderr
-
-DESCRIPTION
-  Ask Genie AI a question about a dataset
-
-EXAMPLES
-  $ databox analyze ask-genie abc-123 "What are the top metrics?"
-
-  $ databox analyze ask-genie abc-123 "Show trends" --thread-id tid-456
-
-  $ databox analyze ask-genie abc-123 "Summarize data" --json
-```
-
-_See code: [src/commands/analyze/ask-genie.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/analyze/ask-genie.ts)_
 
 ## `databox auth login`
 

@@ -1,16 +1,20 @@
 /* eslint-disable camelcase -- the agentic service's wire format is snake_case */
+import {Config} from '@oclif/core'
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
 import AskGenie from '../../../src/commands/analyze/ask-genie.js'
 import {
-  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+  cleanupTestConfig, mockApi, restoreApi, setupEmptyConfig, setupTestConfig,
 } from '../../helpers.js'
 
 /**
  * ask-genie is the one command that calls fetch() itself (SSE streaming), so these tests stub
  * fetch directly instead of going through mockApi's JSON routes.
  */
+
+/** The command refuses to run without it; see the gate in ask-genie.ts. */
+const ENABLE = 'DATABOX_ENABLE_ASK_GENIE'
 
 const STREAM_URL = 'https://agentic-service.databox.com/api/v1/datasets/query/stream'
 
@@ -71,17 +75,31 @@ const ANSWER = [
   event({content: '', done: true, error: false}),
 ]
 
+/** Sets the gate for one test (unsets it given no value), and returns what puts the developer's own value back. */
+function setEnable(value?: string): () => void {
+  const saved = process.env[ENABLE]
+  if (value === undefined) delete process.env[ENABLE]
+  else process.env[ENABLE] = value
+  return () => {
+    if (saved === undefined) delete process.env[ENABLE]
+    else process.env[ENABLE] = saved
+  }
+}
+
 describe('analyze ask-genie', () => {
   const {connectTimeoutMs, idleTimeoutMs} = AskGenie
+  let restoreEnable: () => void
 
   beforeEach(() => {
     sent = []
+    restoreEnable = setEnable('1')
     setupTestConfig()
   })
 
   afterEach(() => {
     AskGenie.connectTimeoutMs = connectTimeoutMs
     AskGenie.idleTimeoutMs = idleTimeoutMs
+    restoreEnable()
     restoreApi()
     cleanupTestConfig()
   })
@@ -237,5 +255,75 @@ describe('analyze ask-genie', () => {
 
     expect(error?.oclif?.exit).to.equal(2)
     expect(error?.message).to.contain('connection to Genie was lost')
+  })
+})
+
+describe('analyze ask-genie, unavailable', () => {
+  let restoreEnable: () => void
+
+  beforeEach(() => {
+    sent = []
+    restoreEnable = setEnable()
+    setupTestConfig()
+  })
+
+  afterEach(() => {
+    restoreEnable()
+    restoreApi()
+    cleanupTestConfig()
+  })
+
+  it('exits 1 with the reason and sends nothing', async () => {
+    respondWith(() => sse(ANSWER))
+
+    const {error, stdout} = await runCommand(['analyze', 'ask-genie', 'ds-1', 'Q'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(error?.message).to.contain('analyze ask-genie is unavailable in this version')
+    expect(error?.message).to.contain('It will return in a later release.')
+    expect(stdout).to.equal('')
+    expect(sent).to.have.lengthOf(0)
+  })
+
+  it('refuses before the argument and API key checks', async () => {
+    cleanupTestConfig()
+    setupEmptyConfig()
+    respondWith(() => sse(ANSWER))
+
+    const {error} = await runCommand(['analyze', 'ask-genie'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(error?.message).to.contain('analyze ask-genie is unavailable in this version')
+    expect(sent).to.have.lengthOf(0)
+  })
+
+  it('stays gated for any value but 1', async () => {
+    setEnable('true')
+    respondWith(() => sse(ANSWER))
+
+    const {error} = await runCommand(['analyze', 'ask-genie', 'ds-1', 'Q'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(sent).to.have.lengthOf(0)
+  })
+
+  // The class, not config.findCommand(): Config.load reads command metadata from the built lib/,
+  // which a stale build would answer for. The topic comes from package.json.
+  it('is hidden, with its topic', async () => {
+    const config = await Config.load(process.cwd())
+
+    expect(AskGenie.hidden).to.equal(true)
+    expect(config.findTopic('analyze')?.hidden).to.equal(true)
+  })
+
+  it('is left out of the root help and the topic help', async () => {
+    const root = await runCommand(['--help'], {root: process.cwd()})
+    const topic = await runCommand(['analyze', '--help'], {root: process.cwd()})
+
+    expect(root.stdout).to.contain('dataset')
+    expect(root.stdout).to.not.contain('analyze')
+    expect(root.stdout).to.not.contain('genie')
+    expect(topic.stdout).to.contain('databox analyze COMMAND')
+    expect(topic.stdout).to.not.contain('ask-genie')
   })
 })

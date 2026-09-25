@@ -33,7 +33,7 @@ with which key. The preflight refuses to start, naming what is missing, unless b
 | `DATABOX_E2E_ACCOUNT_ID` | Sent as `x-account-id` on every command. |
 | `DATABOX_E2E_ALLOW_PROD` | Required (`=1`) to run against production. |
 | `DATABOX_E2E_ALLOW_INSECURE_TLS` | `=1` disables TLS verification, for local self-signed certs. |
-| `DATABOX_E2E_AGENTIC_URL` | Enables the `analyze ask-genie` suite (separate service). |
+| `DATABOX_E2E_AGENTIC_URL` | Enables the `analyze ask-genie` suite (separate service). The command is gated off in 1.0, so that suite must pass `env: {DATABOX_ENABLE_ASK_GENIE: '1'}` on each of its `cli()` calls; the harness scrubs every `DATABOX_*` variable, so an exported one never reaches the child. |
 
 ```bash
 DATABOX_E2E_API_URL=http://localhost:5152 \

@@ -13,6 +13,15 @@ const CONNECT_TIMEOUT_MS = 30_000
 /** How long the stream may stay silent. Genie can pause mid-answer while the model works. */
 const IDLE_TIMEOUT_MS = 120_000
 
+/**
+ * 2026-09-25: since 2026-08-20 production Genie requires an internal token the CLI cannot hold, so
+ * every call answers 403, in 0.3.1 too. The command is hidden and refuses to run until a public
+ * route exists (a new API endpoint or a ticket scheme). DATABOX_ENABLE_ASK_GENIE=1 lifts the gate,
+ * for a Genie without internal auth (a local one) and for the tests that keep the code below working.
+ */
+const UNAVAILABLE = 'analyze ask-genie is unavailable in this version: the Genie service now requires '
+  + 'authentication the CLI cannot provide yet. It will return in a later release.'
+
 type ReadResult = Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>['read']>>
 
 interface SSEChunk {
@@ -49,7 +58,18 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
     'thread-id': Flags.string({description: 'Continue an existing conversation thread'}),
   }
 
+  static hidden = true
+
   static idleTimeoutMs = IDLE_TIMEOUT_MS
+
+  /** Ahead of BaseCommand.init(), so the gate precedes parsing and the API key check as well as the request. */
+  public async init(): Promise<void> {
+    if (process.env.DATABOX_ENABLE_ASK_GENIE !== '1') {
+      this.error(UNAVAILABLE, {exit: 1})
+    }
+
+    await super.init()
+  }
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(AskGenie)

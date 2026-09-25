@@ -31,7 +31,8 @@
         "description": "View the organization activity log"
       },
       "analyze": {
-        "description": "Analyze datasets with Genie AI"
+        "description": "Analyze datasets with Genie AI (temporarily unavailable in 1.0)",
+        "hidden": true
       },
       "auth": {
         "description": "Authenticate with the Databox API"
