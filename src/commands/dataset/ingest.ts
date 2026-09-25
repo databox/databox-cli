@@ -6,10 +6,15 @@ import {UPLOAD_TIMEOUT_MS} from '../../lib/api-client.js'
 import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {formatSingle} from '../../lib/output.js'
 
-/** Mirrors the API's IngestSettings (MaxRecords / MaxPayloadSizeMb). */
-const MAX_RECORDS = 10_000
-const MAX_PAYLOAD_MB = 100
-const MAX_PAYLOAD_BYTES = MAX_PAYLOAD_MB * 1024 * 1024
+/**
+ * What production enforces, measured 2026-09-25: IngestSettings.MaxRecords is 500 in its
+ * deployment config (the API's docs say 10,000), and the web server refuses a body over
+ * Kestrel's default 30,000,000 bytes before the API's own 100 MB check can run, with a bare
+ * 413 and no message. Follow the API if either changes.
+ */
+const MAX_RECORDS = 500
+const MAX_PAYLOAD_BYTES = 30_000_000
+const PAYLOAD_LIMIT = '30 MB (30,000,000 bytes)'
 
 interface IngestResponse {
   ingestionId: string
@@ -33,7 +38,7 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
 
   static flags = {
     file: Flags.string({
-      description: 'Path to a JSON file containing a records array (at least one record)',
+      description: 'Path to a JSON file holding an array of records (at least one record)',
       exclusive: ['records'],
     }),
     ...idempotencyFlags,
@@ -75,7 +80,7 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
       for await (const chunk of process.stdin) {
         bytes += (chunk as Buffer).length
         if (bytes > MAX_PAYLOAD_BYTES) {
-          this.error(`Input exceeds the ${MAX_PAYLOAD_MB} MB limit the API accepts.`, {exit: 2})
+          this.error(`Input exceeds the ${PAYLOAD_LIMIT} the API accepts. Split the payload.`, {exit: 2})
         }
 
         chunks.push(chunk as Buffer)
@@ -109,7 +114,7 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
     const payloadBytes = Buffer.byteLength(JSON.stringify({records}), 'utf8')
     if (payloadBytes > MAX_PAYLOAD_BYTES) {
       this.error(
-        `Payload is ${Math.round(payloadBytes / 1024 / 1024)} MB, over the API limit of ${MAX_PAYLOAD_MB} MB. Split the payload.`,
+        `Payload is ${payloadBytes.toLocaleString('en-US')} bytes, over the API limit of ${PAYLOAD_LIMIT}. Split the payload.`,
         {exit: 2},
       )
     }

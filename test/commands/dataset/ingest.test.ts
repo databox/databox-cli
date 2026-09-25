@@ -78,4 +78,29 @@ describe('dataset ingest', () => {
     expect(error?.message).to.contain('At least one record must be provided')
     expect(requests()).to.have.length(0)
   })
+
+  // Production's IngestSettings.MaxRecords is 500: the API answers 413 request_too_large past it.
+  it('sends 500 records, the production limit', async () => {
+    fs.writeFileSync(tempFilePath, JSON.stringify(Array.from({length: 500}, (_, i) => ({value: i}))))
+    const {error} = await runCommand(['dataset', 'ingest', '123', '--file', tempFilePath], {root: process.cwd()})
+    expect(error).to.equal(undefined)
+    expect(requests()).to.have.length(1)
+  })
+
+  it('refuses 501 records with exit 2 before calling the API', async () => {
+    fs.writeFileSync(tempFilePath, JSON.stringify(Array.from({length: 501}, (_, i) => ({value: i}))))
+    const {error} = await runCommand(['dataset', 'ingest', '123', '--file', tempFilePath], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('501 records exceeds the API limit of 500 per request')
+    expect(requests()).to.have.length(0)
+  })
+
+  // Production's web server refuses a body over 30,000,000 bytes with a bare 413 and no message.
+  it('refuses a payload over 30,000,000 bytes with exit 2 before calling the API', async () => {
+    fs.writeFileSync(tempFilePath, JSON.stringify([{value: 'x'.repeat(30_000_000)}]))
+    const {error} = await runCommand(['dataset', 'ingest', '123', '--file', tempFilePath], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('over the API limit of 30 MB (30,000,000 bytes)')
+    expect(requests()).to.have.length(0)
+  })
 })

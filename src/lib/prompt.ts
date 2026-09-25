@@ -17,7 +17,15 @@ export async function prompt(message: string, options?: {mask?: boolean}): Promi
         process.stdin.setRawMode?.(false)
         process.stdin.pause()
         process.stdin.removeListener('data', onData)
+        process.stdin.removeListener('end', onEnd)
         process.stderr.write('\n')
+      }
+
+      // stdin closed before Enter: without this the promise never settles, and Node exits 13
+      // with "unsettled top-level await".
+      const onEnd = () => {
+        finish()
+        reject(new Errors.CLIError('No input: stdin closed before Enter.', {exit: 2}))
       }
 
       // A paste arrives as one chunk, usually with its line ending, so walk it a character at
@@ -61,6 +69,7 @@ export async function prompt(message: string, options?: {mask?: boolean}): Promi
       }
 
       process.stdin.on('data', onData)
+      process.stdin.once('end', onEnd)
     } else {
       const rl = readline.createInterface({
         input: process.stdin,
@@ -76,8 +85,8 @@ export async function prompt(message: string, options?: {mask?: boolean}): Promi
         process.stderr.write('\n')
       })
 
-      // stdin ended with no answer (EOF, or a script without --force): an empty answer, which
-      // confirm() reads as "no".
+      // stdin ended with no answer (Ctrl-D at the terminal): an empty answer, which confirm()
+      // reads as "no".
       rl.on('close', () => resolve(''))
 
       rl.question(`${message}: `, answer => {
@@ -88,7 +97,81 @@ export async function prompt(message: string, options?: {mask?: boolean}): Promi
   })
 }
 
-export async function confirm(message: string): Promise<boolean> {
-  const answer = await prompt(`${message} (y/n)`)
+/** An API key or a y/n answer is far shorter; a longer first line is not what was asked for. */
+const MAX_PIPED_LINE_LENGTH = 64 * 1024
+
+/**
+ * Reads the first line piped on stdin, trimmed, for when stdin is not a terminal. Resolves ''
+ * when that line is empty or stdin ends with nothing. The input is never echoed, but `message`
+ * is written to stderr first: a person on a non-terminal stdin (`ssh host cmd` without -t)
+ * still sees what is being asked, and stdout stays clean for scripts.
+ */
+export async function readPipedLine(message?: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let input = ''
+    if (message) {
+      process.stderr.write(`${message}: `)
+    }
+
+    const finish = () => {
+      process.stdin.removeListener('data', onData)
+      process.stdin.removeListener('end', onEnd)
+      process.stdin.removeListener('error', onError)
+      process.stdin.pause()
+      if (message) {
+        process.stderr.write('\n')
+      }
+    }
+
+    const onData = (chunk: Buffer | string) => {
+      input += String(chunk)
+      const lineEnd = input.search(/[\n\r]/)
+      if (lineEnd !== -1) {
+        finish()
+        resolve(input.slice(0, lineEnd).trim())
+      } else if (input.length > MAX_PIPED_LINE_LENGTH) {
+        finish()
+        reject(new Errors.CLIError('Piped input is not a single short line.', {exit: 2}))
+      }
+    }
+
+    const onEnd = () => {
+      finish()
+      resolve(input.trim())
+    }
+
+    const onError = () => {
+      finish()
+      reject(new Errors.CLIError('Could not read stdin.', {exit: 2}))
+    }
+
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', onData)
+    process.stdin.once('end', onEnd)
+    process.stdin.once('error', onError)
+    process.stdin.resume()
+  })
+}
+
+function isYes(answer: string): boolean {
   return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes'
+}
+
+// Off a terminal the answer can still be piped (`yes | databox dataset delete 1`). An empty
+// first line, or a stdin that ends with nothing, is not a "no": reading it as one would exit 0
+// having done nothing, which a script cannot tell from success. Refuse instead.
+export async function confirm(message: string): Promise<boolean> {
+  if (!process.stdin.isTTY) {
+    const answer = await readPipedLine(`${message} (y/n)`)
+    if (!answer) {
+      throw new Errors.CLIError(
+        'Refusing to prompt: stdin is not a terminal and no confirmation was piped. Pass --force to confirm.',
+        {exit: 2},
+      )
+    }
+
+    return isYes(answer)
+  }
+
+  return isYes(await prompt(`${message} (y/n)`))
 }

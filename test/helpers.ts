@@ -133,3 +133,38 @@ export function restoreApi(): void {
   mockRoutes = []
   capturedRequests = []
 }
+
+function defineOnStdin(key: string, value: unknown): void {
+  Object.defineProperty(process.stdin, key, {configurable: true, value, writable: true})
+}
+
+/**
+ * Makes process.stdin a pipe that carries `content` and then ends: not a TTY, and the content
+ * arrives once something starts reading. The real stdin is never read. Returns the undo.
+ */
+export function pipeStdin(content: string): () => void {
+  const keys = ['isTTY', 'pause', 'resume', 'setEncoding']
+  const saved = keys.map(key => ({descriptor: Object.getOwnPropertyDescriptor(process.stdin, key), key}))
+  let fed = false
+  defineOnStdin('isTTY', false)
+  defineOnStdin('pause', () => process.stdin)
+  defineOnStdin('setEncoding', () => process.stdin)
+  defineOnStdin('resume', () => {
+    if (!fed) {
+      fed = true
+      setImmediate(() => {
+        if (content) process.stdin.emit('data', content)
+        process.stdin.emit('end')
+      })
+    }
+
+    return process.stdin
+  })
+
+  return () => {
+    for (const {descriptor, key} of saved) {
+      if (descriptor) Object.defineProperty(process.stdin, key, descriptor)
+      else delete (process.stdin as unknown as Record<string, unknown>)[key]
+    }
+  }
+}

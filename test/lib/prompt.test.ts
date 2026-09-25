@@ -1,11 +1,13 @@
 import {Errors} from '@oclif/core'
 import {expect} from 'chai'
 
-import {confirm, prompt} from '../../src/lib/prompt.js'
+import {confirm, prompt, readPipedLine} from '../../src/lib/prompt.js'
+import {pipeStdin} from '../helpers.js'
 
 /**
  * A fake terminal for prompt(). stdin's mode switches and reads are stubbed, so the real stdin
- * is never touched and input arrives only through type(). stderr claims to be a TTY, which puts
+ * is never touched and input arrives only through type(). stdin claims to be a TTY, as confirm()
+ * requires, and so does stderr, which puts
  * any readline interface into terminal mode: the mode that echoed the masked key. Everything
  * written to stderr is recorded.
  */
@@ -22,6 +24,7 @@ function fakeTerminal(): {end(): void; restore(): void; type(chunk: string): voi
     stub(process.stdin, method, () => process.stdin)
   }
 
+  stub(process.stdin, 'isTTY', true)
   stub(process.stderr, 'isTTY', true)
   stub(process.stderr, 'write', (chunk: unknown) => {
     written.push(String(chunk))
@@ -106,6 +109,18 @@ describe('prompt with mask', () => {
 
     expect(process.stdin.listenerCount('data')).to.equal(before)
   })
+
+  it('rejects with exit 2 when stdin ends before Enter, instead of never settling', async () => {
+    const before = process.stdin.listenerCount('end')
+    const answer = prompt('Key', {mask: true})
+    terminal.type('FA')
+    terminal.end()
+
+    const error = await rejection(answer)
+    expect(error.message).to.equal('No input: stdin closed before Enter.')
+    expect(error.oclif.exit).to.equal(2)
+    expect(process.stdin.listenerCount('end')).to.equal(before)
+  })
 })
 
 describe('confirm', () => {
@@ -147,5 +162,96 @@ describe('confirm', () => {
     terminal.end()
 
     expect(await answer).to.equal(false)
+  })
+})
+
+describe('confirm off a terminal', () => {
+  let restore: () => void
+  let written: string[]
+  const realWrite = process.stderr.write
+
+  beforeEach(() => {
+    written = []
+    process.stderr.write = ((chunk: string) => written.push(String(chunk)) > 0) as typeof process.stderr.write
+  })
+
+  afterEach(() => {
+    process.stderr.write = realWrite
+    restore()
+  })
+
+  // A person on a non-terminal stdin (ssh without -t) must still see what is being asked.
+  it('writes the question to stderr before reading the answer', async () => {
+    restore = pipeStdin('y\n')
+
+    await confirm('Delete dataset 1?')
+    expect(written.join('')).to.equal('Delete dataset 1? (y/n): \n')
+  })
+
+  it('refuses with exit 2 when the first piped line is empty', async () => {
+    restore = pipeStdin('\ny\n')
+
+    const error = await rejection(confirm('Sure'))
+    expect(error.oclif.exit).to.equal(2)
+  })
+
+  for (const answer of ['y\n', 'yes\n', 'Y\r\n']) {
+    it(`reads a piped ${JSON.stringify(answer)} as yes`, async () => {
+      restore = pipeStdin(answer)
+
+      expect(await confirm('Sure')).to.equal(true)
+    })
+  }
+
+  it('reads a piped n as no', async () => {
+    restore = pipeStdin('n\n')
+
+    expect(await confirm('Sure')).to.equal(false)
+  })
+
+  it('refuses with exit 2 when nothing is piped, instead of reading it as no', async () => {
+    restore = pipeStdin('')
+
+    const error = await rejection(confirm('Sure'))
+    expect(error.message).to.equal(
+      'Refusing to prompt: stdin is not a terminal and no confirmation was piped. Pass --force to confirm.',
+    )
+    expect(error.oclif.exit).to.equal(2)
+  })
+})
+
+describe('readPipedLine', () => {
+  let restore: () => void
+
+  afterEach(() => {
+    restore()
+  })
+
+  it('returns the first line, trimmed, and stops listening', async () => {
+    const before = process.stdin.listenerCount('data')
+    restore = pipeStdin('  pak_FAKE \r\nsecond line\n')
+
+    expect(await readPipedLine()).to.equal('pak_FAKE')
+    expect(process.stdin.listenerCount('data')).to.equal(before)
+  })
+
+  it('returns a last line with no line ending', async () => {
+    restore = pipeStdin('pak_FAKE')
+
+    expect(await readPipedLine()).to.equal('pak_FAKE')
+  })
+
+  it('returns an empty string when stdin ends with nothing', async () => {
+    restore = pipeStdin('')
+
+    expect(await readPipedLine()).to.equal('')
+  })
+
+  it('rejects with exit 2 a first line longer than any key or answer', async () => {
+    restore = pipeStdin('x'.repeat((64 * 1024) + 1))
+
+    const error = await rejection(readPipedLine())
+    expect(error.message).to.equal('Piped input is not a single short line.')
+    expect(error.oclif.exit).to.equal(2)
   })
 })
