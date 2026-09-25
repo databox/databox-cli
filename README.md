@@ -139,10 +139,10 @@ If you contact Databox support about a failed command, quote the **Request ID**:
 
 | Exit code | Meaning |
 |-----------|---------|
-| `0` | Success. Declining a confirmation prompt also exits 0, after printing `Aborted.` |
-| `1` | The API returned an error (4xx or 5xx). Also: no API key is configured, or an update command was given no field to change. |
+| `0` | Success. Declining a confirmation prompt also exits 0, after printing `Aborted.`, and so does a prompt whose input closes unanswered: a script that forgets `--force` deletes nothing. |
+| `1` | The API returned an error (4xx or 5xx). Also: no API key is configured, the stored config file is not valid JSON, the response was not JSON (usually a wrong `--api-url`), or an update command was given no field to change. |
 | `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, or a network failure or timeout. |
-| `130` | A confirmation prompt was interrupted with Ctrl-C. |
+| `130` | A prompt (a confirmation, or the API key at `auth login`) was interrupted with Ctrl-C. |
 
 ## Organizations and accounts
 
@@ -587,6 +587,11 @@ FLAGS
 
 DESCRIPTION
   Validate the currently stored API key
+
+EXAMPLES
+  $ databox auth validate
+
+  $ databox auth validate --json
 ```
 
 _See code: [src/commands/auth/validate.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/auth/validate.ts)_
