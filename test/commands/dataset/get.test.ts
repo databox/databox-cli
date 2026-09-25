@@ -1,28 +1,15 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
+import {datasetDetail, envelope} from './fixtures.js'
 
 describe('dataset get', () => {
   beforeEach(() => {
     setupTestConfig()
-    mockApi([
-      {
-        method: 'GET',
-        path: '/v1/datasets/ds-abc',
-        response: {
-          id: 'ds-abc',
-          created: '2024-01-01T00:00:00Z',
-          dataSourceId: 10,
-          timezone: 'UTC',
-          primaryKeys: ['date'],
-          schema: [
-            {name: 'date', dataType: 'datetime'},
-            {name: 'value', dataType: 'number'},
-          ],
-        },
-      },
-    ])
+    mockApi([{method: 'GET', path: '/v2/datasets/123', response: envelope(datasetDetail)}])
   })
 
   afterEach(() => {
@@ -31,15 +18,19 @@ describe('dataset get', () => {
   })
 
   it('gets dataset details', async () => {
-    const {stdout} = await runCommand(['dataset', 'get', 'ds-abc'], {root: process.cwd()})
-    expect(stdout).to.contain('ds-abc')
-    expect(stdout).to.contain('10')
+    const {stdout} = await runCommand(['dataset', 'get', '123'], {root: process.cwd()})
+    expect(stdout).to.contain('Orders')
+    expect(stdout).to.contain('Row Count: 1500')
+    expect(stdout).to.contain('Sync Interval: 60')
   })
 
-  it('outputs JSON with --json', async () => {
-    const {stdout} = await runCommand(['dataset', 'get', 'ds-abc', '--json'], {root: process.cwd()})
-    const parsed = JSON.parse(stdout)
-    expect(parsed.schema).to.be.an('array')
-    expect(parsed.schema).to.have.lengthOf(2)
+  it('outputs the detail whole with --json', async () => {
+    const {stdout} = await runCommand(['dataset', 'get', '123', '--json'], {root: process.cwd()})
+    expect(JSON.parse(stdout)).to.deep.equal(datasetDetail)
+  })
+
+  it('rejects non-numeric dataset ID', async () => {
+    const {error} = await runCommand(['dataset', 'get', 'abc'], {root: process.cwd()})
+    expect(error?.message).to.include('must be a numeric value')
   })
 })

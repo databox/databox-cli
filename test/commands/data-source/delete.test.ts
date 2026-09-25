@@ -1,7 +1,9 @@
-import {expect} from 'chai'
 import {runCommand} from '@oclif/test'
+import {expect} from 'chai'
 
-import {cleanupTestConfig, mockApi, restoreApi, setupTestConfig} from '../../helpers.js'
+import {
+  cleanupTestConfig, mockApi, restoreApi, setupTestConfig,
+} from '../../helpers.js'
 
 describe('data-source delete', () => {
   beforeEach(() => {
@@ -9,15 +11,8 @@ describe('data-source delete', () => {
     mockApi([
       {
         method: 'DELETE',
-        path: '/v1/data-sources/42',
-        response: {
-          id: 42,
-          title: 'Deleted',
-          created: '2024-01-01T00:00:00Z',
-          timezone: null,
-          key: null,
-          ingestionSupported: false,
-        },
+        path: '/v2/data-sources/42',
+        response: {data: {}, requestId: 'test', status: 'success'},
       },
     ])
   })

@@ -1,11 +1,8 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {confirm} from '../../lib/prompt.js'
-
-interface DatasetPurgeResponse {
-  message: string
-}
 
 export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
   static args = {
@@ -15,8 +12,8 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
   static description = 'Purge all data from a dataset'
 
   static examples = [
-    '<%= config.bin %> dataset purge abc-123',
-    '<%= config.bin %> dataset purge abc-123 --force',
+    '<%= config.bin %> dataset purge 12345',
+    '<%= config.bin %> dataset purge 12345 --force',
   ]
 
   static flags = {
@@ -24,10 +21,13 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
       default: false,
       description: 'Skip confirmation prompt',
     }),
+    ...idempotencyFlags,
   }
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DatasetPurge)
+
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to purge all data from dataset ${args.datasetId}?`)
@@ -37,8 +37,8 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
       }
     }
 
-    const response = await this.apiClient.post<DatasetPurgeResponse>(`/v1/datasets/${args.datasetId}/purge`)
+    await this.apiClient.post(`/v2/datasets/${args.datasetId}/purge`, undefined, {...this.accountHeaders, ...idempotencyHeaders(this.flags)})
 
-    this.log(response.message)
+    this.log(`Dataset ${args.datasetId} purged.`)
   }
 }
