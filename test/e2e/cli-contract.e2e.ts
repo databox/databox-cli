@@ -49,7 +49,7 @@ describe('cli-contract', () => {
       const result = await cli(['organization', 'info'], {withoutCredentials: true})
 
       expectExit(result, 1)
-      expect(result.stderr).to.include('databox auth login')
+      expect(errorText(result)).to.include('databox auth login')
     })
 
     it('exits non-zero for an unknown command', async () => {
@@ -66,7 +66,7 @@ describe('cli-contract', () => {
       const result = await cli(['data-source', 'create'])
 
       expect(result.code).to.not.equal(0)
-      expect(result.stderr).to.match(/name/i)
+      expect(errorText(result)).to.match(/name/i)
     })
   })
 
@@ -244,7 +244,7 @@ describe('cli-contract', () => {
       const result = await cli(['dataset', 'ingest', datasetId, '--file', '/no/such/file.json'])
 
       expectExit(result, 2)
-      expect(result.stderr).to.include('File not found')
+      expect(errorText(result)).to.include('File not found')
     })
 
     it('rejects --records and --file together', async () => {
@@ -261,7 +261,7 @@ describe('cli-contract', () => {
       const result = await cli(['dataset', 'ingest', datasetId])
 
       expectExit(result, 2)
-      expect(result.stderr).to.include('stdin')
+      expect(errorText(result)).to.include('stdin')
     })
   })
 

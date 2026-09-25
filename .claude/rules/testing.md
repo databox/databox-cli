@@ -45,6 +45,9 @@ describe('domain action', () => {
 
 - **File location mirrors source**: `src/commands/dataset/get.ts` → `test/commands/dataset/get.test.ts`
 - **Setup/teardown**: `setupTestConfig()` in `beforeEach`, `cleanupTestConfig()` + `restoreApi()` in `afterEach`. Always both.
+- **Config isolation**: a test that redirects the config directory sets and restores both `HOME` and `USERPROFILE`
+  (deleting one that was unset). `os.homedir()` reads `USERPROFILE` on win32, so a `HOME`-only override is inert
+  there and the suite writes the developer's real config. `setupTestConfig()`/`setupEmptyConfig()` do both.
 - **Mock envelope**: Full `{status: 'success', requestId: 'test', data: {...}}` — not just `{data}`.
 - **Realistic mocks**: Include all fields the command accesses, not empty objects.
 - **runCommand**: Always pass `{root: process.cwd()}`.

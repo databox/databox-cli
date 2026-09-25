@@ -55,7 +55,9 @@ function buildChildEnv(options: CliOptions): NodeJS.ProcessEnv {
     if (!key.startsWith('DATABOX_')) env[key] = value
   }
 
+  // os.homedir() reads USERPROFILE on win32, so HOME alone would not isolate a child there.
   env.HOME = isolatedHome()
+  env.USERPROFILE = isolatedHome()
   if (allowInsecureTls) env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
   // Always pin the URL, even without credentials: ApiClient defaults to

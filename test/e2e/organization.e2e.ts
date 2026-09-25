@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, expectField, expectKey, expectOk, json, skipWith,
+  cli, cliWithRetry, errorText, expectField, expectKey, expectOk, json, skipWith,
 } from './helpers/cli.js'
 import {withRestore} from './helpers/restore.js'
 
@@ -126,7 +126,7 @@ describe('organization', () => {
     const result = await cli(['organization', 'update'])
 
     expect(result.code).to.equal(1)
-    expect(result.stderr).to.include('at least one field')
+    expect(errorText(result)).to.include('at least one field')
   })
 
   // Sets a fiscal calendar and a fiscal year start, then puts the original back. Only run from a

@@ -40,4 +40,15 @@ describe('test harness config isolation', () => {
     cleanupTestConfig()
     expect(os.homedir()).to.equal(realHome)
   })
+
+  // os.homedir() reads USERPROFILE on win32, so a HOME-only override is inert there.
+  it('redirects and restores USERPROFILE alongside HOME', () => {
+    const realUserProfile = process.env.USERPROFILE
+
+    setupTestConfig()
+    expect(process.env.USERPROFILE).to.equal(process.env.HOME)
+
+    cleanupTestConfig()
+    expect(process.env.USERPROFILE).to.equal(realUserProfile)
+  })
 })

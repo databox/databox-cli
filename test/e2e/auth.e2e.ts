@@ -2,7 +2,7 @@ import {expect} from 'chai'
 import {randomUUID} from 'node:crypto'
 
 import {
-  cli, expectExit, expectNoKey, expectOk, json,
+  cli, errorText, expectExit, expectNoKey, expectOk, json,
 } from './helpers/cli.js'
 
 describe('auth', () => {
@@ -28,7 +28,7 @@ describe('auth', () => {
     const result = await cli(['organization', 'info'], {withoutCredentials: true})
 
     expectExit(result, 1)
-    expect(result.stderr).to.include('databox auth login')
+    expect(errorText(result)).to.include('databox auth login')
   })
 
   it('never echoes the API key', async () => {

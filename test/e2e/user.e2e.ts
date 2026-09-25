@@ -64,7 +64,7 @@ describe('user', () => {
     const result = await cli(['user', 'invite', '--email', 'someone@databox.com', '--role', 'superadmin'])
 
     expect(result.code).to.not.equal(0)
-    expect(result.stderr).to.include('role')
+    expect(errorText(result)).to.include('role')
   })
 
   it('invites a user', async function () {

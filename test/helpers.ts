@@ -2,8 +2,19 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 
-let originalHome: string | undefined
+/** os.homedir() reads HOME on POSIX and USERPROFILE on win32, so both are redirected. */
+const HOME_VARIABLES = ['HOME', 'USERPROFILE'] as const
+
+/** The values before the first redirect; a variable that was unset is saved as undefined. */
+let originalHome: Record<string, string | undefined> | undefined
 let tempHome: string | undefined
+
+function redirectHome(): string {
+  originalHome ??= Object.fromEntries(HOME_VARIABLES.map(name => [name, process.env[name]]))
+  tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'databox-cli-test-home-'))
+  for (const name of HOME_VARIABLES) process.env[name] = tempHome
+  return tempHome
+}
 
 /**
  * Points the CLI at a throwaway HOME and writes a config there.
@@ -11,28 +22,26 @@ let tempHome: string | undefined
  * This used to read and overwrite the developer's real
  * ~/.config/databox-cli/config.json, so an interrupted run could destroy their
  * credentials. src/lib/config.ts resolves the path per call, so overriding HOME
- * is enough to redirect it.
+ * and USERPROFILE is enough to redirect it.
  */
 export function setupTestConfig(apiKey = 'test-api-key'): void {
-  originalHome = process.env.HOME
-  tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'databox-cli-test-home-'))
-  process.env.HOME = tempHome
-
-  const dir = path.join(tempHome, '.config', 'databox-cli')
+  const dir = path.join(redirectHome(), '.config', 'databox-cli')
   fs.mkdirSync(dir, {recursive: true})
   fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({apiKey}))
 }
 
 /** A throwaway HOME with no config at all — for the unauthenticated paths. */
 export function setupEmptyConfig(): void {
-  originalHome ??= process.env.HOME
-  tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'databox-cli-test-home-'))
-  process.env.HOME = tempHome
+  redirectHome()
 }
 
 export function cleanupTestConfig(): void {
   if (originalHome !== undefined) {
-    process.env.HOME = originalHome
+    for (const name of HOME_VARIABLES) {
+      // Assigning undefined would store the string "undefined", so an unset variable is deleted.
+      if (originalHome[name] === undefined) delete process.env[name]
+      else process.env[name] = originalHome[name]
+    }
   }
 
   if (tempHome) {
