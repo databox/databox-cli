@@ -9,10 +9,11 @@ paths:
 ## BaseCommand
 
 `BaseCommand<T>` provides:
-- `apiClient` getter — lazy-creates `ApiClient` from config or flag overrides. Errors with exit 1 if no key.
+- `apiClient` — built in `init()` from config or flag overrides, so a missing key or unreadable config fails (exit 1) before `run()` and before any confirmation prompt.
 - `requireNumericId(value, name)` — validates string is all digits, errors with exit 2.
 - `requireUuid(value, name)` — validates a UUID, errors with exit 2. `init()` applies it to `--idempotency-key` before `run()`.
-- `accountHeaders` getter — returns `{'x-account-id': id}` if `--account-id` set, else `{}`.
+- `requireMetricId(value, name)` — metric keys are opaque strings, so it rejects only what would rewrite the path: empty, blank, `.` and `..` (exit 2). Pair it with `encodeURIComponent`.
+- `accountHeaders` getter — returns `{'x-account-id': id}` if `--account-id` set, else `{}`. `init()` validates `--account-id` as numeric first.
 - `outputFormat` getter — `'table' | 'json' | 'csv'`; `--json` resolves to `'json'`.
 - `color` getter — false under `--no-color` or a non-empty `NO_COLOR`. The CLI's own output has no colour; any colour added must check it.
 - `catch()` — renders `ApiRequestError` via `describeApiError` (exit 1) and `ApiConnectionError` (exit 2) before oclif's handler prints them.

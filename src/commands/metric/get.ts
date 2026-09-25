@@ -21,6 +21,8 @@ Type is event, general, current, or unknown when the metric's definition could n
   async run(): Promise<void> {
     const {args} = await this.parse(MetricGet)
 
+    this.requireMetricId(args.metricId, 'Metric ID')
+
     const response = await this.apiClient.get<MetricDetail>(`/v2/metrics/${encodeURIComponent(args.metricId)}`, undefined, this.accountHeaders)
 
     printMetricDetail(response, this.outputFormat)

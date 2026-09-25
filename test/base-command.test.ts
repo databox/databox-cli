@@ -1,9 +1,12 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
+import {getConfigPath} from '../src/lib/config.js'
 import {dataSourceListItem} from './commands/data-source/fixtures.js'
 import {
-  cleanupTestConfig, mockApi, requests, restoreApi, setupTestConfig,
+  cleanupTestConfig, mockApi, requests, restoreApi, setupEmptyConfig, setupTestConfig,
 } from './helpers.js'
 
 /**
@@ -295,6 +298,51 @@ describe('base command: --account-id', () => {
 
     expect(error?.oclif?.exit).to.equal(2)
     expect(error?.message).to.contain('--account-id must be a numeric value')
+    expect(requests()).to.have.length(0)
+  })
+
+  // No --force: were the check still made at the API call, confirm() would wait on stdin.
+  it('rejects a non-numeric account before a destructive command prompts', async () => {
+    const {error} = await runCommand(['dataset', 'delete', '1', '--account-id', 'acme'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--account-id must be a numeric value')
+    expect(requests()).to.have.length(0)
+  })
+})
+
+describe('base command: credentials', () => {
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
+
+  // No --force, as above: the missing key has to fail before confirm() reads stdin.
+  it('fails without a key before a destructive command prompts', async () => {
+    setupEmptyConfig()
+    mockApi([])
+
+    const {error} = await runCommand(['dataset', 'delete', '1'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(error?.message).to.contain('Not authenticated')
+    expect(requests()).to.have.length(0)
+  })
+
+  it('reports a config that is not JSON by path, without the text around the error', async () => {
+    setupEmptyConfig()
+    const file = getConfigPath()
+    fs.mkdirSync(path.dirname(file), {recursive: true})
+    fs.writeFileSync(file, `{"apiKey": ${KEY}}`)
+    mockApi([])
+
+    const {error, stderr, stdout} = await runCommand(['dataset', 'delete', '1'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(error?.message).to.contain(`Config file ${file} is not valid JSON`)
+    expect(error?.message).to.contain('databox auth login')
+    // V8's own message here is `Unexpected token 'p', ...""apiKey": pak_secret"... is not valid JSON`.
+    expect(`${error?.message}${stderr}${stdout}`).to.not.contain('pak_secret')
     expect(requests()).to.have.length(0)
   })
 })

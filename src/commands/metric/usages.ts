@@ -33,6 +33,8 @@ Type is board, alert, goal, report, forecast, scorecard or calculatedMetric. Onl
   async run(): Promise<void> {
     const {args} = await this.parse(MetricUsages)
 
+    this.requireMetricId(args.metricId, 'Metric ID')
+
     const response = await this.apiClient.get<UsagesResponse>(`/v2/metrics/${encodeURIComponent(args.metricId)}/usages`, undefined, this.accountHeaders)
 
     formatOutput(

@@ -33,8 +33,8 @@ interface ApiEnvelope<T> {
 }
 
 /**
- * A request that reached the API and came back 4xx/5xx. `code`, `field` and `type` are the
- * first entry of the envelope's `errors[]`; `errors` keeps them all.
+ * A request that reached the API and came back 4xx/5xx, or 2xx with a body that is not JSON.
+ * `code`, `field` and `type` are the first entry of the envelope's `errors[]`; `errors` keeps them all.
  */
 export class ApiRequestError extends Error {
   readonly code?: string
@@ -235,7 +235,15 @@ export class ApiClient {
       return undefined as T
     }
 
-    const json = JSON.parse(text) as ApiEnvelope<T>
+    // A 2xx that is not JSON did not come from the API: an HTML page behind a wrong base URL, say.
+    let json: ApiEnvelope<T>
+    try {
+      json = JSON.parse(text) as ApiEnvelope<T>
+    } catch {
+      this.emit(describeResponse(response.status, durationMs))
+      throw new ApiRequestError(`The API response was not JSON (${response.status} ${response.statusText}).`, response.status)
+    }
+
     this.emit(describeResponse(response.status, durationMs, json.requestId))
     return json.data
   }

@@ -1,3 +1,4 @@
+import {Errors} from '@oclif/core'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -24,7 +25,13 @@ export function loadConfig(): DataboxConfig {
   }
 
   const content = fs.readFileSync(file, 'utf8')
-  return JSON.parse(content) as DataboxConfig
+  try {
+    return JSON.parse(content) as DataboxConfig
+  } catch {
+    // The parser's message quotes the text around the error, which can be part of the key,
+    // so it is dropped. Login reads this file too, so it cannot recover it in place.
+    throw new Errors.CLIError(`Config file ${file} is not valid JSON. Delete it and run "databox auth login" again.`, {exit: 1})
+  }
 }
 
 export function saveConfig(config: DataboxConfig): void {

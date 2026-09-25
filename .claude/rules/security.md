@@ -19,9 +19,9 @@ paths:
 ## URL interpolation
 
 - User-provided IDs are interpolated into API paths: `/v2/datasets/${args.datasetId}`.
-- Dataset commands validate with `requireNumericId()` (digits only — safe).
-- Other commands do not validate — a malicious ID could produce unexpected API paths.
-- New commands that interpolate user input into URL paths should validate the input.
+- Numeric IDs validate with `requireNumericId()`, UUIDs (ingestion IDs) with `requireUuid()` — both safe.
+- Metric keys are opaque strings: `requireMetricId()` plus `encodeURIComponent`. Encoding alone is not enough — it leaves `.`/`..` intact and `new URL()` resolves them, so `metric delete ..` would send `DELETE /v2/`.
+- Every command that interpolates user input into a URL path validates it first.
 
 ```typescript
 // Safe — validated

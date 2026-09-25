@@ -144,6 +144,16 @@ describe('ApiClient response bodies', () => {
     expect(error.message).to.equal('API error: 500 Internal Server Error')
   })
 
+  it('maps a 2xx body that is not JSON to ApiRequestError, not a raw SyntaxError', async () => {
+    respondWith(() => new Response('<html>Sign in</html>', {status: 200, statusText: 'OK'}))
+
+    const error = await caught(new ApiClient({apiKey: KEY}).get('/v2/datasets')) as ApiRequestError
+
+    expect(error).to.be.instanceOf(ApiRequestError)
+    expect(error.status).to.equal(200)
+    expect(error.message).to.equal('The API response was not JSON (200 OK).')
+  })
+
   it('ignores an errors field that is not an array', async () => {
     respondWith(() => new Response(JSON.stringify({errors: 'boom', requestId: 'req-1'}), {status: 500, statusText: 'Internal Server Error'}))
 

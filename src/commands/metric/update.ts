@@ -47,6 +47,8 @@ Only custom-query metrics can be updated. Fields you omit keep their current val
   async run(): Promise<void> {
     const {args, flags} = await this.parse(MetricUpdate)
 
+    this.requireMetricId(args.metricId, 'Metric ID')
+
     const body: Record<string, unknown> = {}
     if (flags.name !== undefined) body.name = flags.name
     if (flags['aggregation-function'] !== undefined) body.aggregationFunction = flags['aggregation-function']

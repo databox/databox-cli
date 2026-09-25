@@ -47,36 +47,14 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     }),
   }
 
+  /** Built in init(). */
+  protected apiClient!: ApiClient
   protected flags!: Flags<T>
-  private _apiClient?: ApiClient
 
+  /** `--account-id` is validated in init(). */
   protected get accountHeaders(): Record<string, string> {
     const accountId = this.flags['account-id']
-    if (!accountId) return {}
-
-    if (!/^\d+$/.test(accountId)) {
-      this.error('--account-id must be a numeric value.', {exit: 2})
-    }
-
-    return {'x-account-id': accountId}
-  }
-
-  protected get apiClient(): ApiClient {
-    if (!this._apiClient) {
-      const config = loadConfig()
-      const apiKey = this.flags['api-key'] ?? config.apiKey
-      if (!apiKey) {
-        this.error('Not authenticated. Run "databox auth login" first.', {exit: 1})
-      }
-
-      this._apiClient = new ApiClient({
-        apiKey,
-        baseUrl: this.flags['api-url'] ?? config.apiUrl,
-        trace: this.flags.verbose ? line => this.logToStderr(line) : undefined,
-      })
-    }
-
-    return this._apiClient
+    return accountId ? {'x-account-id': accountId} : {}
   }
 
   /**
@@ -114,10 +92,28 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     const {flags} = await this.parse(this.constructor as typeof BaseCommand)
     this.flags = flags as Flags<T>
 
-    // Checked here, before run(), so a bad key fails before any prompt or request. The API
+    // Checked here, before run(), so bad input fails before any prompt or request. The API
     // would reject it too, but only after a destructive command had asked for confirmation.
     const idempotencyKey = (flags as {'idempotency-key'?: string})['idempotency-key']
     if (idempotencyKey !== undefined) this.requireUuid(idempotencyKey, '--idempotency-key')
+
+    const accountId = this.flags['account-id']
+    if (accountId) this.requireNumericId(accountId, '--account-id')
+
+    // Every command that extends BaseCommand calls the API, so a missing key or an unreadable
+    // config fails here too, not after the prompt. auth login, which runs without a key,
+    // extends Command.
+    const config = loadConfig()
+    const apiKey = this.flags['api-key'] ?? config.apiKey
+    if (!apiKey) {
+      this.error('Not authenticated. Run "databox auth login" first.', {exit: 1})
+    }
+
+    this.apiClient = new ApiClient({
+      apiKey,
+      baseUrl: this.flags['api-url'] ?? config.apiUrl,
+      trace: this.flags.verbose ? line => this.logToStderr(line) : undefined,
+    })
   }
 
   /**
@@ -129,6 +125,17 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
       return JSON.parse(value) as T
     } catch {
       this.error(`Invalid JSON for --${flag}. Expected format: ${shape}`, {exit: 2})
+    }
+  }
+
+  /**
+   * Metric keys are opaque strings upstream, with no route constraint and no enforced shape,
+   * so only what would reroute the request is rejected: encodeURIComponent leaves "." and ".."
+   * alone, and the URL parser resolves them as dot-segments (`metric delete ..` → DELETE /v2/).
+   */
+  protected requireMetricId(value: string, name: string): void {
+    if (value.trim() === '' || value === '.' || value === '..') {
+      this.error(`${name} must be a metric key, e.g. "500|custom_query_100" or "GoogleAnalytics4@sessions".`, {exit: 2})
     }
   }
 

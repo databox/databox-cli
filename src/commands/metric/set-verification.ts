@@ -25,6 +25,8 @@ The metric ID must carry its source ("500|custom_query_100"): an integration key
   async run(): Promise<void> {
     const {args, flags} = await this.parse(MetricSetVerification)
 
+    this.requireMetricId(args.metricId, 'Metric ID')
+
     const response = await this.apiClient.put<VerificationDetail>(`/v2/metrics/${encodeURIComponent(args.metricId)}/verification`, {
       isVerified: flags.status === 'verified',
     }, this.accountHeaders)

@@ -22,6 +22,8 @@ export default class MetricDelete extends BaseCommand<typeof MetricDelete> {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(MetricDelete)
 
+    this.requireMetricId(args.metricId, 'Metric ID')
+
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to delete metric ${args.metricId}?`)
       if (!confirmed) {

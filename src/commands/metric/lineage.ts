@@ -25,6 +25,8 @@ Parents are what the metric is built from: the metrics a calculated metric reads
   async run(): Promise<void> {
     const {args} = await this.parse(MetricLineage)
 
+    this.requireMetricId(args.metricId, 'Metric ID')
+
     const response = await this.apiClient.get<LineageResponse>(`/v2/metrics/${encodeURIComponent(args.metricId)}/lineage`, undefined, this.accountHeaders)
 
     printLineage(response, this.outputFormat)
