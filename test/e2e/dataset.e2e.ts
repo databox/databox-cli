@@ -30,6 +30,12 @@ interface DatasetDetail extends Dataset {
   syncInterval: null | number
 }
 
+/** DatasetResponse.cs `DatasetPermissions`. */
+interface Permissions {
+  accessLevel: string
+  accessList: Array<{id: number; name: string}> | null
+}
+
 /** DatasetResponse.cs `LineageNode`. */
 interface LineageNode {
   id: string
@@ -156,7 +162,7 @@ describe('dataset', () => {
 
     const table = expectOk(await cli(['dataset', 'list', '--page-size', '10']))
 
-    for (const header of ['Data Source', 'Ingestion', 'Status', 'Sync status', 'Last activity']) {
+    for (const header of ['Data Source', 'Ingestion', 'Status', 'Sync Status', 'Last Activity']) {
       expect(table.stdout).to.include(header)
     }
 
@@ -316,6 +322,26 @@ describe('dataset', () => {
     expect(updated.syncInterval, 'the detail reports the interval just set').to.equal(1440)
   })
 
+  it('sets a timezone the organization supports and returns the updated dataset', async () => {
+    const timezones = json<Array<{timezone: string}>>(await cli(['organization', 'timezones', '--json']))
+    // Pick a zone the fixture is not already in, so the call has to change something.
+    const current = json<DatasetDetail>(await cli(['dataset', 'get', datasetId, '--json'])).timezone
+    const {timezone} = timezones.find(zone => zone.timezone !== current) ?? timezones[0]
+
+    const result = expectOk(await cliWithRetry(['dataset', 'set-timezone', datasetId, '--timezone', timezone]))
+    expect(result.stdout).to.include(timezone)
+
+    const updated = json<DatasetDetail>(
+      await cliWithRetry(['dataset', 'set-timezone', datasetId, '--timezone', timezone, '--json']),
+    )
+    expect(String(updated.id)).to.equal(datasetId)
+    expectField(updated, 'columnCount', 'number')
+    expect(updated.timezone).to.equal(timezone)
+
+    const reread = json<DatasetDetail>(await cli(['dataset', 'get', datasetId, '--json']))
+    expect(reread.timezone).to.equal(timezone)
+  })
+
   it('returns sync history', async () => {
     const history = json<Array<Record<string, unknown>>>(await cli(['dataset', 'sync-history', datasetId, '--json']))
     expect(history).to.be.an('array')
@@ -375,6 +401,27 @@ describe('dataset', () => {
   it('reads permissions', async () => {
     const permissions = json<Record<string, unknown>>(await cli(['dataset', 'permissions', datasetId, '--json']))
     expect(permissions).to.be.an('object')
+  })
+
+  // The fixture is this suite's own, created and deleted here, so it needs no withRestore: the
+  // undo log is for resources the suite does not own, and an entry for a deleted fixture could
+  // never be replayed. It is still put back, so the tests after this one read the usual state.
+  it('round-trips the private access level', async () => {
+    const original = json<Permissions>(await cli(['dataset', 'permissions', datasetId, '--json']))
+
+    const updated = json<Permissions>(
+      await cliWithRetry(['dataset', 'set-permissions', datasetId, '--access-level', 'private', '--json']),
+    )
+    expect(updated.accessLevel).to.equal('private')
+    expect(updated.accessList).to.equal(null)
+
+    const reread = json<Permissions>(await cli(['dataset', 'permissions', datasetId, '--json']))
+    expect(reread.accessLevel).to.equal('private')
+
+    const restoreArgv = ['dataset', 'set-permissions', datasetId, '--access-level', original.accessLevel, '--json']
+    for (const user of original.accessList ?? []) restoreArgv.push('--access-list', String(user.id))
+    const restored = json<Permissions>(await cliWithRetry(restoreArgv))
+    expect(restored.accessLevel).to.equal(original.accessLevel)
   })
 
   // Datasets created through the API cannot be duplicated: a pushed dataset has no

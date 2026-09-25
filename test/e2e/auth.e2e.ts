@@ -2,9 +2,8 @@ import {expect} from 'chai'
 import {randomUUID} from 'node:crypto'
 
 import {
-  cli, expectExit, expectOk, json,
+  cli, expectExit, expectNoKey, expectOk, json,
 } from './helpers/cli.js'
-import {getConfig} from './helpers/env.js'
 
 describe('auth', () => {
   it('validates the configured API key', async () => {
@@ -26,20 +25,16 @@ describe('auth', () => {
   })
 
   it('exits 1 with a login hint when no credentials are configured', async () => {
-    const result = await cli(['account', 'info'], {withoutCredentials: true})
+    const result = await cli(['organization', 'info'], {withoutCredentials: true})
 
     expectExit(result, 1)
     expect(result.stderr).to.include('databox auth login')
   })
 
   it('never echoes the API key', async () => {
-    const {apiKey} = getConfig().environment
-
-    for (const argv of [['auth', 'validate'], ['auth', 'validate', '--json'], ['account', 'info']]) {
+    for (const argv of [['auth', 'validate'], ['auth', 'validate', '--json'], ['organization', 'info']]) {
       // eslint-disable-next-line no-await-in-loop
-      const result = await cli(argv)
-      expect(result.stdout, `stdout of "${argv.join(' ')}"`).to.not.include(apiKey)
-      expect(result.stderr, `stderr of "${argv.join(' ')}"`).to.not.include(apiKey)
+      expectNoKey(await cli(argv))
     }
   })
 })

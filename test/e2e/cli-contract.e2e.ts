@@ -4,7 +4,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 
 import {
-  cli, errorText, expectExit, expectOk, json, skipWith,
+  cli, errorText, expectExit, expectNoKey, expectOk, json, skipWith,
 } from './helpers/cli.js'
 import {parseCsv} from './helpers/csv.js'
 import {getConfig} from './helpers/env.js'
@@ -129,7 +129,6 @@ describe('cli-contract', () => {
     })
 
     it('traces requests to stderr under --verbose, leaving stdout parseable and the key unprinted', async () => {
-      const {apiKey} = getConfig().environment
       const result = await cli(['organization', 'info', '--json', '--verbose'])
 
       expect(() => JSON.parse(result.stdout), 'stdout under --verbose was not pure JSON').to.not.throw()
@@ -138,8 +137,7 @@ describe('cli-contract', () => {
       expect(result.stderr).to.match(/Response: 200 \(\d+ms\)/)
       expect(result.stdout).to.not.match(/Request: |Response: /)
 
-      expect(result.stdout, 'stdout under --verbose').to.not.include(apiKey)
-      expect(result.stderr, 'stderr under --verbose').to.not.include(apiKey)
+      expectNoKey(result)
     })
 
     // Port 9 (discard) is closed on a loopback that runs no such service, so the connection is
@@ -172,8 +170,6 @@ describe('cli-contract', () => {
 
   describe('credential hygiene', () => {
     it('never prints the API key, on success or failure', async () => {
-      const {apiKey} = getConfig().environment
-
       const runs = [
         await cli(['organization', 'info']),
         await cli(['organization', 'info', '--json']),
@@ -182,10 +178,7 @@ describe('cli-contract', () => {
         await cli(['organization', 'info'], {env: {DATABOX_API_KEY: 'pak_bad-key-value'}}),
       ]
 
-      for (const result of runs) {
-        expect(result.stdout, `stdout of "${result.argv.join(' ')}"`).to.not.include(apiKey)
-        expect(result.stderr, `stderr of "${result.argv.join(' ')}"`).to.not.include(apiKey)
-      }
+      for (const result of runs) expectNoKey(result)
     })
 
     it('keeps --api-key, --api-url and --account-id out of help output', async () => {

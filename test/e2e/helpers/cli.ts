@@ -178,6 +178,25 @@ export function expectExit(result: CliResult, code: number): CliResult {
   return result
 }
 
+/**
+ * Asserts neither stream carries the live API key. Checked as a boolean on purpose: a
+ * `to.not.include(apiKey)` failure quotes the key it was looking for, printing it at
+ * exactly the moment it has leaked.
+ */
+export function expectNoKey(result: CliResult): CliResult {
+  const {apiKey} = getConfig().environment
+  // ''.includes('') is true, so an unset key would fail every run for the wrong reason.
+  if (!apiKey) throw new Error('No API key is configured to check the output against.')
+
+  for (const [stream, text] of [['stdout', result.stdout], ['stderr', result.stderr]]) {
+    if (text.includes(apiKey)) {
+      throw new Error(`The API key appeared on ${stream} of "databox ${redact(result.argv.join(' '))}".`)
+    }
+  }
+
+  return result
+}
+
 /** Asserts the run succeeded and that stdout is nothing but parseable JSON. */
 export function json<T = unknown>(result: CliResult): T {
   expectOk(result)

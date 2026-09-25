@@ -72,7 +72,7 @@ describe('data-source', () => {
   it('renders the list as a table with pagination', async () => {
     const result = expectOk(await cli(['data-source', 'list', '--page-size', '5']))
 
-    for (const header of ['ID', 'Name', 'Status', 'Last activity']) expect(result.stdout).to.include(header)
+    for (const header of ['ID', 'Name', 'Status', 'Last Activity']) expect(result.stdout).to.include(header)
     expect(result.stdout).to.match(/Page \d+ of \d+/)
   })
 
@@ -130,8 +130,10 @@ describe('data-source', () => {
   })
 
   it('sets a timezone the account supports and returns the updated data source', async () => {
-    const timezones = json<Array<{timezone: string}>>(await cli(['account', 'timezones', '--json']))
-    const {timezone} = timezones[0]
+    const timezones = json<Array<{timezone: string}>>(await cli(['organization', 'timezones', '--json']))
+    // Pick a zone the fixture is not already in, so the call has to change something.
+    const current = json<DataSource>(await cli(['data-source', 'get', dataSourceId, '--json'])).timezone
+    const {timezone} = timezones.find(zone => zone.timezone !== current) ?? timezones[0]
 
     const result = expectOk(await cliWithRetry(['data-source', 'set-timezone', dataSourceId, '--timezone', timezone]))
     expect(result.stdout).to.include(timezone)

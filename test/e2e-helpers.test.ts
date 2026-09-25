@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {CliResult, errorText} from './e2e/helpers/cli.js'
+import {CliResult, errorText, expectNoKey} from './e2e/helpers/cli.js'
 import {resetConfig} from './e2e/helpers/env.js'
 
 function result(stderr: string, stdout = ''): CliResult {
@@ -44,5 +44,71 @@ describe('e2e errorText', () => {
 
   it('keeps a › that is not at the start of a line', () => {
     expect(errorText(result('Error: a › b'))).to.equal('Error: a › b')
+  })
+})
+
+function succeeded(stdout: string, stderr = ''): CliResult {
+  return {
+    argv: ['organization', 'info', '--json'], code: 0, stderr, stdout, timedOut: false,
+  }
+}
+
+function failureOf(assertion: () => unknown): string {
+  try {
+    assertion()
+  } catch (error) {
+    return (error as Error).message
+  }
+
+  throw new Error('expected the assertion to fail')
+}
+
+/**
+ * expectNoKey fails exactly when the key has leaked, so its own message must not print it
+ * again — a chai `to.not.include(apiKey)` quotes the value it was looking for.
+ */
+describe('e2e expectNoKey', () => {
+  const KEY = 'pak_test-secret-not-for-printing'
+  const saved = process.env.DATABOX_E2E_API_KEY
+
+  beforeEach(() => {
+    process.env.DATABOX_E2E_API_KEY = KEY
+    resetConfig()
+  })
+
+  afterEach(() => {
+    if (saved === undefined) {
+      delete process.env.DATABOX_E2E_API_KEY
+    } else {
+      process.env.DATABOX_E2E_API_KEY = saved
+    }
+
+    resetConfig()
+  })
+
+  it('passes output that does not carry the key', () => {
+    const clean = succeeded('{"name": "Acme"}', 'Request: GET /v2/organization')
+    expect(expectNoKey(clean)).to.equal(clean)
+  })
+
+  it('names the command and stream of a leak on stdout, without the key', () => {
+    const message = failureOf(() => expectNoKey(succeeded(`{"apiKey": "${KEY}"}`)))
+
+    expect(message).to.include('stdout of "databox organization info --json"')
+    expect(message).to.not.include(KEY)
+  })
+
+  it('names stderr when the leak is there, without the key', () => {
+    const message = failureOf(() => expectNoKey(succeeded('{}', `Headers: x-api-key: ${KEY}`)))
+
+    expect(message).to.include('stderr')
+    expect(message).to.not.include(KEY)
+  })
+
+  it('says so when no key is configured, rather than reporting a leak', () => {
+    delete process.env.DATABOX_E2E_API_KEY
+    resetConfig()
+
+    expect(() => expectNoKey(succeeded('anything'))).to.throw(/No API key is configured/)
   })
 })

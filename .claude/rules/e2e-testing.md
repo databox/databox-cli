@@ -40,6 +40,10 @@ Never rename an e2e file to `.test.ts`, and never add `test/e2e` to `.mocharc.ym
 - **Never mutate a resource the suite did not create without `withRestore()`.** It
   records the undo on disk before the change, so an interrupted run can be repaired
   with `npm run test:e2e:cleanup`. A bare `finally` does not survive Ctrl-C.
+- **A command rename or removal sweeps `test/e2e/` too.** `npm test` never loads e2e files,
+  so a stale `cli(['old-topic', 'cmd'])` stays green until the live suite runs.
+  `test/e2e-commands.test.ts` checks every e2e argv against `src/commands/`; a deliberate
+  negative test goes on its allowlist.
 
 ## Classifying a failure
 
