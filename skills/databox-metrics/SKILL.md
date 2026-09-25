@@ -22,7 +22,7 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | Create metric | `databox metric create --name "Revenue" --dataset-id 123 --measure '{"id":"amount","displayName":"Amount"}' --date '{"id":"date","displayName":"Date"}'` |
 | Update metric | `databox metric update METRIC_ID --name "New Name"` |
 | Delete metric | `databox metric delete METRIC_ID --force` |
-| Rows behind a value | `databox metric drilldown --metric-id METRIC_ID --source-id 123 --start-timestamp 1704067200 --end-timestamp 1735689600` |
+| Rows behind a value | `databox metric drilldown --metric-id METRIC_ID --start-timestamp 1704067200 --end-timestamp 1735689600` |
 | Dimension values | `databox metric dimension-values --metric-id METRIC_ID --source-id 123 --dimension-id country` |
 | Lineage | `databox metric lineage METRIC_ID` |
 | Where it is used | `databox metric usages METRIC_ID` |
@@ -34,11 +34,11 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 ## Metric IDs
 
 Metric IDs are strings in one of these formats:
-- Custom query metrics: `500|custom_query_100` (the part before `|` is the source ID)
+- Custom metrics: `500|custom_query_100` (the part before `|` is the source ID)
 - Integration metrics: `GoogleAnalytics4@sessions`
 - Custom push metrics: `my_custom_metric`
 
-Only custom query metrics can be created, updated, and deleted via the CLI. `verification` and `set-verification` need an ID with `|`; an integration key without one is rejected with a 400. `usages` only looks up custom query metrics and returns an empty list for any other.
+Only dataset-based custom metrics can be created, updated, and deleted via the CLI. `verification` and `set-verification` need an ID with `|`; an integration key without one is rejected with a 400. `usages` only looks up custom query metrics and returns an empty list for any other.
 
 ## Creating and Updating Custom Metrics
 
@@ -67,7 +67,7 @@ On `metric update`, omitted flags keep their current values. `--dimension` repla
 | Flag | Required | Description |
 |------|----------|-------------|
 | `--metric-id` | Yes | Metric ID |
-| `--source-id` | Yes | The dataset the metric belongs to (`sourceId` in `metric list`) |
+| `--source-id` | No | The dataset the metric is built on. Defaults to the part of `--metric-id` before `\|`; if given, it must match |
 | `--start-timestamp`, `--end-timestamp` | Yes | Unix timestamps in seconds; start must not be after end |
 | `--dimension-id` | No | Dimension to break down by; repeat for several |
 | `--filters` | No | `{"logicalOperator", "groups": [{"logicalOperator", "conditions": [{"type", "field", "operator", "values"}]}]}` |
@@ -83,7 +83,7 @@ To reproduce what a databoard shows, take the metric's dimensions and applied fi
 ## Lineage and Usages
 
 - `metric lineage METRIC_ID` shows parents (the metrics a calculated metric reads, otherwise its dataset or data source) and children (calculated metrics that read it). A metric not built on a dataset returns 404.
-- `metric usages METRIC_ID` shows where a custom query metric is used: boards, alerts, goals, reports, forecasts, scorecards and calculated metrics.
+- `metric usages METRIC_ID` shows where a custom metric is used: boards, alerts, goals, reports, forecasts, scorecards and calculated metrics.
 
 ## Notes
 

@@ -103,6 +103,28 @@ describe('metric drilldown', () => {
       expect(requests()).to.have.lengthOf(0)
     })
 
+    it('takes the dataset from the metric ID when --source-id is omitted', async () => {
+      await runCommand(ARGS.filter((arg, i) => arg !== '--source-id' && ARGS[i - 1] !== '--source-id'), {root: process.cwd()})
+      expect(lastBody('POST', '/v2/metrics/drilldown')).to.include({metricId: '42|custom_query_1', sourceId: 42})
+    })
+
+    it('rejects a --source-id that is not the dataset in the metric ID', async () => {
+      const {error} = await runCommand(ARGS.map(arg => (arg === '42' ? '43' : arg)), {root: process.cwd()})
+      expect(error?.oclif?.exit).to.equal(2)
+      expect(error?.message).to.contain('--source-id must be the dataset in --metric-id (42)')
+      expect(requests()).to.have.lengthOf(0)
+    })
+
+    it('requires --source-id when the metric ID has no dataset', async () => {
+      const {error} = await runCommand([
+        'metric', 'drilldown', '--metric-id', 'GoogleAnalytics4@sessions',
+        '--start-timestamp', '1704067200', '--end-timestamp', '1706745600',
+      ], {root: process.cwd()})
+      expect(error?.oclif?.exit).to.equal(2)
+      expect(error?.message).to.contain('--source-id is required')
+      expect(requests()).to.have.lengthOf(0)
+    })
+
     it('rejects a start after the end', async () => {
       const {error} = await runCommand([
         'metric', 'drilldown', '--metric-id', '42|custom_query_1', '--source-id', '42',

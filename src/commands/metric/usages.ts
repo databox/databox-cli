@@ -23,7 +23,7 @@ export default class MetricUsages extends BaseCommand<typeof MetricUsages> {
 
   static description = `Get where a metric is used
 
-Type is board, alert, goal, report, forecast, scorecard or calculatedMetric. Only custom-query metrics (IDs like "500|custom_query_100") are looked up: for any other metric the list is always empty, as it is for a metric whose query has since been deleted.`
+Type is board, alert, goal, report, forecast, scorecard or calculatedMetric. Only dataset-based custom metrics (IDs like "500|custom_query_100") are looked up: for any other metric the list is always empty, as it is for a metric whose query has since been deleted.`
 
   static examples = [
     '<%= config.bin %> metric usages "500|custom_query_100"',

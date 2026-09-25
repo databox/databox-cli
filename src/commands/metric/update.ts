@@ -13,7 +13,7 @@ export default class MetricUpdate extends BaseCommand<typeof MetricUpdate> {
 
   static description = `Update a custom metric
 
-Only custom-query metrics can be updated. Fields you omit keep their current values. --dimension replaces the whole dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so "logicalOperator" can be changed on its own; "conditions": [] clears them. Prints the updated metric as "metric get" does.`
+Only dataset-based custom metrics can be updated. Fields you omit keep their current values. --dimension replaces the whole dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so "logicalOperator" can be changed on its own; "conditions": [] clears them. Prints the updated metric as "metric get" does.`
 
   static examples = [
     '<%= config.bin %> metric update "500|custom_query_100" --name "New Name"',

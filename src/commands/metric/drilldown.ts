@@ -24,12 +24,12 @@ const FILTERS_SHAPE = '{"logicalOperator":"AND","groups":[{"logicalOperator":"AN
 export default class MetricDrilldown extends BaseCommand<typeof MetricDrilldown> {
   static description = `Get the rows behind a metric's value
 
-Only dataset-backed custom metrics support drilldown; check "Drilldown" in "metric list" or "metric get". To reproduce what a databoard shows, pass the same --dimension-id and --filters its datablock uses ("databoard metrics" reports both); without them you get every row in the period. Columns follow the response schema, headed by display name; --sort-by takes a column id. --json returns the whole response: the rows under "items", with "schema" and "pagination".`
+Only dataset-based custom metrics support drilldown; check "Drilldown" in "metric list" or "metric get". The dataset is taken from the metric ID (the part before "|"), so --source-id is only needed to state it explicitly. To reproduce what a databoard shows, pass the same --dimension-id and --filters its datablock uses ("databoard metrics" reports both); without them you get every row in the period. Columns follow the response schema, headed by display name; --sort-by takes a column id. --json returns the whole response: the rows under "items", with "schema" and "pagination".`
 
   static examples = [
-    '<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600',
-    '<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600 --dimension-id country --sort-by amount --sort-order desc',
-    `<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600 --filters '${FILTERS_SHAPE}' --json`,
+    '<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --start-timestamp 1704067200 --end-timestamp 1706745600',
+    '<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --start-timestamp 1704067200 --end-timestamp 1706745600 --dimension-id country --sort-by amount --sort-order desc',
+    `<%= config.bin %> metric drilldown --metric-id "500|custom_query_100" --start-timestamp 1704067200 --end-timestamp 1706745600 --filters '${FILTERS_SHAPE}' --json`,
   ]
 
   static flags = {
@@ -41,7 +41,7 @@ Only dataset-backed custom metrics support drilldown; check "Drilldown" in "metr
     'metric-id': Flags.string({description: 'Metric ID', required: true}),
     ...dataPaginationFlags,
     ...sortFlags(),
-    'source-id': Flags.integer({description: 'The dataset the metric belongs to (the sourceId shown by "metric list")', required: true}),
+    'source-id': Flags.integer({description: 'The dataset the metric is built on. Defaults to the part of --metric-id before "|"; if given, it must match it'}),
     'start-timestamp': Flags.integer({description: 'Start of the period (Unix timestamp, seconds)', required: true}),
   }
 
@@ -55,13 +55,15 @@ Only dataset-backed custom metrics support drilldown; check "Drilldown" in "metr
       this.error('--start-timestamp must be earlier than or equal to --end-timestamp.', {exit: 2})
     }
 
+    const sourceId = this.resolveSourceId()
+
     const body: Record<string, unknown> = {
       metricId: this.flags['metric-id'],
       period: {
         endTimestamp: this.flags['end-timestamp'],
         startTimestamp: this.flags['start-timestamp'],
       },
-      sourceId: this.flags['source-id'],
+      sourceId,
     }
 
     if (this.flags['dimension-id']) body.dimensionIds = this.flags['dimension-id']
@@ -86,5 +88,26 @@ Only dataset-backed custom metrics support drilldown; check "Drilldown" in "metr
     formatOutput(rows, rowColumns(schema, rows), this.outputFormat)
 
     showPagination(response.pagination ?? undefined, this.outputFormat)
+  }
+
+  // The API requires sourceId to be the dataset in the metric ID, so a mismatch fails here instead.
+  private resolveSourceId(): number {
+    const prefix = /^(\d+)\|/.exec(this.flags['metric-id'])?.[1]
+    const fromMetricId = prefix === undefined ? undefined : Number(prefix)
+    const given = this.flags['source-id']
+
+    if (given === undefined) {
+      if (fromMetricId === undefined) {
+        this.error('--source-id is required: --metric-id has no dataset before "|". Only dataset-based custom metrics support drilldown.', {exit: 2})
+      }
+
+      return fromMetricId
+    }
+
+    if (fromMetricId !== undefined && given !== fromMetricId) {
+      this.error(`--source-id must be the dataset in --metric-id (${fromMetricId}).`, {exit: 2})
+    }
+
+    return given
   }
 }

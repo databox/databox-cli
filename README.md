@@ -2751,9 +2751,9 @@ Get the rows behind a metric's value
 
 ```
 USAGE
-  $ databox metric drilldown --end-timestamp <value> --metric-id <value> --source-id <value> --start-timestamp <value>
-    [--no-color] [--output table|json|csv | --json] [--verbose] [--dimension-id <value>...] [--filters <value>] [--all |
-    --page <value>] [--page-size <value>] [--sort-by <value>] [--sort-order asc|desc]
+  $ databox metric drilldown --end-timestamp <value> --metric-id <value> --start-timestamp <value> [--no-color]
+    [--output table|json|csv | --json] [--verbose] [--dimension-id <value>...] [--filters <value>] [--all | --page
+    <value>] [--page-size <value>] [--sort-by <value>] [--sort-order asc|desc] [--source-id <value>]
 
 FLAGS
   --all                      Fetch every page (100 items per request unless --page-size is given) and print them as one
@@ -2773,25 +2773,27 @@ FLAGS
   --sort-by=<value>          Field to sort by
   --sort-order=<option>      Sort direction
                              <options: asc|desc>
-  --source-id=<value>        (required) The dataset the metric belongs to (the sourceId shown by "metric list")
+  --source-id=<value>        The dataset the metric is built on. Defaults to the part of --metric-id before "|"; if
+                             given, it must match it
   --start-timestamp=<value>  (required) Start of the period (Unix timestamp, seconds)
   --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
   Get the rows behind a metric's value
 
-  Only dataset-backed custom metrics support drilldown; check "Drilldown" in "metric list" or "metric get". To reproduce
+  Only dataset-based custom metrics support drilldown; check "Drilldown" in "metric list" or "metric get". The dataset
+  is taken from the metric ID (the part before "|"), so --source-id is only needed to state it explicitly. To reproduce
   what a databoard shows, pass the same --dimension-id and --filters its datablock uses ("databoard metrics" reports
   both); without them you get every row in the period. Columns follow the response schema, headed by display name;
   --sort-by takes a column id. --json returns the whole response: the rows under "items", with "schema" and
   "pagination".
 
 EXAMPLES
-  $ databox metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600
+  $ databox metric drilldown --metric-id "500|custom_query_100" --start-timestamp 1704067200 --end-timestamp 1706745600
 
-  $ databox metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600 --dimension-id country --sort-by amount --sort-order desc
+  $ databox metric drilldown --metric-id "500|custom_query_100" --start-timestamp 1704067200 --end-timestamp 1706745600 --dimension-id country --sort-by amount --sort-order desc
 
-  $ databox metric drilldown --metric-id "500|custom_query_100" --source-id 500 --start-timestamp 1704067200 --end-timestamp 1706745600 --filters '{"logicalOperator":"AND","groups":[{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}' --json
+  $ databox metric drilldown --metric-id "500|custom_query_100" --start-timestamp 1704067200 --end-timestamp 1706745600 --filters '{"logicalOperator":"AND","groups":[{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}' --json
 ```
 
 _See code: [src/commands/metric/drilldown.ts](https://github.com/databox/databox-cli/blob/v1.0.0/src/commands/metric/drilldown.ts)_
@@ -2967,8 +2969,8 @@ FLAGS
 DESCRIPTION
   Update a custom metric
 
-  Only custom-query metrics can be updated. Fields you omit keep their current values. --dimension replaces the whole
-  dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so
+  Only dataset-based custom metrics can be updated. Fields you omit keep their current values. --dimension replaces the
+  whole dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so
   "logicalOperator" can be changed on its own; "conditions": [] clears them. Prints the updated metric as "metric get"
   does.
 
@@ -3009,8 +3011,8 @@ FLAGS
 DESCRIPTION
   Get where a metric is used
 
-  Type is board, alert, goal, report, forecast, scorecard or calculatedMetric. Only custom-query metrics (IDs like
-  "500|custom_query_100") are looked up: for any other metric the list is always empty, as it is for a metric whose
+  Type is board, alert, goal, report, forecast, scorecard or calculatedMetric. Only dataset-based custom metrics (IDs
+  like "500|custom_query_100") are looked up: for any other metric the list is always empty, as it is for a metric whose
   query has since been deleted.
 
 EXAMPLES
