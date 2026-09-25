@@ -164,7 +164,7 @@ describe('metric', () => {
     ])
 
     expectExit(result, 2)
-    expect(result.stderr).to.include('--measure')
+    expect(errorText(result)).to.include('--measure')
   })
 
   // The unit harness refuses an empty flag value; the real binary passes it through, and an
@@ -181,6 +181,22 @@ describe('metric', () => {
 
     expectExit(result, 2)
     expect(errorText(result)).to.include('Invalid JSON for --filters')
+  })
+
+  it('rejects an empty --name with exit 2', async () => {
+    const result = await cli([
+      'metric', 'create',
+      '--name', '',
+      '--dataset-id', datasetId,
+      '--date', DATE_FIELD,
+      '--measure', MEASURE_FIELD,
+      '--json',
+    ])
+    // A regression sends it; should the API accept it, teardown removes what it created.
+    if (result.code === 0) tracker.track('metric', json<{id: string}>(result).id)
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('--name cannot be empty')
   })
 
   it('returns the metric by id', async function () {

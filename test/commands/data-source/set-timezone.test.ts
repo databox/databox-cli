@@ -25,6 +25,12 @@ describe('data-source set-timezone', () => {
     expect(stdout.trim()).to.equal('Timezone set to "US/Eastern" for data source 42.')
   })
 
+  it('says the existing data was purged with --purge-data', async () => {
+    const {stdout} = await runCommand(['data-source', 'set-timezone', '42', '--timezone', 'US/Eastern', '--purge-data'], {root: process.cwd()})
+    expect(stdout.trim()).to.equal('Timezone set to "US/Eastern" for data source 42; its existing data was purged.')
+    expect(lastBody('PUT', '/v2/data-sources/42/timezone')).to.deep.equal({applyToDatasets: false, purgeData: true, timezone: 'US/Eastern'})
+  })
+
   it('sends timezone, purgeData and applyToDatasets', async () => {
     await runCommand(['data-source', 'set-timezone', '42', '--timezone', 'US/Eastern', '--apply-to-datasets'], {root: process.cwd()})
     expect(lastBody('PUT', '/v2/data-sources/42/timezone')).to.deep.equal({applyToDatasets: true, purgeData: false, timezone: 'US/Eastern'})

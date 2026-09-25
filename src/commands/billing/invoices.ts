@@ -1,5 +1,5 @@
 import {BaseCommand} from '../../base-command.js'
-import {fetchPaginated, paginationFlags} from '../../lib/flags.js'
+import {Pagination, fetchPaginated, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 /** BillingResponse.cs `InvoiceItem`. `amount` is in USD, converted from the minor units upstream reports. */
@@ -14,11 +14,7 @@ interface Invoice {
 
 interface InvoicesResponse {
   items: Invoice[]
-  pagination?: {
-    page: number
-    pageSize: number
-    totalItems: number
-  }
+  pagination?: Pagination
 }
 
 export default class BillingInvoices extends BaseCommand<typeof BillingInvoices> {

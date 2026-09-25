@@ -25,6 +25,12 @@ describe('dataset set-timezone', () => {
     expect(lastBody('PUT', '/v2/datasets/123/timezone')).to.deep.equal({purgeData: false, timezone: 'Europe/London'})
   })
 
+  it('says the existing data was purged with --purge-data', async () => {
+    const {stdout} = await runCommand(['dataset', 'set-timezone', '123', '--timezone', 'Europe/London', '--purge-data'], {root: process.cwd()})
+    expect(stdout.trim()).to.equal('Timezone set to Europe/London for dataset 123; its existing data was purged.')
+    expect(lastBody('PUT', '/v2/datasets/123/timezone')).to.deep.equal({purgeData: true, timezone: 'Europe/London'})
+  })
+
   it('prints the updated dataset with --json', async () => {
     const {stdout} = await runCommand(['dataset', 'set-timezone', '123', '--timezone', 'Europe/London', '--json'], {root: process.cwd()})
     expect(JSON.parse(stdout)).to.deep.equal(updated)

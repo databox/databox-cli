@@ -34,7 +34,8 @@ Prints a confirmation; --json or --output csv prints the updated dataset instead
     }, this.accountHeaders)
 
     if (this.outputFormat === 'table') {
-      this.log(`Timezone set to ${flags.timezone} for dataset ${args.datasetId}.`)
+      const purged = flags['purge-data'] ? '; its existing data was purged' : ''
+      this.log(`Timezone set to ${flags.timezone} for dataset ${args.datasetId}${purged}.`)
       return
     }
 

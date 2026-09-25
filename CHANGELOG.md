@@ -105,6 +105,8 @@ A list prints a bare array of the API's items; a few commands print the whole re
 
 An API error now prints its code, message, the field at fault and the request ID on stderr, and exit codes tell failures apart: `1` for an API error, `2` for input that never reached the API or a network failure, `130` for Ctrl-C at a prompt. See [Errors and Exit Codes](https://github.com/databox/databox-cli#errors-and-exit-codes).
 
+An empty flag value is never silently ignored: `--schema ""`, `--records ""`, `--file ""` and `--integration-key ""` fail with exit 2, as does a blank `--name`, and `--timezone ""` is sent for the API to reject. A redirect from the API is refused with exit 2 rather than followed, since following it would resend your API key.
+
 ### New Commands
 
 91 commands in all, covering the V2 API. New in 1.0.0:

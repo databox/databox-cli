@@ -38,7 +38,8 @@ Prints a confirmation; --json or --output csv prints the updated data source ins
     }, this.accountHeaders)
 
     if (this.outputFormat === 'table') {
-      this.log(`Timezone set to "${this.flags.timezone}" for data source ${args.dataSourceId}.`)
+      const purged = this.flags['purge-data'] ? '; its existing data was purged' : ''
+      this.log(`Timezone set to "${this.flags.timezone}" for data source ${args.dataSourceId}${purged}.`)
       return
     }
 

@@ -206,6 +206,24 @@ describe('dataset', () => {
     expect(errorText(result)).to.include('At least one record must be provided')
   })
 
+  // The unit harness refuses an empty flag value; the real binary passes it through. An empty
+  // --records used to fall through to --file and then stdin, as if it had not been given.
+  it('rejects an empty --records as invalid JSON with exit 2', async () => {
+    // Parsing fails before any request, so the id need not exist.
+    const result = await cli(['dataset', 'ingest', '999999999999', '--records', ''])
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('Invalid JSON for --records')
+  })
+
+  // Likewise an empty --file used to fall through to stdin.
+  it('rejects an empty --file as a missing file with exit 2', async () => {
+    const result = await cli(['dataset', 'ingest', '999999999999', '--file', ''])
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('File not found')
+  })
+
   it('lists the ingestion', async function () {
     this.timeout(120_000)
     if (!ingestionId) skipWith(this, 'no ingestion was started')
@@ -458,7 +476,29 @@ describe('dataset', () => {
     const result = await cli(['dataset', 'get', 'abc123', '--json'])
 
     expectExit(result, 2)
-    expect(result.stderr).to.include('must be a numeric value')
+    expect(errorText(result)).to.include('must be a numeric value')
+  })
+
+  // The unit harness refuses an empty flag value; the real binary passes it through. An empty
+  // --schema used to be dropped, creating a dataset with no schema.
+  it('rejects an empty --schema as invalid JSON with exit 2', async () => {
+    const result = await cli([
+      'dataset', 'create', '--name', e2eName('empty-schema'), '--data-source-id', dataSourceId, '--schema', '', '--json',
+    ])
+    // A regression creates a dataset; tracked, teardown removes it.
+    if (result.code === 0) tracker.track('dataset', json<{id: number}>(result).id)
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('Invalid JSON for --schema')
+  })
+
+  it('rejects an empty --name with exit 2', async () => {
+    const result = await cli(['dataset', 'create', '--name', '', '--data-source-id', dataSourceId, '--json'])
+    // A regression sends it; should the API accept it, teardown removes what it created.
+    if (result.code === 0) tracker.track('dataset', json<{id: number}>(result).id)
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('--name cannot be empty')
   })
 
   it('deletes the dataset', async () => {

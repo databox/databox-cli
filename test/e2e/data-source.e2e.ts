@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, expectExit, expectField, expectKey, expectOk, json, retryRead,
+  cli, cliWithRetry, errorText, expectExit, expectField, expectKey, expectOk, json, retryRead, serviceUnavailable, skipWith,
 } from './helpers/cli.js'
 import {ResourceTracker, createDataSource, e2eName} from './helpers/resources.js'
 
@@ -188,7 +188,33 @@ describe('data-source', () => {
     const result = await cli(['data-source', 'get', 'not-a-number', '--json'])
 
     expectExit(result, 2)
-    expect(result.stderr).to.include('must be a numeric value')
+    expect(errorText(result)).to.include('must be a numeric value')
+  })
+
+  // The unit harness refuses an empty flag value; the real binary passes it through. An empty
+  // --timezone used to be dropped, so the data source took the default zone; now it is sent,
+  // and DataSourceService.CreateDataSource rejects it.
+  it('sends an empty --timezone for the API to reject', async function () {
+    const result = await cliWithRetry(['data-source', 'create', '--name', e2eName('ds-empty-tz'), '--timezone', '', '--json'])
+    // A regression creates a data source; tracked, teardown removes it.
+    if (result.code === 0) tracker.track('data-source', json<{id: number}>(result).id)
+
+    const outage = serviceUnavailable(result)
+    if (outage) skipWith(this, outage)
+
+    expectExit(result, 1)
+    expect(errorText(result)).to.match(/invalid timezone/i)
+  })
+
+  // The API accepts an empty --integration-key and creates a data source with an empty type,
+  // so the CLI refuses it before any request.
+  it('rejects an empty --integration-key with exit 2', async () => {
+    const result = await cli(['data-source', 'create', '--name', e2eName('ds-empty-key'), '--integration-key', '', '--json'])
+    // A regression creates a data source; tracked, teardown removes it.
+    if (result.code === 0) tracker.track('data-source', json<{id: number}>(result).id)
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.include('--integration-key cannot be empty')
   })
 
   it('deletes the data source', async () => {

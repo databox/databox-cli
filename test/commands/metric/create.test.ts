@@ -74,4 +74,13 @@ describe('metric create', () => {
     const {stdout} = await runCommand([...REQUIRED, '--json'], {root: process.cwd()})
     expect(JSON.parse(stdout)).to.deep.equal(metricDetail)
   })
+
+  // runCommand refuses an empty-string flag value, so a quoted blank stands in; the check trims.
+  // The empty string itself is covered in test/e2e/metric.e2e.ts.
+  it('rejects a blank --name with exit 2', async () => {
+    const {error} = await runCommand(REQUIRED.map(arg => (arg === 'Revenue' ? '" "' : arg)), {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--name cannot be empty')
+    expect(requests()).to.have.length(0)
+  })
 })

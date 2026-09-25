@@ -43,6 +43,24 @@ export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
 - Examples use `<%= config.bin %>` template, never hardcoded `databox`. At least 2 examples per command.
 - Args use `Args.string({ required: true })` — even numeric IDs are accepted as strings and validated later.
 
+Never drop `--flag ""` silently: the user typed it deliberately. Where the API validates the field, send the empty
+value (guard with `!== undefined`, never truthiness) and let the API reject it with a message; where the API would
+accept it silently, reject it locally with exit 2. A required name flag rejects blank locally unless the API does
+(the create commands check it anyway, to fail before the round trip). `runCommand` refuses an empty-string flag
+value, so the regression test for `--flag ""` belongs in `test/e2e/`.
+
+```typescript
+// Good — the API validates timezone, so `--timezone ""` reaches it and is rejected with a message
+if (flags.timezone !== undefined) body.timezone = flags.timezone
+// Good — the API would accept a blank integration key, so the CLI refuses it
+if (flags['integration-key'] !== undefined && flags['integration-key'].trim() === '') {
+  this.error('--integration-key cannot be empty.', {exit: 2})
+}
+
+// Bad — `--timezone ""` is dropped and the data source silently gets the default zone
+if (flags.timezone) body.timezone = flags.timezone
+```
+
 ## Output by command type
 
 | Type | Output | Functions |

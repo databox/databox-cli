@@ -1,7 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {fetchPaginated, paginationFlags} from '../../lib/flags.js'
+import {Pagination, fetchPaginated, paginationFlags} from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 
 interface Databoard {
@@ -13,11 +13,7 @@ interface Databoard {
 
 interface DataboardsResponse {
   items: Databoard[]
-  pagination?: {
-    page: number
-    pageSize: number
-    totalItems: number
-  }
+  pagination?: Pagination
 }
 
 export default class DataboardList extends BaseCommand<typeof DataboardList> {

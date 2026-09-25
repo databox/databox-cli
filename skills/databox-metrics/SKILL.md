@@ -28,6 +28,7 @@ Must be authenticated. If not, use the `databox-auth` skill first.
 | Where it is used | `databox metric usages METRIC_ID` |
 | View verification | `databox metric verification METRIC_ID` |
 | Set verification | `databox metric set-verification METRIC_ID --status verified` |
+| List databoards | `databox databoard list --search marketing` |
 | Metrics on a databoard | `databox databoard metrics DATABOARD_ID` |
 
 ## Metric IDs

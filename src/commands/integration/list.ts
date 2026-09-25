@@ -2,18 +2,14 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {
-  addSorting, fetchPaginated, paginationFlags, sortFlags,
+  Pagination, addSorting, fetchPaginated, paginationFlags, sortFlags,
 } from '../../lib/flags.js'
 import {formatOutput, showPagination} from '../../lib/output.js'
 import {IntegrationListItem} from '../../lib/types.js'
 
 interface IntegrationsResponse {
   items: IntegrationListItem[]
-  pagination?: {
-    page: number
-    pageSize: number
-    totalItems: number
-  }
+  pagination?: Pagination
 }
 
 export default class IntegrationList extends BaseCommand<typeof IntegrationList> {
@@ -45,7 +41,7 @@ export default class IntegrationList extends BaseCommand<typeof IntegrationList>
         {header: 'ID', key: 'id'},
         {header: 'Key', key: 'key'},
         {header: 'Name', key: 'name'},
-        {get: row => String(row.supportsDatasets), header: 'Datasets'},
+        {get: row => (row.supportsDatasets ? 'yes' : 'no'), header: 'Datasets'},
       ],
       this.outputFormat,
     )

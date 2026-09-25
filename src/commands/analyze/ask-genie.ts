@@ -2,7 +2,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {ApiConnectionError} from '../../lib/api-client.js'
+import {ApiConnectionError, isRedirectRefusal} from '../../lib/api-client.js'
 
 /**
  * How long to wait for the response headers. Mirrors ApiClient's bound on every other request,
@@ -82,9 +82,15 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
           'x-api-key': this.apiClient.apiKey,
         },
         method: 'POST',
+        redirect: 'error',
         signal: controller.signal,
       })
-    } catch {
+    } catch (error) {
+      if (isRedirectRefusal(error)) {
+        throw new ApiConnectionError('Genie answered with a redirect, which the CLI does not follow (it would resend your API key). '
+          + 'Check --service-url / DATABOX_AGENTIC_SERVICE_URL.')
+      }
+
       throw new ApiConnectionError(controller.signal.aborted
         ? `Genie request timed out after ${seconds(connectMs)}s.`
         : 'Could not connect to Genie. Check your internet connection.')

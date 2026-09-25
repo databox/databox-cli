@@ -20,6 +20,7 @@ const cases: Array<{argv: string[]; flag: string}> = [
   {argv: ['dataset', 'preview-modification', '123', '--data', BAD], flag: 'data'},
   {argv: ['dataset', 'set-column-metadata', '123', '--columns', BAD], flag: 'columns'},
   {argv: ['dataset', 'set-metadata', '123', '--synonyms', BAD], flag: 'synonyms'},
+  {argv: ['dataset', 'ingest', '123', '--records', BAD], flag: 'records'},
   {argv: ['metric', 'create', '--name', 'n', '--dataset-id', '1', '--date', BAD, '--measure', '{}'], flag: 'date'},
   {argv: ['metric', 'create', '--name', 'n', '--dataset-id', '1', '--date', '{}', '--measure', BAD], flag: 'measure'},
   {
@@ -65,13 +66,7 @@ describe('validation: malformed JSON flags', () => {
     })
   }
 
-  // dataset ingest keeps its own messages, one per input mode.
-  it('dataset ingest --records exits 2', async () => {
-    const {error} = await runCommand(['dataset', 'ingest', '123', '--records', BAD], {root: process.cwd()})
-    expect(error?.oclif?.exit).to.equal(2)
-    expect(error?.message).to.contain('--records')
-  })
-
+  // dataset ingest keeps its own messages for --file and stdin, whose JSON is not the flag's value.
   it('dataset ingest --file exits 2 when the file is missing', async () => {
     const {error} = await runCommand(['dataset', 'ingest', '123', '--file', '/no/such/file.json'], {
       root: process.cwd(),

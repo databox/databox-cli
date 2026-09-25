@@ -35,13 +35,19 @@ export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreat
       this.error('--name cannot be empty.', {exit: 2})
     }
 
+    // The API falls back to "ingestion" only when the key is absent: a blank one would be
+    // accepted and create a data source with an empty type.
+    if (this.flags['integration-key'] !== undefined && this.flags['integration-key'].trim() === '') {
+      this.error('--integration-key cannot be empty.', {exit: 2})
+    }
+
     const body: Record<string, unknown> = {name: this.flags.name}
 
-    if (this.flags.timezone) {
+    if (this.flags.timezone !== undefined) {
       body.timezone = this.flags.timezone
     }
 
-    if (this.flags['integration-key']) {
+    if (this.flags['integration-key'] !== undefined) {
       body.integrationKey = this.flags['integration-key']
     }
 

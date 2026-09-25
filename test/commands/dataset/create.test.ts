@@ -62,4 +62,13 @@ describe('dataset create', () => {
     expect(error?.message).to.contain('"id"')
     expect(error?.message).to.not.contain('columnId')
   })
+
+  // runCommand refuses an empty-string flag value, so a quoted blank stands in; the check trims.
+  // The empty string itself is covered in test/e2e/dataset.e2e.ts.
+  it('rejects a blank --name with exit 2', async () => {
+    const {error} = await runCommand(['dataset', 'create', '--name', '" "', '--data-source-id', '42'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--name cannot be empty')
+    expect(requests()).to.have.length(0)
+  })
 })

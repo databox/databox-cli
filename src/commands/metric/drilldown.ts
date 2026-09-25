@@ -46,28 +46,26 @@ Only dataset-backed custom metrics support drilldown; check "Drilldown" in "metr
   }
 
   async run(): Promise<void> {
-    const {flags} = await this.parse(MetricDrilldown)
-
     // The API rejects both too, but checking here fails before the request.
-    if (flags['sort-order'] && !flags['sort-by']) {
+    if (this.flags['sort-order'] && !this.flags['sort-by']) {
       this.error('--sort-order requires --sort-by.', {exit: 2})
     }
 
-    if (flags['start-timestamp'] > flags['end-timestamp']) {
+    if (this.flags['start-timestamp'] > this.flags['end-timestamp']) {
       this.error('--start-timestamp must be earlier than or equal to --end-timestamp.', {exit: 2})
     }
 
     const body: Record<string, unknown> = {
-      metricId: flags['metric-id'],
+      metricId: this.flags['metric-id'],
       period: {
-        endTimestamp: flags['end-timestamp'],
-        startTimestamp: flags['start-timestamp'],
+        endTimestamp: this.flags['end-timestamp'],
+        startTimestamp: this.flags['start-timestamp'],
       },
-      sourceId: flags['source-id'],
+      sourceId: this.flags['source-id'],
     }
 
-    if (flags['dimension-id']) body.dimensionIds = flags['dimension-id']
-    if (flags.filters !== undefined) body.filters = this.parseJsonFlag(flags.filters, 'filters', FILTERS_SHAPE)
+    if (this.flags['dimension-id']) body.dimensionIds = this.flags['dimension-id']
+    if (this.flags.filters !== undefined) body.filters = this.parseJsonFlag(this.flags.filters, 'filters', FILTERS_SHAPE)
 
     const response = await fetchPaginated(this.flags, addSorting({}, this.flags), pageQuery =>
       this.apiClient.post<DrilldownResponse>('/v2/metrics/drilldown', body, this.accountHeaders, {query: pageQuery}), warning => this.warn(warning))

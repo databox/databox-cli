@@ -38,6 +38,11 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
   async run(): Promise<void> {
     const {flags} = await this.parse(DatasetCreate)
 
+    // The API rejects a blank name with a 400; catch it before the round trip.
+    if (flags.name.trim() === '') {
+      this.error('--name cannot be empty.', {exit: 2})
+    }
+
     const body: Record<string, unknown> = {
       dataSourceId: flags['data-source-id'],
       name: flags.name,
@@ -47,7 +52,7 @@ export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
       body.primaryKey = flags['primary-key']
     }
 
-    if (flags.schema) {
+    if (flags.schema !== undefined) {
       body.schema = this.parseJsonFlag<Array<{dataType: 'datetime' | 'number' | 'string'; id: string}>>(
         flags.schema,
         'schema',

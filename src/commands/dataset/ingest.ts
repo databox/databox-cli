@@ -55,15 +55,11 @@ export default class DatasetIngest extends BaseCommand<typeof DatasetIngest> {
 
     let records: unknown[]
 
-    if (flags.records) {
-      try {
-        records = JSON.parse(flags.records) as unknown[]
-      } catch {
-        this.error('Invalid JSON in --records. Expected a JSON array of records.', {exit: 2})
-      }
-    } else if (flags.file) {
+    if (flags.records !== undefined) {
+      records = this.parseJsonFlag<unknown[]>(flags.records, 'records', '[{"date":"2024-01-01","value":42}]')
+    } else if (flags.file !== undefined) {
       if (!fs.existsSync(flags.file)) {
-        this.error(`File not found: ${flags.file}`, {exit: 2})
+        this.error(`File not found: "${flags.file}"`, {exit: 2})
       }
 
       const fileContent = fs.readFileSync(flags.file, 'utf8')

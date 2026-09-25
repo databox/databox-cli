@@ -7,5 +7,9 @@ oclif.manifest.json
 .claude/settings.json
 skills-lock.json
 
+# Local env files can hold an API key, and this repo is public
+.env
+.env.*
+
 # e2e undo log for mutations to shared resources
 .e2e-restore.json

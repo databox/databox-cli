@@ -179,6 +179,19 @@ describe('analyze ask-genie', () => {
     expect(error?.message).to.contain('Could not connect to Genie')
   })
 
+  // Followed, a redirect would resend x-api-key; Node's fetch rejects the way stubbed here.
+  it('exits 2 without following a redirect', async () => {
+    respondWith(init => {
+      if (init?.redirect === 'error') throw new TypeError('fetch failed', {cause: new Error('unexpected redirect')})
+      return sse(ANSWER)
+    })
+
+    const {error} = await runCommand(['analyze', 'ask-genie', 'ds-1', 'Q'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('Genie answered with a redirect')
+  })
+
   it('exits 2 when the response headers do not arrive in time', async () => {
     AskGenie.connectTimeoutMs = 20
     respondWith(init => new Promise((_resolve, reject) => {

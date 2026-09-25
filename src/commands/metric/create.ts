@@ -41,6 +41,11 @@ Column references are {"id","displayName"}, with the id taken from "dataset sche
   async run(): Promise<void> {
     const {flags} = await this.parse(MetricCreate)
 
+    // The API rejects a blank name with a 400; catch it before the round trip.
+    if (flags.name.trim() === '') {
+      this.error('--name cannot be empty.', {exit: 2})
+    }
+
     const date = this.parseJsonFlag(flags.date, 'date', REF_SHAPE)
     const measure = this.parseJsonFlag(flags.measure, 'measure', REF_SHAPE)
 

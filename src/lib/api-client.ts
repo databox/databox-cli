@@ -95,10 +95,20 @@ export function describeResponse(status: number, durationMs: number, requestId?:
   return lines
 }
 
+/** Whether fetch() rejected because of `redirect: 'error'`: Node reports it as a TypeError caused by "unexpected redirect". */
+export function isRedirectRefusal(error: unknown): boolean {
+  return error instanceof TypeError && error.cause instanceof Error && error.cause.message === 'unexpected redirect'
+}
+
 /** A transport failure — before or during the response — as the exit-2 error the CLI reports. */
 function connectionError(error: unknown, timeoutMs: number, message: string): ApiConnectionError {
   if (error instanceof Error && error.name === 'TimeoutError') {
     return new ApiConnectionError(`Request timed out after ${Math.round(timeoutMs / 1000)}s.`)
+  }
+
+  if (isRedirectRefusal(error)) {
+    return new ApiConnectionError('The API answered with a redirect, which the CLI does not follow (it would resend your API key). '
+      + 'Check --api-url / DATABOX_API_URL (for example http:// where the API expects https://).')
   }
 
   return new ApiConnectionError(message)
@@ -128,7 +138,7 @@ export class ApiClient {
   async patch<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const url = this.buildUrl(path)
     return this.request<T>(url, {
-      body: body ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : JSON.stringify(body),
       method: 'PATCH',
     }, headers)
   }
@@ -141,7 +151,7 @@ export class ApiClient {
   ): Promise<T> {
     const url = this.buildUrl(path, options?.query)
     return this.request<T>(url, {
-      body: body ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : JSON.stringify(body),
       method: 'POST',
     }, headers, options?.timeoutMs)
   }
@@ -149,7 +159,7 @@ export class ApiClient {
   async put<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const url = this.buildUrl(path)
     return this.request<T>(url, {
-      body: body ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : JSON.stringify(body),
       method: 'PUT',
     }, headers)
   }
@@ -192,9 +202,13 @@ export class ApiClient {
     this.emit(describeRequest(init.method ?? 'GET', url))
     const started = performance.now()
 
+    // A followed redirect would re-send x-api-key to wherever it points: fetch strips only
+    // Authorization and Cookie across origins. Refused, it rejects like any transport failure.
     let response: Response
     try {
-      response = await fetch(url, {...init, headers, signal: AbortSignal.timeout(timeoutMs)})
+      response = await fetch(url, {
+        ...init, headers, redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
+      })
     } catch (error) {
       throw connectionError(error, timeoutMs, 'Could not connect to API. Check your internet connection.')
     }

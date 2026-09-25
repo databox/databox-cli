@@ -3,7 +3,7 @@ import {expect} from 'chai'
 import {
   ApiClient, ApiConnectionError, ApiRequestError, describeApiError,
 } from '../../src/lib/api-client.js'
-import {mockApi, restoreApi} from '../helpers.js'
+import {mockApi, requests, restoreApi} from '../helpers.js'
 
 const KEY = 'pak_secret-key-under-test'
 
@@ -83,6 +83,41 @@ describe('ApiClient errors', () => {
     expect(error).to.be.instanceOf(ApiConnectionError)
     expect((error as Error).message).to.contain('timed out')
   })
+
+  // Followed, a redirect re-sends x-api-key to the new location: the Fetch standard strips only
+  // Authorization and Cookie across origins. Node's fetch rejects the way stubbed here.
+  it('refuses to follow a redirect, reporting it as ApiConnectionError', async () => {
+    mockApi([])
+    global.fetch = (async (_input: Request | URL | string, init?: RequestInit) => {
+      if (init?.redirect === 'error') throw new TypeError('fetch failed', {cause: new Error('unexpected redirect')})
+      return new Response(JSON.stringify({data: {}, requestId: 'r', status: 'success'}), {status: 200})
+    }) as typeof global.fetch
+
+    const error = await caught(new ApiClient({apiKey: KEY}).get('/v2/datasets'))
+
+    expect(error).to.be.instanceOf(ApiConnectionError)
+    expect((error as Error).message).to.contain('answered with a redirect, which the CLI does not follow')
+    expect((error as Error).message).to.contain('--api-url')
+  })
+})
+
+describe('ApiClient request bodies', () => {
+  afterEach(() => {
+    restoreApi()
+  })
+
+  // A JSON-parsed flag can be falsy (`--data 'null'`); it is still a body the user asked to send.
+  for (const method of ['patch', 'post', 'put'] as const) {
+    it(`sends a null body as JSON with a Content-Type (${method})`, async () => {
+      mockApi([{method: method.toUpperCase(), path: '/v2/things', response: {data: {}, requestId: 'r', status: 'success'}}])
+
+      await new ApiClient({apiKey: KEY})[method]('/v2/things', null)
+
+      const [request] = requests()
+      expect(request.body).to.equal(null)
+      expect(request.headers['Content-Type']).to.equal('application/json')
+    })
+  }
 })
 
 /** A response whose headers arrive but whose body stream then fails with `error`. */

@@ -30,6 +30,8 @@ paths:
 - Errors: parses `errors[]` from the error envelope, throws `ApiRequestError(message, status, errors, requestId)`.
   `code`, `field` and `type` are taken from the first error. A non-JSON or `null` body falls back to `API error: <status> <statusText>`.
 - Transport failures — `fetch()` rejecting, a timeout, or the body stream failing mid-read — throw `ApiConnectionError` (exit 2).
+- Redirects are refused (`redirect: 'error'`, in `ask-genie.ts` too): fetch strips only `Authorization` and `Cookie` on a
+  cross-origin redirect, so a followed one would resend `x-api-key`. The refusal is an `ApiConnectionError` (exit 2) with its own message.
 - `--verbose`: the `trace` option receives lines built only by `describeRequest(method, url)` and
   `describeResponse(status, ms, requestId)`. Neither takes the headers, so the key is never in scope;
   the header line is the literal `Headers: x-api-key: <redacted>`. Trace goes to stderr.

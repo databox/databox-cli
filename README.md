@@ -244,7 +244,7 @@ Errors are always plain text on stderr, even with `--json`; on failure, stdout i
 |-----------|---------|
 | `0` | Success. Answering anything but `y` or `yes` to a confirmation prompt, at a terminal or piped, also exits 0 after printing `Aborted.`. |
 | `1` | The API returned an error (4xx or 5xx, including the rate limit). Also: no API key is configured, the stored config file is not valid JSON, the response was not JSON (usually a wrong `--api-url`), an update command was given no field to change, or `dataset ingest` was run at a terminal with no `--records` or `--file`. |
-| `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, an ingest over the limits, or a network failure or timeout. Also a command that would prompt when stdin is not a terminal and nothing is piped: a delete, purge or clear without `--force`, or `auth login` without `--api-key` (see [Authentication](#authentication)). |
+| `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, an ingest over the limits, or a network failure, timeout or redirect (the CLI does not follow a redirect: it would resend your API key). Also a command that would prompt when stdin is not a terminal and nothing is piped: a delete, purge or clear without `--force`, or `auth login` without `--api-key` (see [Authentication](#authentication)). |
 | `130` | A prompt (a confirmation, or the API key at `auth login`) was interrupted with Ctrl-C. |
 
 ## Scripts and AI Agents
