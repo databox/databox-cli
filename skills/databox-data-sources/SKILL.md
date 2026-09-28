@@ -11,6 +11,16 @@ Full data source lifecycle — list, create, configure, and delete — via the `
 
 Must be authenticated. If not, use the `databox-auth` skill first.
 
+## Required Role
+
+The API applies the Databox app's role rules, checked in the organization or account that owns the data source:
+
+- Reads (`list`, `get`, `permissions`, `datasets`, `sync-frequency-options`): anyone with access.
+- `create`, `update`, `set-sync-frequency`: Admin, User or Editor. A Viewer can only read.
+- `delete`, `purge`, `set-timezone` (with or without `--purge-data`), `set-permissions`, and `dataset create` on this data source: an admin, or the user who created the data source.
+
+A refusal is `forbidden` (exit 1) and nothing is changed. Do not retry it: tell the user which role the command needs, so an admin or the creator can run it.
+
 ## Quick Reference
 
 | Task | Command |
@@ -52,7 +62,7 @@ databox dataset ingest 67890 --file data.json
 
 ## Permissions
 
-`--access-level` is `everyone`, `selectedUsers` or `private`. `--access-list USER_ID` (repeatable) is only accepted with `selectedUsers`. Admins and the organization owner always keep access.
+`--access-level` is `everyone`, `selectedUsers` or `private`. `--access-list USER_ID` (repeatable) is only accepted with `selectedUsers`, and each ID must be a user of the organization or already on the list; any other is rejected with `invalid_input` naming it, and nothing changes. Admins and the organization owner always keep access.
 
 ## Destructive Operations
 

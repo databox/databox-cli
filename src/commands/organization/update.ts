@@ -11,7 +11,9 @@ export default class OrganizationUpdate extends BaseCommand<typeof OrganizationU
 - numberFormat: groupingCommaDecimalDot (1,234.5), groupingDotDecimalComma (1.234,5), groupingSpaceDecimalComma (1 234,5) or groupingSpaceDecimalDot (1 234.5). An unrecognised value is rejected.
 - firstDayOfWeek: sunday, monday, tuesday, wednesday, thursday, friday or saturday. An unrecognised value is rejected.
 - calendar: gregorian, customFiscal or weekAlignedFiscal.
-- fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.`
+- fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.
+
+Requires the Admin role: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> organization update --name "My Company"',

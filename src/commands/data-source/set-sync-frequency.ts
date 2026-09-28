@@ -15,7 +15,9 @@ export default class DataSourceSetSyncFrequency extends BaseCommand<typeof DataS
 
   static description = `Set the sync frequency for a data source
 
-Prints a confirmation; --json or --output csv prints the updated data source instead. Run "data-source sync-frequency-options" to see which intervals your plan includes.`
+Prints a confirmation; --json or --output csv prints the updated data source instead. Run "data-source sync-frequency-options" to see which intervals your plan includes.
+
+Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> data-source set-sync-frequency 12345 --interval 60',

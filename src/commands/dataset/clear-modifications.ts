@@ -8,7 +8,9 @@ export default class DatasetClearModifications extends BaseCommand<typeof Datase
     datasetId: Args.string({description: 'The dataset ID', required: true}),
   }
 
-  static description = 'Clear all modifications from a dataset'
+  static description = `Clear all modifications from a dataset
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset clear-modifications 12345',

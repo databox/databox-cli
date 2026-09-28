@@ -10,7 +10,9 @@ export default class ConnectionPermissions extends BaseCommand<typeof Connection
     connectionId: Args.string({description: 'The connection ID', required: true}),
   }
 
-  static description = 'Show connection permissions'
+  static description = `Show connection permissions
+
+A connection you cannot see answers "not_found" (exit 1), as one that does not exist.`
 
   static examples = [
     '<%= config.bin %> connection permissions 12345',

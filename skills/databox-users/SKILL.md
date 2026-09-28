@@ -32,5 +32,5 @@ Inviting an email that is already in the organization, invited or active, fails 
 ## Notes
 
 - All commands support `--json` for machine-readable output
-- User management requires admin privileges
+- User management requires admin privileges, and so do `user list` and `user get`: anyone else gets `forbidden` (exit 1). Do not retry; to read the key owner's own record, use `databox profile info`
 - The organization owner cannot be deleted

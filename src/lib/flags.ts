@@ -129,7 +129,7 @@ export const SYNC_INTERVALS = ['1', '15', '60', '240', '360', '480', '1440']
 /** For the routes ingestion-api marks [IdempotencyFilter]. */
 export const idempotencyFlags = {
   'idempotency-key': Flags.string({
-    description: 'A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours returns the first response instead of repeating the action',
+    description: 'A UUID sent as the Idempotency-Key header: re-running the same command with the same key and input within 24 hours returns the first response instead of repeating the action. The same key with different input fails with idempotency_key_reused and does nothing',
   }),
 }
 

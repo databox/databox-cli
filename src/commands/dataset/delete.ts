@@ -8,7 +8,9 @@ export default class DatasetDelete extends BaseCommand<typeof DatasetDelete> {
     datasetId: Args.string({description: 'The dataset ID to delete', required: true}),
   }
 
-  static description = 'Delete a dataset'
+  static description = `Delete a dataset
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset delete 12345',

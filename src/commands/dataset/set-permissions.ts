@@ -11,7 +11,9 @@ export default class DatasetSetPermissions extends BaseCommand<typeof DatasetSet
 
   static description = `Set permissions for a dataset
 
-everyone grants every user in the organization; selectedUsers grants only the users in --access-list; private grants no one explicitly. Admins and the organization owner always keep access.`
+everyone grants every user in the organization; selectedUsers grants only the users in --access-list; private grants no one explicitly. Admins and the organization owner always keep access.
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset set-permissions 12345 --access-level everyone',
@@ -25,7 +27,7 @@ everyone grants every user in the organization; selectedUsers grants only the us
       options: ['everyone', 'selectedUsers', 'private'],
       required: true,
     }),
-    'access-list': Flags.integer({description: 'User ID granted access, with --access-level selectedUsers (repeat for several)', multiple: true}),
+    'access-list': Flags.integer({description: 'User ID granted access, with --access-level selectedUsers (repeat for several). Each must be a user of the organization or already on the list; any other is rejected with invalid_input', multiple: true}),
   }
 
   async run(): Promise<void> {

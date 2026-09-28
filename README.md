@@ -102,7 +102,7 @@ Prerequisites:
 What to know about the key:
 
 - **One key per user.** It never expires. To rotate it, delete it on the same page and create a new one.
-- **It acts as you.** Every command runs with your user's permissions, in your organization and in any account you can reach with `--account-id`.
+- **It acts as you.** Every command runs with your user's role and permissions, in your organization and in any account you can reach with `--account-id`. See [Permissions](#permissions).
 - **It can be limited to IP addresses.** Under **Manage allowed IPs**, choose **Selected IPs only** to accept requests from listed IPv4/IPv6 addresses only. A request from anywhere else is rejected as unauthenticated (exit 1), so add the IP of every machine or CI runner that uses the CLI.
 - **Treat it like a password.** Anyone holding it can act as you until you delete it.
 
@@ -120,6 +120,30 @@ All commands except `auth login` need the key. There are four ways to supply it:
 `auth login` stores the key in `~/.config/databox-cli/config.json`, readable only by you. It then checks the key, but saves it even if that check fails: it prints `Warning: API key could not be validated.` and still exits 0. Run `databox auth validate` to be sure; exit 0 means the key works.
 
 Off a terminal (stdin piped or closed, as in scripts and agent shells), `auth login` without `--api-key` does not prompt: it reads the key from the first line of stdin. When nothing is piped, it exits 2 and saves nothing. `auth login` itself does not read `DATABOX_API_KEY`; set that variable instead of logging in. An open stdin that nobody writes to makes it wait, so in agent shells pass `--api-key` or use `DATABOX_API_KEY`.
+
+### Permissions
+
+The API applies the Databox app's role rules. Your role (Admin, User, Editor or Viewer) is checked in the organization or account that owns the resource. A command your role does not allow fails with `forbidden` (HTTP 403, exit 1) and changes nothing. Retrying will not help: ask an admin, or the resource's creator, to run it.
+
+| Commands | Who may run them |
+|---|---|
+| `data-source` and `dataset` commands that change nothing (`list`, `get`, `permissions`, `metadata` …), and `dataset ingest` | Anyone with access to the data source or dataset |
+| `data-source create`, `data-source update`, `dataset update`, `data-source set-sync-frequency`, `dataset set-sync-frequency` | Admin, User or Editor. A Viewer can only read. |
+| `data-source delete`, `purge`, `set-timezone` (with or without `--purge-data`), `set-permissions`, and `dataset create`, which adds a dataset to the data source | An admin, or the user who created the data source (as User or Editor) |
+| `dataset delete`, `purge`, `set-timezone`, `set-permissions`, `set-metadata`, `set-column-metadata`, `update-modification`, `clear-modifications`, `duplicate`, `set-verification` | An admin, or the user who created the dataset (as User or Editor) |
+| `organization update`, `user list`, `user get`, `user delete`, `activity-log list`, `account create`, `account update`, `account delete` | Admin. Anyone can read their own record with `profile info`. |
+| `user update` | Anyone for their own record. Updating another user, or changing any role, takes an admin. |
+| `user invite` | Anyone. A non-admin can invite only with the `user` role. |
+| `connection update`, `connection set-permissions` | An admin, or the user who owns the connection |
+| `connection delete` | The user who owns the connection |
+
+Connections follow the app's sharing rules:
+
+- `connection list` shows an admin every connection, and anyone else the connections they own and those shared with them. With `--account-id`, an agency user sees the account's connections plus the agency's connections shared with its accounts.
+- `connection get` and `connection permissions` answer `not_found` (exit 1) for a connection you cannot see, as for one that does not exist.
+- A connection the agency shares with its accounts can be read from an account, but changed only in the agency.
+
+`--access-list` on `connection`, `data-source` and `dataset` `set-permissions` takes only users of the organization, or users already on the list. Any other ID is refused with `invalid_input` (exit 1), naming the IDs, and nothing is changed. The list that `permissions --json` returns can always be sent back unchanged.
 
 ## Global Flags
 
@@ -155,7 +179,9 @@ Commands that return a list page by page also take these. `metric dimension-valu
 
 ### Safe Retries with `--idempotency-key`
 
-Commands that create something, or start work that should not happen twice, accept `--idempotency-key <uuid>`. The key is sent as the `Idempotency-Key` header: a retry with the same key within 24 hours returns the first response instead of repeating the action. Only a successful response is kept, so a retry after an error runs the request again. Keys are scoped to the account (`--account-id`), and the request body is not compared: reuse a key only for a retry of the same request.
+Commands that create something, or start work that should not happen twice, accept `--idempotency-key <uuid>`. The key is sent as the `Idempotency-Key` header: re-running the same command with the same key within 24 hours returns the first response instead of repeating the action. Only a successful response is kept, so a retry after an error runs the request again.
+
+A key replays only for the same user, in the same account (`--account-id`), on the same command and resource, with the same input. Reusing it with different input (other records, another name) fails with `idempotency_key_reused` (HTTP 422, exit 1) and does nothing: send a new key for a new request. The same key from another user, or on another command, runs as a new request.
 
 ```bash
 KEY=$(uuidgen)
@@ -240,7 +266,7 @@ Errors are always plain text on stderr, even with `--json`; on failure, stdout i
 | Exit code | Meaning |
 |-----------|---------|
 | `0` | Success. Answering anything but `y` or `yes` to a confirmation prompt, at a terminal or piped, also exits 0 after printing `Aborted.`. |
-| `1` | The API returned an error (4xx or 5xx, including the rate limit). Also: no API key is configured, the stored config file is not valid JSON, the response was not JSON (usually a wrong `--api-url`), an update command was given no field to change, or `dataset ingest` was run at a terminal with no `--records` or `--file`. |
+| `1` | The API returned an error (4xx or 5xx, including the rate limit, and `forbidden` when your role does not allow the command; see [Permissions](#permissions)). Also: no API key is configured, the stored config file is not valid JSON, the response was not JSON (usually a wrong `--api-url`), an update command was given no field to change, or `dataset ingest` was run at a terminal with no `--records` or `--file`. |
 | `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID or JSON value, an ingest over the limits, or a network failure, timeout or redirect (the CLI does not follow a redirect: it would resend your API key). Also a command that would prompt when stdin is not a terminal and nothing is piped: a delete, purge or clear without `--force`, or `auth login` without `--api-key` (see [Authentication](#authentication)). |
 | `130` | A prompt (a confirmation, or the API key at `auth login`) was interrupted with Ctrl-C. |
 
@@ -253,7 +279,8 @@ Errors are always plain text on stderr, even with `--json`; on failure, stdout i
 - **`set-timezone --purge-data` deletes data without asking**, on both `data-source` and `dataset`.
 - **Give `dataset ingest` its input explicitly** with `--records` or `--file`. With neither, it reads stdin, and an open stdin that nobody writes to waits forever.
 - **Ingestion is asynchronous**: poll `dataset ingestion DATASETID INGESTIONID` until its status is `success`, `failed` or `purged` (see [Getting Started](#getting-started)).
-- **Make retries safe** with `--idempotency-key "$(uuidgen)"` on creates and ingests, reusing the key when you retry.
+- **Make retries safe** with `--idempotency-key "$(uuidgen)"` on creates and ingests, reusing the key only to retry the same command with the same input.
+- **Do not retry `forbidden`.** It means the key's user lacks the role or the access for that command, and a `not_found` from `connection get` can mean the connection is not shared with them. See [Permissions](#permissions).
 - **Report failures with the request ID** from the error. `--verbose` adds a request ID for every request, on stderr.
 
 ## Organizations and Accounts
@@ -424,8 +451,9 @@ USAGE
     [--idempotency-key <value>] [--managed-by-id <value>] [--website-url <value>]
 
 FLAGS
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --managed-by-id=<value>    User ID of the account manager
   --name=<value>             (required) Name of the account
@@ -780,6 +808,8 @@ FLAGS
 DESCRIPTION
   Get connection details
 
+  A connection you cannot see answers "not_found" (exit 1), as one that does not exist.
+
 EXAMPLES
   $ databox connection get 12345
 
@@ -810,6 +840,9 @@ FLAGS
 
 DESCRIPTION
   List connections
+
+  Admins see every connection; anyone else sees their own and those shared with them. With --account-id, an agency user
+  sees the account's connections and the agency's connections shared with its accounts.
 
 EXAMPLES
   $ databox connection list
@@ -842,6 +875,8 @@ FLAGS
 DESCRIPTION
   Show connection permissions
 
+  A connection you cannot see answers "not_found" (exit 1), as one that does not exist.
+
 EXAMPLES
   $ databox connection permissions 12345
 
@@ -865,7 +900,9 @@ ARGUMENTS
 FLAGS
   --access-level=<option>      (required) Access level for the connection
                                <options: everyone|selectedUsers|private>
-  --access-list=<value>...     User ID granted access, with --access-level selectedUsers (repeat for several)
+  --access-list=<value>...     User ID granted access, with --access-level selectedUsers (repeat for several). Each must
+                               be a user of the organization (in a client account, also of its agency) or already on the
+                               list; any other is rejected with invalid_input
   --json                       Output as JSON (shorthand for --output json)
   --no-color                   Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>            [default: table] Output format
@@ -930,8 +967,9 @@ USAGE
     [--idempotency-key <value>] [--integration-key <value>] [--timezone <value>]
 
 FLAGS
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --integration-key=<value>  Integration key for the data source (e.g., Datadoo)
   --json                     Output as JSON (shorthand for --output json)
   --name=<value>             (required) Name of the data source
@@ -943,6 +981,8 @@ FLAGS
 
 DESCRIPTION
   Create a new data source
+
+  Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox data-source create --name "My Data Source"
@@ -1019,6 +1059,8 @@ FLAGS
 
 DESCRIPTION
   Delete a data source
+
+  Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox data-source delete 12345
@@ -1142,8 +1184,9 @@ ARGUMENTS
 
 FLAGS
   --force                    Skip confirmation prompt
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>          [default: table] Output format
@@ -1152,6 +1195,8 @@ FLAGS
 
 DESCRIPTION
   Purge all data from a data source
+
+  Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox data-source purge 12345
@@ -1176,7 +1221,8 @@ ARGUMENTS
 FLAGS
   --access-level=<option>   (required) Access level
                             <options: everyone|selectedUsers|private>
-  --access-list=<value>...  User ID granted access, with --access-level selectedUsers (repeat for several)
+  --access-list=<value>...  User ID granted access, with --access-level selectedUsers (repeat for several). Each must be
+                            a user of the organization or already on the list; any other is rejected with invalid_input
   --json                    Output as JSON (shorthand for --output json)
   --no-color                Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>         [default: table] Output format
@@ -1188,6 +1234,8 @@ DESCRIPTION
 
   everyone grants every user in the organization; selectedUsers grants only the users in --access-list; private grants
   no one explicitly. Admins and the organization owner always keep access.
+
+  Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox data-source set-permissions 12345 --access-level everyone
@@ -1226,6 +1274,8 @@ DESCRIPTION
   Prints a confirmation; --json or --output csv prints the updated data source instead. Run "data-source
   sync-frequency-options" to see which intervals your plan includes.
 
+  Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox data-source set-sync-frequency 12345 --interval 60
 
@@ -1260,6 +1310,8 @@ DESCRIPTION
   Set the timezone for a data source
 
   Prints a confirmation; --json or --output csv prints the updated data source instead.
+
+  Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox data-source set-timezone 12345 --timezone "US/Eastern"
@@ -1319,6 +1371,8 @@ FLAGS
 
 DESCRIPTION
   Update a data source
+
+  Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox data-source update 12345 --name "New Name"
@@ -1415,6 +1469,8 @@ FLAGS
 DESCRIPTION
   Clear all modifications from a dataset
 
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox dataset clear-modifications 12345
 
@@ -1463,8 +1519,9 @@ USAGE
 
 FLAGS
   --data-source-id=<value>   (required) ID of the data source to associate with
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --name=<value>             (required) Name of the dataset
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
@@ -1477,6 +1534,8 @@ FLAGS
 
 DESCRIPTION
   Create a new dataset
+
+  Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox dataset create --name "My Dataset" --data-source-id 123
@@ -1557,6 +1616,8 @@ FLAGS
 DESCRIPTION
   Delete a dataset
 
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox dataset delete 12345
 
@@ -1578,8 +1639,9 @@ ARGUMENTS
   DATASETID  The dataset ID to duplicate
 
 FLAGS
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --name=<value>             Name for the duplicate (defaults to a server-generated name)
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
@@ -1589,6 +1651,8 @@ FLAGS
 
 DESCRIPTION
   Duplicate a dataset (not supported for datasets created through the API)
+
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox dataset duplicate 12345
@@ -1641,8 +1705,9 @@ ARGUMENTS
 
 FLAGS
   --file=<value>             Path to a JSON file holding an array of records (at least one record)
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>          [default: table] Output format
@@ -2039,8 +2104,9 @@ ARGUMENTS
 
 FLAGS
   --force                    Skip confirmation prompt
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>          [default: table] Output format
@@ -2049,6 +2115,8 @@ FLAGS
 
 DESCRIPTION
   Purge all data from a dataset
+
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox dataset purge 12345
@@ -2118,6 +2186,8 @@ DESCRIPTION
   measure, dimension or timeDimension; synonyms is an array of alternative names. Display names are not set here: rename
   a column through "dataset update-modification" (displayNames). Prints the dataset's column metadata after the update.
 
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox dataset set-column-metadata 12345 --columns '[{"id":"revenue","description":"Order value in USD","conceptType":"measure"}]'
 
@@ -2152,6 +2222,8 @@ FLAGS
 DESCRIPTION
   Update metadata for a dataset
 
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox dataset set-metadata 12345 --description "Revenue tracking"
 
@@ -2177,7 +2249,8 @@ ARGUMENTS
 FLAGS
   --access-level=<option>   (required) Access level
                             <options: everyone|selectedUsers|private>
-  --access-list=<value>...  User ID granted access, with --access-level selectedUsers (repeat for several)
+  --access-list=<value>...  User ID granted access, with --access-level selectedUsers (repeat for several). Each must be
+                            a user of the organization or already on the list; any other is rejected with invalid_input
   --json                    Output as JSON (shorthand for --output json)
   --no-color                Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>         [default: table] Output format
@@ -2189,6 +2262,8 @@ DESCRIPTION
 
   everyone grants every user in the organization; selectedUsers grants only the users in --access-list; private grants
   no one explicitly. Admins and the organization owner always keep access.
+
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox dataset set-permissions 12345 --access-level everyone
@@ -2227,6 +2302,8 @@ DESCRIPTION
   Prints a confirmation; --json or --output csv prints the updated dataset instead. Run "dataset sync-frequency-options"
   to see which intervals your plan includes.
 
+  Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox dataset set-sync-frequency 12345 --interval 60
 
@@ -2260,6 +2337,8 @@ DESCRIPTION
   Set the timezone for a dataset
 
   Prints a confirmation; --json or --output csv prints the updated dataset instead.
+
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox dataset set-timezone 12345 --timezone "US/Eastern"
@@ -2295,6 +2374,8 @@ DESCRIPTION
 
   Prints a confirmation; --json or --output csv prints the resulting verification (isVerified, verifiedAt, verifiedBy)
   instead.
+
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox dataset set-verification 12345 --status verified
@@ -2419,6 +2500,8 @@ FLAGS
 DESCRIPTION
   Update a dataset
 
+  Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox dataset update 12345 --name "New Name"
 
@@ -2442,8 +2525,9 @@ ARGUMENTS
 FLAGS
   --data=<value>             (required) JSON modification definition: filters, formulas, displayNames, dataTypes, order,
                              visibility
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
   --output=<option>          [default: table] Output format
@@ -2469,6 +2553,8 @@ DESCRIPTION
 
   "dataset modification-rules" lists the filter operators and type conversions each column type accepts; "dataset
   modification-functions" lists the formula functions.
+
+  Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).
 
 EXAMPLES
   $ databox dataset update-modification 12345 --data '{"filters":{"amount":{"logicalOperator":"AND","conditions":[{"type":"greater_than","value":100}]}}}'
@@ -2615,8 +2701,10 @@ FLAGS
   --filters=<value>                Filters as JSON: {logicalOperator: and|or, conditions: [{field, operator, values}]},
                                    e.g. {"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","v
                                    alues":["US","UK"]}]}
-  --idempotency-key=<value>        A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                                   returns the first response instead of repeating the action
+  --idempotency-key=<value>        A UUID sent as the Idempotency-Key header: re-running the same command with the same
+                                   key and input within 24 hours returns the first response instead of repeating the
+                                   action. The same key with different input fails with idempotency_key_reused and does
+                                   nothing
   --json                           Output as JSON (shorthand for --output json)
   --measure=<value>                (required) Measure column reference as JSON ({"id":"amount","displayName":"Amount"})
   --name=<value>                   (required) Name of the metric
@@ -3156,6 +3244,8 @@ DESCRIPTION
   - calendar: gregorian, customFiscal or weekAlignedFiscal.
   - fiscalYearStart: {month, day}, for a fiscal calendar only; switching to gregorian clears it.
 
+  Requires the Admin role: anyone else gets "forbidden" (exit 1).
+
 EXAMPLES
   $ databox organization update --name "My Company"
 
@@ -3335,6 +3425,8 @@ FLAGS
 DESCRIPTION
   Get user details
 
+  Requires the Admin role: anyone else gets "forbidden" (exit 1). Read your own record with "profile info".
+
 EXAMPLES
   $ databox user get 12345
 
@@ -3354,8 +3446,9 @@ USAGE
 
 FLAGS
   --email=<value>            (required) Email address of the user to invite
-  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: a retry with the same key within 24 hours
-                             returns the first response instead of repeating the action
+  --idempotency-key=<value>  A UUID sent as the Idempotency-Key header: re-running the same command with the same key
+                             and input within 24 hours returns the first response instead of repeating the action. The
+                             same key with different input fails with idempotency_key_reused and does nothing
   --json                     Output as JSON (shorthand for --output json)
   --name=<value>             Display name for the new user
   --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
@@ -3410,6 +3503,8 @@ DESCRIPTION
 
   --sort-by takes name, createdAt, lastSeenAt or role. The CLI does not restrict it: the value is passed to the API as
   given.
+
+  Requires the Admin role: anyone else gets "forbidden" (exit 1). Read your own record with "profile info".
 
 EXAMPLES
   $ databox user list

@@ -12,7 +12,9 @@ export default class DatasetSetSyncFrequency extends BaseCommand<typeof DatasetS
 
   static description = `Set the sync frequency for a dataset
 
-Prints a confirmation; --json or --output csv prints the updated dataset instead. Run "dataset sync-frequency-options" to see which intervals your plan includes.`
+Prints a confirmation; --json or --output csv prints the updated dataset instead. Run "dataset sync-frequency-options" to see which intervals your plan includes.
+
+Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset set-sync-frequency 12345 --interval 60',

@@ -9,7 +9,9 @@ export default class ConnectionGet extends BaseCommand<typeof ConnectionGet> {
     connectionId: Args.string({description: 'The connection ID', required: true}),
   }
 
-  static description = 'Get connection details'
+  static description = `Get connection details
+
+A connection you cannot see answers "not_found" (exit 1), as one that does not exist.`
 
   static examples = [
     '<%= config.bin %> connection get 12345',

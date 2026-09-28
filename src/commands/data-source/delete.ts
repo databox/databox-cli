@@ -11,7 +11,9 @@ export default class DataSourceDelete extends BaseCommand<typeof DataSourceDelet
     }),
   }
 
-  static description = 'Delete a data source'
+  static description = `Delete a data source
+
+Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> data-source delete 12345',

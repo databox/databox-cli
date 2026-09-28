@@ -14,6 +14,7 @@ What breaks for a 0.x user, in short:
 - **JSON output uses the V2 API's field names.** Scripts that parse `--json` output need updating; see "JSON Output" below.
 - **Lists are paginated.** 0.x printed every item; 1.0 prints the first page unless you pass `--all`. See [List Flags](https://github.com/databox/databox-cli#list-flags).
 - **Off a terminal, a prompt needs piped input.** A delete, purge or clear without `--force` reads its `y`/`yes` from stdin, as before, and `auth login` without `--api-key` now reads the key from stdin. When nothing is piped, both exit 2 and do nothing. See [Authentication](https://github.com/databox/databox-cli#authentication) and [Errors and Exit Codes](https://github.com/databox/databox-cli#errors-and-exit-codes).
+- **Commands follow your role, as in the Databox app.** A Viewer can only read. Deleting, purging or reconfiguring a data source or dataset, or adding a dataset to a data source, takes an admin or the resource's creator; `organization update`, `user list` and `user get` take an admin. A refused command exits 1 with `forbidden` and changes nothing. `connection list` shows a non-admin only their own connections and those shared with them. See [Permissions](https://github.com/databox/databox-cli#permissions).
 
 Beyond that, 1.0.0 adds commands across the whole V2 API, CSV output, `--all` pagination, `--verbose` tracing, idempotent retries, and structured errors with distinct exit codes. The [README](https://github.com/databox/databox-cli#readme) is the reference for all of it; this guide lists what changed.
 
@@ -100,7 +101,7 @@ A list prints a bare array of the API's items; a few commands print the whole re
 
 - **On every command** except `auth login`: `--output table|json|csv` (CSV is new), `--verbose` (request tracing on stderr), `--no-color`, and `--account-id` / `DATABOX_ACCOUNT_ID`, which replaces 0.x's `ACCOUNTID` argument. See [Global Flags](https://github.com/databox/databox-cli#global-flags).
 - **On list commands**: `--page`, `--page-size`, `--all`, and on some `--search`, `--sort-by` and `--sort-order`. See [List Flags](https://github.com/databox/databox-cli#list-flags).
-- **`--idempotency-key <uuid>`** on `account create`, `data-source create`, `data-source purge`, `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`, `metric create` and `user invite`: a retry with the same key within 24 hours returns the first response instead of repeating the action.
+- **`--idempotency-key <uuid>`** on `account create`, `data-source create`, `data-source purge`, `dataset create`, `dataset duplicate`, `dataset ingest`, `dataset purge`, `dataset update-modification`, `metric create` and `user invite`: a retry with the same key within 24 hours returns the first response instead of repeating the action. A key replays only for the same user, command and input; reused with different input it fails with `idempotency_key_reused` (exit 1) and does nothing. See [Safe Retries](https://github.com/databox/databox-cli#safe-retries-with---idempotency-key).
 
 ### Errors and Exit Codes
 

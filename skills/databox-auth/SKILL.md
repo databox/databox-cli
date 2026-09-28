@@ -52,7 +52,7 @@ The key is the user's personal API key (`pak_…`). It is created in the Databox
 
 - Only admin users can create one, and only when the plan includes API access. If the **API key** section is missing, one of the two is not met: the user must ask an admin or upgrade; the CLI cannot work around it.
 - One key per user, with no expiry. To rotate it, delete it and create a new one.
-- The key acts with its creator's permissions.
+- The key acts with its creator's role and permissions. A command that role does not allow fails with `forbidden` (exit 1): the key is fine, so do not re-authenticate or retry. The README's [Permissions](https://github.com/databox/databox-cli#permissions) lists who may run what.
 - It can be limited to selected IP addresses (**Manage allowed IPs**). A key that works on one machine but fails with "Not authenticated" / 401 on another is usually blocked by that list.
 
 ## Common Errors

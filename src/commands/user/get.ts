@@ -9,7 +9,9 @@ export default class UserGet extends BaseCommand<typeof UserGet> {
     userId: Args.string({description: 'The user ID', required: true}),
   }
 
-  static description = 'Get user details'
+  static description = `Get user details
+
+Requires the Admin role: anyone else gets "forbidden" (exit 1). Read your own record with "profile info".`
 
   static examples = [
     '<%= config.bin %> user get 12345',

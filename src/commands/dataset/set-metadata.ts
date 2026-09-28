@@ -9,7 +9,9 @@ export default class DatasetSetMetadata extends BaseCommand<typeof DatasetSetMet
     datasetId: Args.string({description: 'The dataset ID', required: true}),
   }
 
-  static description = 'Update metadata for a dataset'
+  static description = `Update metadata for a dataset
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset set-metadata 12345 --description "Revenue tracking"',

@@ -18,7 +18,9 @@ export default class DatasetSetColumnMetadata extends BaseCommand<typeof Dataset
 
   static description = `Update column metadata for a dataset
 
---columns takes at least one column. Each column is {id, description?, conceptType?, synonyms?}. conceptType is measure, dimension or timeDimension; synonyms is an array of alternative names. Display names are not set here: rename a column through "dataset update-modification" (displayNames). Prints the dataset's column metadata after the update.`
+--columns takes at least one column. Each column is {id, description?, conceptType?, synonyms?}. conceptType is measure, dimension or timeDimension; synonyms is an array of alternative names. Display names are not set here: rename a column through "dataset update-modification" (displayNames). Prints the dataset's column metadata after the update.
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset set-column-metadata 12345 --columns \'[{"id":"revenue","description":"Order value in USD","conceptType":"measure"}]\'',

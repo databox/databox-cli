@@ -45,6 +45,7 @@ An organization that manages accounts can scope any command to one of them with 
 
 ## Notes
 
+- `organization update` requires the Admin role in the organization, or in the account with `--account-id`. Anyone else gets `forbidden` (exit 1) and nothing changes; do not retry, ask an admin to run it
 - All commands support `--json` for machine-readable output
 - Organization, account and data source IDs are numeric (e.g., `12345`)
 - Dataset IDs are numeric (e.g., `67890`)

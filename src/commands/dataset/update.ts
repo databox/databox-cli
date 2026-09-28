@@ -9,7 +9,9 @@ export default class DatasetUpdate extends BaseCommand<typeof DatasetUpdate> {
     datasetId: Args.string({description: 'The dataset ID to update', required: true}),
   }
 
-  static description = 'Update a dataset'
+  static description = `Update a dataset
+
+Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset update 12345 --name "New Name"',

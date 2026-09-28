@@ -11,7 +11,9 @@ export default class DatasetSetVerification extends BaseCommand<typeof DatasetSe
 
   static description = `Set verification status for a dataset
 
-Prints a confirmation; --json or --output csv prints the resulting verification (isVerified, verifiedAt, verifiedBy) instead.`
+Prints a confirmation; --json or --output csv prints the resulting verification (isVerified, verifiedAt, verifiedBy) instead.
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset set-verification 12345 --status verified',

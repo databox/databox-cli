@@ -6,7 +6,9 @@ import {formatSingle} from '../../lib/output.js'
 import {DatasetDetail} from '../../lib/types.js'
 
 export default class DatasetCreate extends BaseCommand<typeof DatasetCreate> {
-  static description = 'Create a new dataset'
+  static description = `Create a new dataset
+
+Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset create --name "My Dataset" --data-source-id 123',

@@ -11,6 +11,17 @@ Full dataset lifecycle â€” create, ingest data, monitor, configure, and delete â
 
 Must be authenticated. If not, use the `databox-auth` skill first.
 
+## Required Role
+
+The API applies the Databox app's role rules, checked in the organization or account that owns the dataset:
+
+- Reads (every command that changes nothing) and `ingest`: anyone with access to the dataset.
+- `update`, `set-sync-frequency`: Admin, User or Editor. A Viewer can only read.
+- `create`: an admin, or the user who created the data source it goes into.
+- `delete`, `purge`, `set-timezone`, `set-permissions`, `set-metadata`, `set-column-metadata`, `update-modification`, `clear-modifications`, `duplicate`, `set-verification`: an admin, or the user who created the dataset.
+
+A refusal is `forbidden` (exit 1) and nothing is changed. Do not retry it: tell the user which role the command needs, so an admin or the creator can run it.
+
 ## Quick Reference
 
 | Task | Command |
@@ -97,7 +108,7 @@ databox dataset ingest 67890 --file ./metrics.json
 cat metrics.json | databox dataset ingest 67890
 ```
 
-Pass `--idempotency-key "$(uuidgen)"` when a retry must not ingest the same rows twice; re-run with the same key.
+Pass `--idempotency-key "$(uuidgen)"` when a retry must not ingest the same rows twice; re-run with the same key and the same records. The same key with different records fails with `idempotency_key_reused` (exit 1) and ingests nothing: use a new key for a new batch.
 
 ## Common Workflow: Full Data Pipeline
 
@@ -147,7 +158,7 @@ databox dataset update-modification 67890 --data "$(cat mod.json)"
 
 ## Permissions
 
-`--access-level` is `everyone`, `selectedUsers` or `private`. `--access-list USER_ID` (repeatable) is only accepted with `selectedUsers`. Admins and the organization owner always keep access.
+`--access-level` is `everyone`, `selectedUsers` or `private`. `--access-list USER_ID` (repeatable) is only accepted with `selectedUsers`, and each ID must be a user of the organization or already on the list; any other is rejected with `invalid_input` naming it, and nothing changes. Admins and the organization owner always keep access.
 
 ## Destructive Operations
 

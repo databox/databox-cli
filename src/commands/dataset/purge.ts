@@ -9,7 +9,9 @@ export default class DatasetPurge extends BaseCommand<typeof DatasetPurge> {
     datasetId: Args.string({description: 'The dataset ID to purge data from', required: true}),
   }
 
-  static description = 'Purge all data from a dataset'
+  static description = `Purge all data from a dataset
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset purge 12345',

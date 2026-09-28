@@ -24,7 +24,9 @@ This replaces the whole definition: a field left out of --data is cleared, not k
 
 Prints the saved definition, one row per column as "dataset modifications" does.
 
-"dataset modification-rules" lists the filter operators and type conversions each column type accepts; "dataset modification-functions" lists the formula functions.`
+"dataset modification-rules" lists the filter operators and type conversions each column type accepts; "dataset modification-functions" lists the formula functions.
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset update-modification 12345 --data \'{"filters":{"amount":{"logicalOperator":"AND","conditions":[{"type":"greater_than","value":100}]}}}\'',

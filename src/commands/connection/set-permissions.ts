@@ -25,7 +25,7 @@ export default class ConnectionSetPermissions extends BaseCommand<typeof Connect
       options: ['everyone', 'selectedUsers', 'private'],
       required: true,
     }),
-    'access-list': Flags.integer({description: 'User ID granted access, with --access-level selectedUsers (repeat for several)', multiple: true}),
+    'access-list': Flags.integer({description: 'User ID granted access, with --access-level selectedUsers (repeat for several). Each must be a user of the organization (in a client account, also of its agency) or already on the list; any other is rejected with invalid_input', multiple: true}),
     // Required, with no default: the API field is a required bool, and a default would pick a side for the user.
     'shared-with-accounts': Flags.boolean({
       allowNo: true,

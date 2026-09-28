@@ -29,7 +29,7 @@ with which key. The preflight refuses to start, naming what is missing, unless b
 | Variable | Purpose |
 |---|---|
 | `DATABOX_E2E_API_URL` | **Required.** Base URL of the API under test. |
-| `DATABOX_E2E_API_KEY` | **Required.** An API key valid for that URL. |
+| `DATABOX_E2E_API_KEY` | **Required.** An API key valid for that URL, belonging to an **admin** of the organization (and of the account, with `DATABOX_E2E_ACCOUNT_ID`). `user list`, `user get`, `organization update` and most data source and dataset writes refuse any other role with `forbidden`, so a non-admin key fails those suites. |
 | `DATABOX_E2E_ACCOUNT_ID` | Sent as `x-account-id` on every command. |
 | `DATABOX_E2E_ALLOW_PROD` | Required (`=1`) to run against production. |
 | `DATABOX_E2E_ALLOW_INSECURE_TLS` | `=1` disables TLS verification, for local self-signed certs. |

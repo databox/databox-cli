@@ -11,7 +11,9 @@ export default class DatasetSetTimezone extends BaseCommand<typeof DatasetSetTim
 
   static description = `Set the timezone for a dataset
 
-Prints a confirmation; --json or --output csv prints the updated dataset instead.`
+Prints a confirmation; --json or --output csv prints the updated dataset instead.
+
+Requires an admin or the dataset's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> dataset set-timezone 12345 --timezone "US/Eastern"',

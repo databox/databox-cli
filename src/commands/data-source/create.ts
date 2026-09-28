@@ -6,7 +6,9 @@ import {formatSingle} from '../../lib/output.js'
 import {DataSourceDetail} from '../../lib/types.js'
 
 export default class DataSourceCreate extends BaseCommand<typeof DataSourceCreate> {
-  static description = 'Create a new data source'
+  static description = `Create a new data source
+
+Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> data-source create --name "My Data Source"',

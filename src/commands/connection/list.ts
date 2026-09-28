@@ -15,7 +15,9 @@ interface ConnectionsResponse {
 }
 
 export default class ConnectionList extends BaseCommand<typeof ConnectionList> {
-  static description = 'List connections'
+  static description = `List connections
+
+Admins see every connection; anyone else sees their own and those shared with them. With --account-id, an agency user sees the account's connections and the agency's connections shared with its accounts.`
 
   static examples = [
     '<%= config.bin %> connection list',

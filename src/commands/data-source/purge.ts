@@ -12,7 +12,9 @@ export default class DataSourcePurge extends BaseCommand<typeof DataSourcePurge>
     }),
   }
 
-  static description = 'Purge all data from a data source'
+  static description = `Purge all data from a data source
+
+Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> data-source purge 12345',

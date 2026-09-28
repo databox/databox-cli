@@ -14,7 +14,9 @@ export default class DataSourceSetTimezone extends BaseCommand<typeof DataSource
 
   static description = `Set the timezone for a data source
 
-Prints a confirmation; --json or --output csv prints the updated data source instead.`
+Prints a confirmation; --json or --output csv prints the updated data source instead.
+
+Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> data-source set-timezone 12345 --timezone "US/Eastern"',

@@ -12,7 +12,9 @@ export default class DataSourceUpdate extends BaseCommand<typeof DataSourceUpdat
     }),
   }
 
-  static description = 'Update a data source'
+  static description = `Update a data source
+
+Requires the Admin, User or Editor role: a Viewer gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> data-source update 12345 --name "New Name"',
