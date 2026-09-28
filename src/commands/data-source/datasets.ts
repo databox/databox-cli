@@ -1,16 +1,15 @@
-import {Args} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
-
-interface Dataset {
-  created: string
-  id: string
-  title: string | null
-}
+import {
+  Pagination, addSorting, fetchPaginated, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
+import {DatasetListItem} from '../../lib/types.js'
 
 interface DatasetsResponse {
-  datasets: Dataset[]
+  items: DatasetListItem[]
+  pagination: Pagination
 }
 
 export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDatasets> {
@@ -25,22 +24,43 @@ export default class DataSourceDatasets extends BaseCommand<typeof DataSourceDat
 
   static examples = [
     '<%= config.bin %> data-source datasets 12345',
+    '<%= config.bin %> data-source datasets 12345 --search "orders" --sort-by name',
+    '<%= config.bin %> data-source datasets 12345 --page 0 --page-size 10',
     '<%= config.bin %> data-source datasets 12345 --json',
   ]
 
+  static flags = {
+    ...paginationFlags,
+    search: Flags.string({description: 'Search by name'}),
+    ...sortFlags(['name', 'createdAt', 'lastActivityAt']),
+  }
+
   async run(): Promise<void> {
     const {args} = await this.parse(DataSourceDatasets)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
-    const response = await this.apiClient.get<DatasetsResponse>(`/v1/data-sources/${args.dataSourceId}/datasets`)
+    const query: Record<string, number | string | undefined> = {
+      dataSourceId: args.dataSourceId,
+    }
+    if (this.flags.search) query.search = this.flags.search
+    addSorting(query, this.flags)
+
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<DatasetsResponse>('/v2/datasets', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
-      response.datasets,
+      response.items,
       [
         {header: 'ID', key: 'id'},
-        {header: 'Title', key: 'title'},
-        {header: 'Created', key: 'created'},
+        {header: 'Name', key: 'name'},
+        {get: row => (row.ingestionSupported ? 'yes' : 'no'), header: 'Ingestion'},
+        {get: row => row.statusInfo?.status ?? '', header: 'Status'},
+        {get: row => row.syncInfo?.status ?? '', header: 'Sync Status'},
+        {get: row => row.lastActivityAt ?? '', header: 'Last Activity'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
+
+    showPagination(response.pagination, this.outputFormat)
   }
 }

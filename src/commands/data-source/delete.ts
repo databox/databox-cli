@@ -11,7 +11,9 @@ export default class DataSourceDelete extends BaseCommand<typeof DataSourceDelet
     }),
   }
 
-  static description = 'Delete a data source'
+  static description = `Delete a data source
+
+Requires an admin or the data source's creator: anyone else gets "forbidden" (exit 1).`
 
   static examples = [
     '<%= config.bin %> data-source delete 12345',
@@ -27,6 +29,7 @@ export default class DataSourceDelete extends BaseCommand<typeof DataSourceDelet
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(DataSourceDelete)
+    this.requireNumericId(args.dataSourceId, 'Data source ID')
 
     if (!flags.force) {
       const confirmed = await confirm(`Are you sure you want to delete data source ${args.dataSourceId}?`)
@@ -36,7 +39,7 @@ export default class DataSourceDelete extends BaseCommand<typeof DataSourceDelet
       }
     }
 
-    await this.apiClient.delete(`/v1/data-sources/${args.dataSourceId}`)
+    await this.apiClient.delete(`/v2/data-sources/${args.dataSourceId}`, this.accountHeaders)
 
     this.log(`Data source ${args.dataSourceId} deleted.`)
   }

@@ -1,6 +1,28 @@
+/* eslint-disable camelcase -- the agentic service's wire format is snake_case */
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
+import {ApiConnectionError, isRedirectRefusal} from '../../lib/api-client.js'
+
+/**
+ * How long to wait for the response headers. Mirrors ApiClient's bound on every other request,
+ * which is not exported. It covers the connect only: the answer then streams for as long as it takes.
+ */
+const CONNECT_TIMEOUT_MS = 30_000
+
+/** How long the stream may stay silent. Genie can pause mid-answer while the model works. */
+const IDLE_TIMEOUT_MS = 120_000
+
+/**
+ * 2026-09-25: since 2026-08-20 production Genie requires an internal token the CLI cannot hold, so
+ * every call answers 403, in 0.3.1 too. The command is hidden and refuses to run until a public
+ * route exists (a new API endpoint or a ticket scheme). DATABOX_ENABLE_ASK_GENIE=1 lifts the gate,
+ * for a Genie without internal auth (a local one) and for the tests that keep the code below working.
+ */
+const UNAVAILABLE = 'analyze ask-genie is unavailable in this version: the Genie service now requires '
+  + 'authentication the CLI cannot provide yet. It will return in a later release.'
+
+type ReadResult = Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>['read']>>
 
 interface SSEChunk {
   content: string
@@ -15,6 +37,9 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
     question: Args.string({description: 'The question to ask Genie', required: true}),
   }
 
+  /** The unit tests lower this and idleTimeoutMs so a timeout fires without a real wait. */
+  static connectTimeoutMs = CONNECT_TIMEOUT_MS
+
   static description = 'Ask Genie AI a question about a dataset'
 
   static examples = [
@@ -24,13 +49,26 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
   ]
 
   static flags = {
-    json: Flags.boolean({description: 'Output as JSON', default: false}),
+    json: Flags.boolean({default: false, description: 'Output as JSON'}),
     'service-url': Flags.string({
       default: 'https://agentic-service.databox.com',
       description: 'Override the agentic service base URL',
       env: 'DATABOX_AGENTIC_SERVICE_URL',
     }),
     'thread-id': Flags.string({description: 'Continue an existing conversation thread'}),
+  }
+
+  static hidden = true
+
+  static idleTimeoutMs = IDLE_TIMEOUT_MS
+
+  /** Ahead of BaseCommand.init(), so the gate precedes parsing and the API key check as well as the request. */
+  public async init(): Promise<void> {
+    if (process.env.DATABOX_ENABLE_ASK_GENIE !== '1') {
+      this.error(UNAVAILABLE, {exit: 1})
+    }
+
+    await super.init()
   }
 
   async run(): Promise<void> {
@@ -48,15 +86,37 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
       body.thread_id = flags['thread-id']
     }
 
-    const response = await fetch(url, {
-      body: JSON.stringify(body),
-      headers: {
-        'Accept': 'text/event-stream',
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiClient.apiKey,
-      },
-      method: 'POST',
-    })
+    // Not AbortSignal.timeout(): its signal would also abort the body, cutting off any answer
+    // that streams for longer than the connect bound. This timer is cleared once the headers arrive.
+    const connectMs = AskGenie.connectTimeoutMs
+    const controller = new AbortController()
+    const connectTimer = setTimeout(() => controller.abort(), connectMs)
+
+    let response: Response
+    try {
+      response = await fetch(url, {
+        body: JSON.stringify(body),
+        headers: {
+          Accept: 'text/event-stream',
+          'Content-Type': 'application/json',
+          'x-api-key': this.apiClient.apiKey,
+        },
+        method: 'POST',
+        redirect: 'error',
+        signal: controller.signal,
+      })
+    } catch (error) {
+      if (isRedirectRefusal(error)) {
+        throw new ApiConnectionError('Genie answered with a redirect, which the CLI does not follow (it would resend your API key). '
+          + 'Check --service-url / DATABOX_AGENTIC_SERVICE_URL.')
+      }
+
+      throw new ApiConnectionError(controller.signal.aborted
+        ? `Genie request timed out after ${seconds(connectMs)}s.`
+        : 'Could not connect to Genie. Check your internet connection.')
+    } finally {
+      clearTimeout(connectTimer)
+    }
 
     if (!response.ok) {
       this.error(`Request failed: ${response.status} ${response.statusText}`, {exit: 1})
@@ -75,7 +135,7 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // eslint-disable-next-line no-await-in-loop
-      const {done, value} = await reader.read()
+      const {done, value} = await this.readChunk(reader)
       if (done) break
 
       buffer += decoder.decode(value, {stream: true})
@@ -100,7 +160,7 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
 
         if (chunk.content) {
           fullAnswer += chunk.content
-          if (!flags.json) {
+          if (this.outputFormat !== 'json') {
             process.stdout.write(chunk.content)
           }
         }
@@ -111,18 +171,48 @@ export default class AskGenie extends BaseCommand<typeof AskGenie> {
       }
     }
 
-    if (!flags.json) {
-      process.stdout.write('\n')
-      if (threadId) {
-        process.stderr.write(`thread_id: ${threadId}\n`)
-      }
-    } else {
+    if (this.outputFormat === 'json') {
       console.log(JSON.stringify({
         answer: fullAnswer,
         dataset_id: args.datasetId,
         success: true,
         thread_id: threadId ?? null,
       }, null, 2))
+    } else {
+      process.stdout.write('\n')
+      if (threadId) {
+        process.stderr.write(`thread_id: ${threadId}\n`)
+      }
     }
   }
+
+  /**
+   * The next read from the stream, failing if nothing arrives within idleTimeoutMs. A read that
+   * fails outright (the socket closed mid-answer) is a transport failure too.
+   */
+  private async readChunk(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<ReadResult> {
+    const idleMs = AskGenie.idleTimeoutMs
+    let idleTimer: NodeJS.Timeout | undefined
+    const idle = new Promise<never>((_resolve, reject) => {
+      idleTimer = setTimeout(() => {
+        // Reject before cancelling: cancel() settles the pending read as done, and whichever
+        // settles first wins the race — a truncated answer must not pass as a finished one.
+        reject(new ApiConnectionError(`Genie stopped responding: nothing received for ${seconds(idleMs)}s.`))
+        reader.cancel().catch(() => {})
+      }, idleMs)
+    })
+
+    try {
+      return await Promise.race([reader.read(), idle])
+    } catch (error) {
+      if (error instanceof ApiConnectionError) throw error
+      throw new ApiConnectionError('The connection to Genie was lost while streaming its answer.')
+    } finally {
+      clearTimeout(idleTimer)
+    }
+  }
+}
+
+function seconds(ms: number): number {
+  return Math.round(ms / 1000)
 }

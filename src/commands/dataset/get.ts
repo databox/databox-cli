@@ -2,15 +2,7 @@ import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base-command.js'
 import {formatSingle} from '../../lib/output.js'
-
-interface DatasetGetResponse {
-  created: string
-  dataSourceId: number
-  id: string | null
-  primaryKeys: string[] | null
-  schema: Array<{dataType: string; name: string}> | null
-  timezone: string | null
-}
+import {DatasetDetail} from '../../lib/types.js'
 
 export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
   static args = {
@@ -20,15 +12,17 @@ export default class DatasetGet extends BaseCommand<typeof DatasetGet> {
   static description = 'Get details of a specific dataset'
 
   static examples = [
-    '<%= config.bin %> dataset get abc-123',
-    '<%= config.bin %> dataset get abc-123 --json',
+    '<%= config.bin %> dataset get 12345',
+    '<%= config.bin %> dataset get 12345 --json',
   ]
 
   async run(): Promise<void> {
     const {args} = await this.parse(DatasetGet)
 
-    const response = await this.apiClient.get<DatasetGetResponse>(`/v1/datasets/${args.datasetId}`)
+    this.requireNumericId(args.datasetId, 'Dataset ID')
 
-    formatSingle(response, this.flags.json)
+    const response = await this.apiClient.get<DatasetDetail>(`/v2/datasets/${args.datasetId}`, undefined, this.accountHeaders)
+
+    formatSingle(response, this.outputFormat)
   }
 }

@@ -1,35 +1,57 @@
+import {Flags} from '@oclif/core'
+
 import {BaseCommand} from '../../base-command.js'
-import {formatOutput} from '../../lib/output.js'
+import {
+  addSorting, fetchPaginated, paginationFlags, sortFlags,
+} from '../../lib/flags.js'
+import {formatOutput, showPagination} from '../../lib/output.js'
+import {AccountListItem} from '../../lib/types.js'
 
-interface Account {
-  accountType: string
-  id: number
-  name: string
-}
-
-interface AccountListResponse {
-  accounts: Account[]
+interface AccountsResponse {
+  items: AccountListItem[]
+  pagination?: {
+    page: number
+    pageSize: number
+    totalItems: number
+  }
 }
 
 export default class AccountList extends BaseCommand<typeof AccountList> {
-  static description = 'List all accounts you have access to'
+  static description = `List accounts in your organization
+
+--sort-by takes name, website or managedBy. The CLI does not restrict it: the value is passed to the API as given.`
 
   static examples = [
     '<%= config.bin %> account list',
+    '<%= config.bin %> account list --sort-by name --sort-order asc',
     '<%= config.bin %> account list --json',
   ]
 
+  static flags = {
+    ...paginationFlags,
+    search: Flags.string({description: 'Search by name'}),
+    ...sortFlags(),
+  }
+
   async run(): Promise<void> {
-    const response = await this.apiClient.get<AccountListResponse>('/v1/accounts')
+    const query: Record<string, number | string | undefined> = {}
+    if (this.flags.search) query.search = this.flags.search
+    addSorting(query, this.flags)
+
+    const response = await fetchPaginated(this.flags, query, pageQuery =>
+      this.apiClient.get<AccountsResponse>('/v2/accounts', pageQuery, this.accountHeaders), warning => this.warn(warning))
 
     formatOutput(
-      response.accounts,
+      response.items,
       [
         {header: 'ID', key: 'id'},
         {header: 'Name', key: 'name'},
-        {header: 'Account Type', key: 'accountType'},
+        {get: row => (row.isSelfManaged ? 'yes' : ''), header: 'Self Managed'},
+        {get: row => row.managedBy?.name ?? '', header: 'Managed By'},
       ],
-      this.flags.json,
+      this.outputFormat,
     )
+
+    showPagination(response.pagination, this.outputFormat)
   }
 }

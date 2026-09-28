@@ -1,12 +1,10 @@
 {
   "name": "databox-cli",
-  "version": "0.3.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "CLI for the Databox public API",
   "author": "Databox",
   "license": "MIT",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
   "bin": {
     "databox": "./bin/run.js"
   },
@@ -14,7 +12,8 @@
     "/bin",
     "/lib",
     "/oclif.manifest.json",
-    "/skills"
+    "/skills",
+    "/CHANGELOG.md"
   ],
   "oclif": {
     "bin": "databox",
@@ -25,20 +24,48 @@
     ],
     "topicSeparator": " ",
     "topics": {
+      "account": {
+        "description": "Manage accounts in your organization"
+      },
+      "activity-log": {
+        "description": "View the organization activity log"
+      },
+      "analyze": {
+        "description": "Analyze datasets with Genie AI (temporarily unavailable in 1.0)",
+        "hidden": true
+      },
       "auth": {
         "description": "Authenticate with the Databox API"
       },
-      "account": {
-        "description": "Manage Databox accounts"
+      "billing": {
+        "description": "View plan details and invoices"
+      },
+      "connection": {
+        "description": "Manage integration connections and their permissions"
       },
       "data-source": {
         "description": "Manage data sources"
       },
-      "analyze": {
-        "description": "Analyze datasets with Genie AI"
+      "databoard": {
+        "description": "Browse databoards and their metrics"
       },
       "dataset": {
         "description": "Manage datasets and ingest data"
+      },
+      "integration": {
+        "description": "Browse the integration catalog"
+      },
+      "metric": {
+        "description": "Create, query and manage metrics"
+      },
+      "organization": {
+        "description": "Manage your organization"
+      },
+      "profile": {
+        "description": "View and update your user profile"
+      },
+      "user": {
+        "description": "Manage team members and their roles"
       }
     },
     "additionalHelpFlags": [
@@ -55,9 +82,12 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "postpack": "rm -f oclif.manifest.json",
-    "prepack": "npm run build && oclif manifest",
+    "prepack": "npm run clean && npm run build && oclif manifest",
+    "pretest": "npm run lint",
     "test": "TS_NODE_PROJECT=tsconfig.test.json mocha --forbid-only \"test/**/*.test.ts\"",
     "test:watch": "TS_NODE_PROJECT=tsconfig.test.json mocha --watch \"test/**/*.test.ts\"",
+    "test:e2e": "npm run build && TS_NODE_PROJECT=tsconfig.test.json mocha --config .mocharc.e2e.yml",
+    "test:e2e:cleanup": "npm run build && TS_NODE_PROJECT=tsconfig.test.json node --loader ts-node/esm test/e2e/helpers/cleanup.ts",
     "test:coverage": "nyc npm test"
   },
   "dependencies": {

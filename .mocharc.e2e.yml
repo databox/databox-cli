@@ -1,0 +1,11 @@
+# End-to-end suite: spawns the built CLI against a real API.
+# Run with `npm run test:e2e`. See test/e2e/README.md for configuration.
+#
+# Deliberately NOT set:
+#   parallel — suites share one account's state
+#   retries  — a re-run `it` would create its resources twice
+node-option:
+  - loader=ts-node/esm
+spec: test/e2e/**/*.e2e.ts
+timeout: 180000
+slow: 5000

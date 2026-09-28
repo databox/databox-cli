@@ -3,21 +3,18 @@ import {BaseCommand} from '../../base-command.js'
 export default class Validate extends BaseCommand<typeof Validate> {
   static description = 'Validate the currently stored API key'
 
+  static examples = [
+    '<%= config.bin %> auth validate',
+    '<%= config.bin %> auth validate --json',
+  ]
+
   async run(): Promise<void> {
-    try {
-      const response = await this.apiClient.get('/v1/auth/validate-key')
+    const response = await this.apiClient.get('/v2/auth/validate-key', undefined, this.accountHeaders)
 
-      if (this.flags.json) {
-        this.log(JSON.stringify(response, null, 2))
-      } else {
-        this.log('API key is valid.')
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        this.error(error.message, {exit: 1})
-      }
-
-      throw error
+    if (this.outputFormat === 'json') {
+      this.log(JSON.stringify(response, null, 2))
+    } else {
+      this.log('API key is valid.')
     }
   }
 }
