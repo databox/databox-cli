@@ -26,10 +26,15 @@ paths:
 - Wraps native `fetch()` — no external HTTP dependencies.
 - Methods: `get<T>`, `post<T>`, `patch<T>`, `put<T>`, `delete<T>` — all generic.
 - Unwraps V2 envelope: returns `response.data`, not the full `{data, requestId, status}`.
-- Auth: `x-api-key` header on every request. Content-Type set only when body is present.
+- Headers on every request: `x-api-key`; `x-request-id`, a fresh `randomUUID()` per request that callers cannot override;
+  and `User-Agent: databox-cli/<version> (node <v>; <platform>)` when the client is given `version` (BaseCommand and
+  `auth login` pass `this.config.version`). Content-Type is set only when a body is present.
 - Errors: parses `errors[]` from the error envelope, throws `ApiRequestError(message, status, errors, requestId)`.
   `code`, `field` and `type` are taken from the first error. A non-JSON or `null` body falls back to `API error: <status> <statusText>`.
-- Transport failures — `fetch()` rejecting, a timeout, or the body stream failing mid-read — throw `ApiConnectionError` (exit 2).
+- The request id reported everywhere (errors, empty or non-JSON 2xx, `--verbose`) is the body `requestId`, else the
+  `x-request-id` response header, else the id the CLI sent. Every error therefore carries one.
+- Transport failures — `fetch()` rejecting, a timeout, or the body stream failing mid-read — throw `ApiConnectionError` (exit 2),
+  carrying the sent request id. `describeConnectionError` prints it as the id to quote: the request may still have reached the API.
 - Redirects are refused (`redirect: 'error'`, in `ask-genie.ts` too): fetch strips only `Authorization` and `Cookie` on a
   cross-origin redirect, so a followed one would resend `x-api-key`. The refusal is an `ApiConnectionError` (exit 2) with its own message.
 - `--verbose`: the `trace` option receives lines built only by `describeRequest(method, url)` and

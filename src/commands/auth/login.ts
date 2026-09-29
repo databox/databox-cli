@@ -56,7 +56,7 @@ export default class Login extends Command {
     saveConfig({...existingConfig, apiKey, apiUrl: baseUrl})
 
     try {
-      const client = new ApiClient({apiKey, baseUrl})
+      const client = new ApiClient({apiKey, baseUrl, version: this.config.version})
       await client.get('/v2/auth/validate-key')
       this.log('Authenticated successfully.')
     } catch {

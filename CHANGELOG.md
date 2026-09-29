@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1
+
+- **A request ID on every request, and in every error.** The CLI sends its own `x-request-id` with each request. Every error now shows a Request ID, including a bare `413` or `502` from a proxy, a network failure and a timeout; where no response came back, it is the CLI's own ID, and still the one to quote to support. A timed-out `dataset ingest` may still have been processed: check `dataset ingestions`. See [Errors and Exit Codes](https://github.com/databox/databox-cli#errors-and-exit-codes).
+- **User-Agent.** Requests identify themselves as `databox-cli/<version> (node <version>; <platform>)`.
+- **Ingest payload limit corrected to 10 MB** (10,485,760 bytes), what the API accepts. 1.0.0 allowed 30 MB, so a payload between the two was sent and then refused by the API with `413`; the CLI now refuses it before sending (exit 2).
+- **Packaging fixes** in `package.json` (the `bin` path and repository URL npm warned about at publish), and dependency updates in the lockfile.
+
 ## 1.0.0 — V2 API
 
 **Breaking change.** The CLI now uses the Databox V2 API exclusively; every V1 call is gone. It needs your personal Databox API key (`pak_…`), created under **Account Management → Security**. Creating one takes an admin role and a plan that includes API access; see [Getting an API Key](https://github.com/databox/databox-cli#getting-an-api-key).

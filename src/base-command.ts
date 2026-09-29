@@ -3,7 +3,7 @@ import {
 } from '@oclif/core'
 
 import {
-  ApiClient, ApiConnectionError, ApiRequestError, describeApiError,
+  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError,
 } from './lib/api-client.js'
 import {loadConfig} from './lib/config.js'
 import {OUTPUT_FORMATS, OutputFormat, colorEnabled} from './lib/output.js'
@@ -73,7 +73,7 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
 
   /**
    * Renders API failures with their code, field and request ID (exit 1), and failures to reach
-   * the API at all (exit 2), before oclif's own handler prints them.
+   * the API at all with the request ID the CLI sent (exit 2), before oclif's own handler prints them.
    */
   protected async catch(error: Interfaces.CommandError): Promise<unknown> {
     if (error instanceof ApiRequestError) {
@@ -81,7 +81,7 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     }
 
     if (error instanceof ApiConnectionError) {
-      return super.catch(new Errors.CLIError(error.message, {exit: 2}))
+      return super.catch(new Errors.CLIError(describeConnectionError(error), {exit: 2}))
     }
 
     return super.catch(error)
@@ -113,6 +113,7 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
       apiKey,
       baseUrl: this.flags['api-url'] ?? config.apiUrl,
       trace: this.flags.verbose ? line => this.logToStderr(line) : undefined,
+      version: this.config.version,
     })
   }
 

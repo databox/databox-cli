@@ -95,12 +95,20 @@ describe('dataset ingest', () => {
     expect(requests()).to.have.length(0)
   })
 
-  // Production's web server refuses a body over 30,000,000 bytes with a bare 413 and no message.
-  it('refuses a payload over 30,000,000 bytes with exit 2 before calling the API', async () => {
-    fs.writeFileSync(tempFilePath, JSON.stringify([{value: 'x'.repeat(30_000_000)}]))
+  // Production answers 413 request_too_large for a Content-Length over 10 MiB. The body sent is
+  // {"records":[{"value":"…"}]}: 26 bytes around the string.
+  it('sends a payload of exactly 10,485,760 bytes, the production limit', async () => {
+    fs.writeFileSync(tempFilePath, JSON.stringify([{value: 'x'.repeat(10_485_760 - 26)}]))
+    const {error} = await runCommand(['dataset', 'ingest', '123', '--file', tempFilePath], {root: process.cwd()})
+    expect(error).to.equal(undefined)
+    expect(requests()).to.have.length(1)
+  })
+
+  it('refuses a payload over 10,485,760 bytes with exit 2 before calling the API', async () => {
+    fs.writeFileSync(tempFilePath, JSON.stringify([{value: 'x'.repeat(10_485_760 - 25)}]))
     const {error} = await runCommand(['dataset', 'ingest', '123', '--file', tempFilePath], {root: process.cwd()})
     expect(error?.oclif?.exit).to.equal(2)
-    expect(error?.message).to.contain('over the API limit of 30 MB (30,000,000 bytes)')
+    expect(error?.message).to.contain('Payload is 10,485,761 bytes, over the API limit of 10 MB (10,485,760 bytes)')
     expect(requests()).to.have.length(0)
   })
 })
