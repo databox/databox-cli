@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  ApiClient, ApiConnectionError, ApiRequestError, describeApiError,
+  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError,
 } from '../../src/lib/api-client.js'
 import {mockApi, requests, restoreApi} from '../helpers.js'
 
@@ -98,6 +98,117 @@ describe('ApiClient errors', () => {
     expect(error).to.be.instanceOf(ApiConnectionError)
     expect((error as Error).message).to.contain('answered with a redirect, which the CLI does not follow')
     expect((error as Error).message).to.contain('--api-url')
+  })
+})
+
+const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i
+
+describe('ApiClient request headers', () => {
+  afterEach(() => {
+    restoreApi()
+  })
+
+  it('sends a UUID x-request-id, a new one per request', async () => {
+    mockApi([{method: 'GET', path: '/v2/things', response: {data: {}, requestId: 'r', status: 'success'}}])
+    const client = new ApiClient({apiKey: KEY})
+
+    await client.get('/v2/things')
+    await client.get('/v2/things')
+
+    const [first, second] = requests().map(request => request.headers['x-request-id'])
+    expect(first).to.match(UUID)
+    expect(second).to.match(UUID)
+    expect(first).to.not.equal(second)
+  })
+
+  it('sends a User-Agent naming the CLI version, Node version and platform', async () => {
+    mockApi([{method: 'GET', path: '/v2/things', response: {data: {}, requestId: 'r', status: 'success'}}])
+
+    await new ApiClient({apiKey: KEY, version: '9.8.7'}).get('/v2/things')
+
+    expect(requests()[0].headers['User-Agent']).to.equal(`databox-cli/9.8.7 (node ${process.version}; ${process.platform})`)
+  })
+
+  it('does not let a caller header replace the request ID', async () => {
+    mockApi([{method: 'GET', path: '/v2/things', response: {data: {}, requestId: 'r', status: 'success'}}])
+
+    await new ApiClient({apiKey: KEY}).get('/v2/things', undefined, {'x-request-id': 'caller'})
+
+    expect(requests()[0].headers['x-request-id']).to.match(UUID)
+  })
+})
+
+/** Answers with `respond` (which may throw, as fetch does) and records the x-request-id the client sent. */
+function replyAndCapture(respond: () => Response): {sent: () => string | undefined} {
+  let sent: string | undefined
+  mockApi([])
+  global.fetch = (async (_input: Request | URL | string, init?: RequestInit) => {
+    sent = (init?.headers as Record<string, string>)['x-request-id']
+    return respond()
+  }) as typeof global.fetch
+  return {sent: () => sent}
+}
+
+describe('ApiClient request IDs in errors', () => {
+  afterEach(() => {
+    restoreApi()
+  })
+
+  it('prefers the request ID in the body over the response header', async () => {
+    replyAndCapture(() => new Response(JSON.stringify(errorEnvelope([{code: 'not_found', message: 'Gone'}], 'body-id')), {
+      headers: {'x-request-id': 'header-id'}, status: 404,
+    }))
+
+    const error = await caught(new ApiClient({apiKey: KEY}).get('/v2/datasets/1')) as ApiRequestError
+
+    expect(error.requestId).to.equal('body-id')
+  })
+
+  // A proxy's 413 or 502 carries no envelope, only the header.
+  it('takes the request ID from the response header when the body has none', async () => {
+    replyAndCapture(() => new Response('', {headers: {'x-request-id': 'header-id'}, status: 413, statusText: 'Payload Too Large'}))
+
+    const error = await caught(new ApiClient({apiKey: KEY}).get('/v2/datasets/1')) as ApiRequestError
+
+    expect(error.requestId).to.equal('header-id')
+    expect(describeApiError(error)).to.equal('API error: 413 Payload Too Large\n  Request ID: header-id')
+  })
+
+  it('falls back to the request ID it sent when the response has neither', async () => {
+    const {sent} = replyAndCapture(() => new Response('<html>Bad Gateway</html>', {status: 502, statusText: 'Bad Gateway'}))
+
+    const error = await caught(new ApiClient({apiKey: KEY}).get('/v2/datasets/1')) as ApiRequestError
+
+    expect(sent()).to.match(UUID)
+    expect(error.requestId).to.equal(sent())
+  })
+
+  it('carries the request ID it sent on a connection failure', async () => {
+    const {sent} = replyAndCapture(() => {
+      throw new TypeError('fetch failed')
+    })
+
+    const error = await caught(new ApiClient({apiKey: KEY}).get('/v2/datasets')) as ApiConnectionError
+
+    expect(error).to.be.instanceOf(ApiConnectionError)
+    expect(sent()).to.match(UUID)
+    expect(error.requestId).to.equal(sent())
+  })
+
+  it('carries the request ID it sent on a timeout, and says it is the one to quote', async () => {
+    const {sent} = replyAndCapture(() => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+    })
+
+    const error = await caught(new ApiClient({apiKey: KEY}).get('/v2/datasets')) as ApiConnectionError
+
+    expect(error.requestId).to.equal(sent())
+    expect(describeConnectionError(error)).to.equal(`Request timed out after 30s.\n  Request ID: ${sent()} `
+      + '(sent by the CLI; the request may still have reached the API, so quote this ID to support)')
+  })
+
+  it('renders a connection error with no request ID as its message alone', () => {
+    expect(describeConnectionError(new ApiConnectionError('Could not connect to Genie.'))).to.equal('Could not connect to Genie.')
   })
 })
 
@@ -287,5 +398,17 @@ describe('ApiClient trace', () => {
     expect(lines).to.include('Request ID: req-err')
     expect(lines.some(line => line.startsWith('Response: 404 '))).to.equal(true)
     expect(lines.join('\n')).to.not.contain(KEY)
+  })
+
+  // Deliberately no requestId in the envelope: that absence is what is under test.
+  it('reports the request ID it sent when the response names none', async () => {
+    mockApi([{method: 'GET', path: '/v2/datasets', response: {data: {items: []}, status: 'success'}}])
+    const lines: string[] = []
+
+    await new ApiClient({apiKey: KEY, trace: line => lines.push(line)}).get('/v2/datasets')
+
+    const sent = requests()[0].headers['x-request-id']
+    expect(sent).to.match(UUID)
+    expect(lines).to.include(`Request ID: ${sent}`)
   })
 })

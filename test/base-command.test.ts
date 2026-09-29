@@ -100,6 +100,33 @@ describe('base command: API errors', () => {
     expect(error?.message).to.contain('timed out')
   })
 
+  it('prints the request ID from the response header for a bare 413', async () => {
+    mockApi([])
+    global.fetch = (async () => new Response('', {
+      headers: {'x-request-id': 'req-proxy'}, status: 413, statusText: 'Payload Too Large',
+    })) as typeof global.fetch
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(error?.message).to.equal('API error: 413 Payload Too Large\n  Request ID: req-proxy')
+  })
+
+  it('prints the request ID it sent when a request times out', async () => {
+    let sent: string | undefined
+    mockApi([])
+    global.fetch = (async (_input: Request | URL | string, init?: RequestInit) => {
+      sent = (init?.headers as Record<string, string>)['x-request-id']
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+    }) as typeof global.fetch
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(sent).to.match(/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i)
+    expect(error?.message).to.contain(`Request ID: ${sent} (sent by the CLI;`)
+  })
+
   it('reaches auth validate too, which used to flatten every failure to exit 1', async () => {
     mockApi([])
     global.fetch = (async () => {
@@ -246,6 +273,29 @@ describe('base command: --verbose', () => {
     const {stderr} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
 
     expect(stderr).to.not.contain('Request:')
+  })
+})
+
+describe('base command: User-Agent', () => {
+  beforeEach(() => {
+    setupTestConfig(KEY)
+    mockApi([{
+      method: 'GET',
+      path: '/v2/data-sources/10',
+      response: {data: DATA_SOURCE, requestId: 'test', status: 'success'},
+    }])
+  })
+
+  afterEach(() => {
+    restoreApi()
+    cleanupTestConfig()
+  })
+
+  it('names the CLI version from package.json', async () => {
+    await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    const {version} = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')) as {version: string}
+    expect(requests()[0].headers['User-Agent']).to.equal(`databox-cli/${version} (node ${process.version}; ${process.platform})`)
   })
 })
 

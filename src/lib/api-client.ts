@@ -1,3 +1,5 @@
+import {randomUUID} from 'node:crypto'
+
 const DEFAULT_BASE_URL = 'https://api.databox.com'
 
 /** Every request is bounded: without this a stalled connection hangs a command forever. */
@@ -11,6 +13,8 @@ export interface ApiClientOptions {
   baseUrl?: string
   /** Receives the --verbose lines. It is only ever handed the output of describeRequest/describeResponse. */
   trace?: (line: string) => void
+  /** The CLI's own version, sent in the User-Agent. Without it, fetch's default User-Agent goes out. */
+  version?: string
 }
 
 export interface ApiError {
@@ -55,9 +59,12 @@ export class ApiRequestError extends Error {
   }
 }
 
-/** A request that never got a response: connection refused, DNS failure, or timeout. */
+/**
+ * A request that never got a response: connection refused, DNS failure, or timeout.
+ * `requestId` is the x-request-id the CLI sent, so a request the API may still have processed can be traced.
+ */
 export class ApiConnectionError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public readonly requestId?: string) {
     super(message)
     this.name = 'ApiConnectionError'
   }
@@ -81,6 +88,16 @@ export function describeApiError(error: ApiRequestError): string {
 }
 
 /**
+ * The user-facing text of a transport failure. No response named a request ID, so the one shown
+ * is the CLI's own; the API logs it too if the request got that far.
+ */
+export function describeConnectionError(error: ApiConnectionError): string {
+  if (!error.requestId) return error.message
+  return `${error.message}\n  Request ID: ${error.requestId} `
+    + '(sent by the CLI; the request may still have reached the API, so quote this ID to support)'
+}
+
+/**
  * The --verbose request lines. Takes the method and URL only — never the headers — so the key is
  * not in scope here and cannot be printed. The header line is a literal for the same reason.
  */
@@ -101,28 +118,30 @@ export function isRedirectRefusal(error: unknown): boolean {
 }
 
 /** A transport failure — before or during the response — as the exit-2 error the CLI reports. */
-function connectionError(error: unknown, timeoutMs: number, message: string): ApiConnectionError {
+function connectionError(error: unknown, timeoutMs: number, message: string, requestId: string): ApiConnectionError {
   if (error instanceof Error && error.name === 'TimeoutError') {
-    return new ApiConnectionError(`Request timed out after ${Math.round(timeoutMs / 1000)}s.`)
+    return new ApiConnectionError(`Request timed out after ${Math.round(timeoutMs / 1000)}s.`, requestId)
   }
 
   if (isRedirectRefusal(error)) {
     return new ApiConnectionError('The API answered with a redirect, which the CLI does not follow (it would resend your API key). '
-      + 'Check --api-url / DATABOX_API_URL (for example http:// where the API expects https://).')
+      + 'Check --api-url / DATABOX_API_URL (for example http:// where the API expects https://).', requestId)
   }
 
-  return new ApiConnectionError(message)
+  return new ApiConnectionError(message, requestId)
 }
 
 export class ApiClient {
   readonly apiKey: string
   private baseUrl: string
   private trace?: (line: string) => void
+  private userAgent?: string
 
   constructor(options: ApiClientOptions) {
     this.apiKey = options.apiKey
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
     this.trace = options.trace
+    if (options.version) this.userAgent = `databox-cli/${options.version} (node ${process.version}; ${process.platform})`
   }
 
   async delete<T>(path: string, headers?: Record<string, string>): Promise<T> {
@@ -188,11 +207,19 @@ export class ApiClient {
     extraHeaders?: Record<string, string>,
     timeoutMs: number = DEFAULT_TIMEOUT_MS,
   ): Promise<T> {
-    // extraHeaders is spread first so a caller cannot overwrite the API key.
+    // One ID per request, so each page of a paginated list is traceable on its own.
+    const sentRequestId = randomUUID()
+
+    // extraHeaders is spread first so a caller cannot overwrite the API key or the request ID.
     const headers: Record<string, string> = {
       ...extraHeaders,
       Accept: 'application/json',
       'x-api-key': this.apiKey,
+      'x-request-id': sentRequestId,
+    }
+
+    if (this.userAgent) {
+      headers['User-Agent'] = this.userAgent
     }
 
     if (init.body) {
@@ -210,10 +237,15 @@ export class ApiClient {
         ...init, headers, redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
       })
     } catch (error) {
-      throw connectionError(error, timeoutMs, 'Could not connect to API. Check your internet connection.')
+      throw connectionError(error, timeoutMs, 'Could not connect to API. Check your internet connection.', sentRequestId)
     }
 
     const durationMs = performance.now() - started
+
+    // The body's requestId is the API's own word; a proxy's bare 413 or 502 has only the header;
+    // a response with neither is reported by the ID the CLI sent.
+    const headerRequestId = response.headers.get('x-request-id') || undefined
+    const reportedRequestId = (bodyRequestId?: string): string => bodyRequestId || headerRequestId || sentRequestId
 
     // The body streams after the headers, under the same timeout signal, so reading it can
     // fail the same ways fetch() can: a timeout, an abort, or the socket closing ("terminated").
@@ -221,7 +253,7 @@ export class ApiClient {
     try {
       text = await response.text()
     } catch (error) {
-      throw connectionError(error, timeoutMs, 'The connection to the API was lost while reading its response.')
+      throw connectionError(error, timeoutMs, 'The connection to the API was lost while reading its response.', reportedRequestId())
     }
 
     if (!response.ok) {
@@ -233,7 +265,7 @@ export class ApiClient {
       }
 
       const errors = Array.isArray(errorBody?.errors) ? errorBody.errors : []
-      const requestId = errorBody?.requestId || undefined
+      const requestId = reportedRequestId(errorBody?.requestId)
       this.emit(describeResponse(response.status, durationMs, requestId))
 
       const message = errors.length > 0
@@ -245,7 +277,7 @@ export class ApiClient {
 
     // 204 and other empty 2xx bodies would make JSON.parse throw.
     if (text.trim() === '') {
-      this.emit(describeResponse(response.status, durationMs))
+      this.emit(describeResponse(response.status, durationMs, reportedRequestId()))
       return undefined as T
     }
 
@@ -254,11 +286,13 @@ export class ApiClient {
     try {
       json = JSON.parse(text) as ApiEnvelope<T>
     } catch {
-      this.emit(describeResponse(response.status, durationMs))
-      throw new ApiRequestError(`The API response was not JSON (${response.status} ${response.statusText}).`, response.status)
+      this.emit(describeResponse(response.status, durationMs, reportedRequestId()))
+      throw new ApiRequestError(
+        `The API response was not JSON (${response.status} ${response.statusText}).`, response.status, [], reportedRequestId(),
+      )
     }
 
-    this.emit(describeResponse(response.status, durationMs, json.requestId))
+    this.emit(describeResponse(response.status, durationMs, reportedRequestId(json.requestId)))
     return json.data
   }
 }

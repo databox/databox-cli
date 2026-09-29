@@ -7,14 +7,15 @@ import {idempotencyFlags, idempotencyHeaders} from '../../lib/flags.js'
 import {formatSingle} from '../../lib/output.js'
 
 /**
- * What production enforces, measured 2026-09-25: IngestSettings.MaxRecords is 500 in its
- * deployment config (the API's docs say 10,000), and the web server refuses a body over
- * Kestrel's default 30,000,000 bytes before the API's own 100 MB check can run, with a bare
- * 413 and no message. Follow the API if either changes.
+ * What production enforces. IngestSettings.MaxRecords is 500 in its deployment config (the API's
+ * docs say 10,000), measured 2026-09-25. The payload limit is MaxPayloadSizeMb=10, checked on
+ * Content-Length as 10 MiB, measured 2026-09-29: 10,399,982 bytes passed the size check and
+ * 10,599,982 got 413 request_too_large ("The maximum allowed size is 10 MB").
+ * Follow the API if either changes.
  */
 const MAX_RECORDS = 500
-const MAX_PAYLOAD_BYTES = 30_000_000
-const PAYLOAD_LIMIT = '30 MB (30,000,000 bytes)'
+const MAX_PAYLOAD_BYTES = 10 * 1024 * 1024
+const PAYLOAD_LIMIT = '10 MB (10,485,760 bytes)'
 
 interface IngestResponse {
   ingestionId: string
