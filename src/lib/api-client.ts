@@ -112,6 +112,26 @@ export function describeResponse(status: number, durationMs: number, requestId?:
   return lines
 }
 
+/**
+ * Whether a value can be the API base URL: absolute, over http or https. Anything else fails only
+ * once a request is built: `api.databox.com` as a bare "TypeError: Invalid URL", and
+ * `localhost:8080`, which parses with the scheme "localhost:", as a connection error that blames
+ * the network for a request that never left.
+ */
+export function isApiUrl(value: string): boolean {
+  try {
+    const {protocol} = new URL(value)
+    return protocol === 'https:' || protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+/** The exit-2 message for an --api-url (or DATABOX_API_URL) that isApiUrl() refuses. */
+export function describeInvalidApiUrl(value: string): string {
+  return `--api-url must be an http:// or https:// URL, e.g. ${DEFAULT_BASE_URL}. Got "${value}" (from --api-url or DATABOX_API_URL).`
+}
+
 /** Whether fetch() rejected because of `redirect: 'error'`: Node reports it as a TypeError caused by "unexpected redirect". */
 export function isRedirectRefusal(error: unknown): boolean {
   return error instanceof TypeError && error.cause instanceof Error && error.cause.message === 'unexpected redirect'

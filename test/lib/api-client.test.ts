@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError,
+  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError, isApiUrl,
 } from '../../src/lib/api-client.js'
 import {mockApi, requests, restoreApi} from '../helpers.js'
 
@@ -307,6 +307,30 @@ describe('ApiClient response bodies', () => {
 
     expect(error.errors).to.deep.equal([])
     expect(error.requestId).to.equal('req-1')
+  })
+})
+
+describe('isApiUrl', () => {
+  it('accepts an absolute http or https URL', () => {
+    expect(isApiUrl('https://api.databox.com')).to.equal(true)
+    expect(isApiUrl('https://api.databox.com/')).to.equal(true)
+    expect(isApiUrl('http://localhost:8080')).to.equal(true)
+  })
+
+  it('refuses a host without a scheme, which new URL() cannot parse', () => {
+    expect(isApiUrl('api.databox.com')).to.equal(false)
+    expect(isApiUrl('')).to.equal(false)
+  })
+
+  // These parse, with the schemes "localhost:" and "api.databox.com:", so only fetch() would fail.
+  it('refuses a host:port without a scheme, which parses as some other scheme', () => {
+    expect(isApiUrl('localhost:8080')).to.equal(false)
+    expect(isApiUrl('api.databox.com:443')).to.equal(false)
+  })
+
+  it('refuses a scheme other than http and https', () => {
+    expect(isApiUrl('ftp://api.databox.com')).to.equal(false)
+    expect(isApiUrl('file:///etc/hosts')).to.equal(false)
   })
 })
 
