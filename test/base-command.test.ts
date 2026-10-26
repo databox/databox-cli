@@ -396,3 +396,99 @@ describe('base command: credentials', () => {
     expect(requests()).to.have.length(0)
   })
 })
+
+describe('base command: --api-url', () => {
+  const savedApiUrl = process.env.DATABOX_API_URL
+
+  beforeEach(() => {
+    setupTestConfig(KEY)
+    mockApi([{
+      method: 'GET',
+      path: '/v2/data-sources/10',
+      response: {data: DATA_SOURCE, requestId: 'test', status: 'success'},
+    }])
+  })
+
+  afterEach(() => {
+    if (savedApiUrl === undefined) delete process.env.DATABOX_API_URL
+    else process.env.DATABOX_API_URL = savedApiUrl
+    restoreApi()
+    cleanupTestConfig()
+  })
+
+  it('sends the request to the URL given', async () => {
+    const {error} = await runCommand(['data-source', 'get', '10', '--api-url', 'http://localhost:8080'], {root: process.cwd()})
+
+    expect(error).to.equal(undefined)
+    expect(requests()).to.have.length(1)
+  })
+
+  // Was a bare "TypeError: Invalid URL", exit 1, from inside the request.
+  it('rejects a URL without a scheme with exit 2, before any request', async () => {
+    const {error} = await runCommand(['data-source', 'get', '10', '--api-url', 'api.databox.com'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--api-url must be an http:// or https:// URL')
+    expect(error?.message).to.contain('Got "api.databox.com"')
+    expect(requests()).to.have.length(0)
+  })
+
+  // Was "Could not connect to API. Check your internet connection." with a request ID that never left.
+  it('rejects a host:port without a scheme, which parses as a URL fetch cannot use', async () => {
+    const {error} = await runCommand(['data-source', 'get', '10', '--api-url', 'localhost:8080'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('Got "localhost:8080"')
+    expect(error?.message).to.not.contain('Request ID')
+    expect(requests()).to.have.length(0)
+  })
+
+  it('checks DATABOX_API_URL the same way', async () => {
+    process.env.DATABOX_API_URL = 'api.databox.com'
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('DATABOX_API_URL')
+    expect(requests()).to.have.length(0)
+  })
+
+  // No --force: the check has to fail before confirm() reads stdin.
+  it('rejects a bad URL before a destructive command prompts', async () => {
+    const {error} = await runCommand(['dataset', 'delete', '1', '--api-url', 'api.databox.com'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--api-url must be an http:// or https:// URL')
+    expect(requests()).to.have.length(0)
+  })
+
+  it('reports a bad stored URL by path, with the command that replaces it', async () => {
+    fs.writeFileSync(getConfigPath(), JSON.stringify({apiKey: KEY, apiUrl: 'api.databox.com'}))
+
+    const {error, stderr, stdout} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(error?.message).to.contain(`The API URL saved in ${getConfigPath()} ("api.databox.com")`)
+    expect(error?.message).to.contain('databox auth login --api-url https://api.databox.com')
+    expect(`${error?.message}${stderr}${stdout}`).to.not.contain(KEY)
+    expect(requests()).to.have.length(0)
+  })
+
+  it('lets --api-url override a bad stored URL', async () => {
+    fs.writeFileSync(getConfigPath(), JSON.stringify({apiKey: KEY, apiUrl: 'api.databox.com'}))
+
+    const {error} = await runCommand(['data-source', 'get', '10', '--api-url', 'https://api.databox.com'], {root: process.cwd()})
+
+    expect(error).to.equal(undefined)
+    expect(requests()).to.have.length(1)
+  })
+
+  it('still uses a good stored URL', async () => {
+    fs.writeFileSync(getConfigPath(), JSON.stringify({apiKey: KEY, apiUrl: 'https://staging.example.com'}))
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error).to.equal(undefined)
+    expect(requests()).to.have.length(1)
+  })
+})

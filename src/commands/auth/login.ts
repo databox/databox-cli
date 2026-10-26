@@ -1,6 +1,6 @@
 import {Command, Flags} from '@oclif/core'
 
-import {ApiClient} from '../../lib/api-client.js'
+import {ApiClient, describeInvalidApiUrl, isApiUrl} from '../../lib/api-client.js'
 import {loadConfig, saveConfig} from '../../lib/config.js'
 import {prompt, readPipedLine} from '../../lib/prompt.js'
 
@@ -29,6 +29,12 @@ export default class Login extends Command {
 
     let apiKey = flags['api-key']
     const apiUrl = flags['api-url']
+
+    // Checked before the prompt and before anything is saved: a stored URL fetch cannot use
+    // would fail every later command, while this one still exited 0 with only a warning.
+    if (apiUrl !== undefined && !isApiUrl(apiUrl)) {
+      this.error(describeInvalidApiUrl(apiUrl), {exit: 2})
+    }
 
     // Off a terminal there is nobody to prompt, but the key can be piped in
     // (`pass show databox | databox auth login`). An empty first line or no input is refused.

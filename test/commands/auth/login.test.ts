@@ -52,6 +52,31 @@ describe('auth login', () => {
     expect(result.stderr).to.not.contain('Warning: Warning:')
   })
 
+  it('saves the --api-url it was given', async () => {
+    mockApi([{
+      method: 'GET',
+      path: '/v2/auth/validate-key',
+      response: {data: {}, requestId: 'test', status: 'success'},
+    }])
+
+    const {error} = await runCommand(['auth', 'login', '--api-key', 'my-test-key', '--api-url', 'http://localhost:8080'], {root: process.cwd()})
+
+    expect(error).to.equal(undefined)
+    expect(JSON.parse(fs.readFileSync(getConfigPath(), 'utf8')).apiUrl).to.equal('http://localhost:8080')
+  })
+
+  // Was saved, with only a warning and exit 0, and then failed every later command.
+  it('refuses an --api-url without a scheme with exit 2, and saves nothing', async () => {
+    mockApi([])
+
+    const {error} = await runCommand(['auth', 'login', '--api-key', 'my-test-key', '--api-url', 'api.databox.com'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('--api-url must be an http:// or https:// URL')
+    expect(requests()).to.have.length(0)
+    expect(fs.existsSync(getConfigPath())).to.equal(false)
+  })
+
   describe('when stdin is not a terminal', () => {
     let restore: () => void
     const savedApiKey = process.env.DATABOX_API_KEY
@@ -103,6 +128,17 @@ describe('auth login', () => {
 
       expect(error?.oclif?.exit).to.equal(2)
       expect(error?.message).to.equal(NOTHING_PIPED)
+      expect(requests()).to.have.length(0)
+      expect(fs.existsSync(getConfigPath())).to.equal(false)
+    })
+
+    it('refuses a bad --api-url before reading the piped key', async () => {
+      restore = pipeStdin('piped-test-key\n')
+      mockApi([])
+
+      const {error} = await runCommand(['auth', 'login', '--api-url', 'localhost:8080'], {root: process.cwd()})
+
+      expect(error?.oclif?.exit).to.equal(2)
       expect(requests()).to.have.length(0)
       expect(fs.existsSync(getConfigPath())).to.equal(false)
     })
