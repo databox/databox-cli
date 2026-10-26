@@ -1,7 +1,7 @@
 import {Command, Flags} from '@oclif/core'
 
-import {ApiClient, describeInvalidApiUrl, isApiUrl} from '../../lib/api-client.js'
-import {loadConfig, saveConfig} from '../../lib/config.js'
+import {ApiClient, describeInvalidApiUrl, normalizeApiUrl} from '../../lib/api-client.js'
+import {loadConfig, saveConfig, storedApiUrl} from '../../lib/config.js'
 import {prompt, readPipedLine} from '../../lib/prompt.js'
 
 export default class Login extends Command {
@@ -28,13 +28,19 @@ export default class Login extends Command {
     const {flags} = await this.parse(Login)
 
     let apiKey = flags['api-key']
-    const apiUrl = flags['api-url']
+    const apiUrlFlag = flags['api-url']
 
     // Checked before the prompt and before anything is saved: a stored URL fetch cannot use
     // would fail every later command, while this one still exited 0 with only a warning.
-    if (apiUrl !== undefined && !isApiUrl(apiUrl)) {
-      this.error(describeInvalidApiUrl(apiUrl), {exit: 2})
+    // Without --api-url, the stored URL is kept, so it is checked the same way.
+    let baseUrl: string | undefined
+    if (apiUrlFlag !== undefined) {
+      baseUrl = normalizeApiUrl(apiUrlFlag)
+      if (baseUrl === undefined) this.error(describeInvalidApiUrl(apiUrlFlag), {exit: 2})
     }
+
+    const existingConfig = loadConfig()
+    if (apiUrlFlag === undefined) baseUrl = storedApiUrl(existingConfig)
 
     // Off a terminal there is nobody to prompt, but the key can be piped in
     // (`pass show databox | databox auth login`). An empty first line or no input is refused.
@@ -57,8 +63,6 @@ export default class Login extends Command {
       this.error('API key is required.', {exit: 1})
     }
 
-    const existingConfig = loadConfig()
-    const baseUrl = apiUrl ?? existingConfig.apiUrl
     saveConfig({...existingConfig, apiKey, apiUrl: baseUrl})
 
     try {

@@ -428,8 +428,8 @@ describe('base command: --api-url', () => {
     const {error} = await runCommand(['data-source', 'get', '10', '--api-url', 'api.databox.com'], {root: process.cwd()})
 
     expect(error?.oclif?.exit).to.equal(2)
-    expect(error?.message).to.contain('--api-url must be an http:// or https:// URL')
-    expect(error?.message).to.contain('Got "api.databox.com"')
+    expect(error?.message).to.contain('--api-url must be an http:// or https:// base URL with no username, password, query string or fragment')
+    expect(error?.message).to.contain('does not start with http:// or https://')
     expect(requests()).to.have.length(0)
   })
 
@@ -438,9 +438,55 @@ describe('base command: --api-url', () => {
     const {error} = await runCommand(['data-source', 'get', '10', '--api-url', 'localhost:8080'], {root: process.cwd()})
 
     expect(error?.oclif?.exit).to.equal(2)
-    expect(error?.message).to.contain('Got "localhost:8080"')
+    expect(error?.message).to.contain('does not start with http:// or https://')
     expect(error?.message).to.not.contain('Request ID')
     expect(requests()).to.have.length(0)
+  })
+
+  // Echoed as `Got "…"`, a key pasted into the wrong flag was printed in full.
+  it('never prints the refused value', async () => {
+    const {error, stderr, stdout} = await runCommand(['data-source', 'get', '10', '--api-url', 'pak_SECRET'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(`${error?.message}${stderr}${stdout}`).to.not.contain('SECRET')
+    expect(requests()).to.have.length(0)
+  })
+
+  it('never prints the credentials of a URL with the wrong scheme', async () => {
+    const {error, stderr, stdout} = await runCommand(['data-source', 'get', '10', '--api-url', 'ftp://alice42:s3cr3t-tok@secret-host.example'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('uses the scheme ftp:, not http: or https:')
+    expect(`${error?.message}${stderr}${stdout}`).to.not.match(/alice42|s3cr3t-tok|secret-host/)
+    expect(requests()).to.have.length(0)
+  })
+
+  it('refuses a URL with a username or password', async () => {
+    const {error} = await runCommand(['data-source', 'get', '10', '--api-url', 'https://user:tok@api.databox.com'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(error?.message).to.contain('contains a username or password')
+    expect(requests()).to.have.length(0)
+  })
+
+  // A trailing space passed the check, then threw a bare TypeError (exit 1) building the request;
+  // "/ " sent it to /%20/v2/….
+  for (const apiUrl of ['https://api.databox.com ', 'https://api.databox.com/ ', ' https://api.databox.com', 'https://api.databox.com\n']) {
+    it(`ignores whitespace around --api-url ${JSON.stringify(apiUrl)}`, async () => {
+      const {error} = await runCommand(['data-source', 'get', '10', '--api-url', apiUrl], {root: process.cwd()})
+
+      expect(error).to.equal(undefined)
+      expect(requests().map(r => r.path)).to.deep.equal(['/v2/data-sources/10'])
+    })
+  }
+
+  it('ignores whitespace around DATABOX_API_URL', async () => {
+    process.env.DATABOX_API_URL = 'https://api.databox.com/\n'
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error).to.equal(undefined)
+    expect(requests().map(r => r.path)).to.deep.equal(['/v2/data-sources/10'])
   })
 
   it('checks DATABOX_API_URL the same way', async () => {
@@ -458,7 +504,7 @@ describe('base command: --api-url', () => {
     const {error} = await runCommand(['dataset', 'delete', '1', '--api-url', 'api.databox.com'], {root: process.cwd()})
 
     expect(error?.oclif?.exit).to.equal(2)
-    expect(error?.message).to.contain('--api-url must be an http:// or https:// URL')
+    expect(error?.message).to.contain('--api-url must be an http:// or https:// base URL with no username, password, query string or fragment')
     expect(requests()).to.have.length(0)
   })
 
@@ -468,10 +514,48 @@ describe('base command: --api-url', () => {
     const {error, stderr, stdout} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
 
     expect(error?.oclif?.exit).to.equal(1)
-    expect(error?.message).to.contain(`The API URL saved in ${getConfigPath()} ("api.databox.com")`)
+    expect(error?.message).to.contain(`The API URL saved in ${getConfigPath()} does not start with http:// or https://.`)
     expect(error?.message).to.contain('databox auth login --api-url https://api.databox.com')
     expect(`${error?.message}${stderr}${stdout}`).to.not.contain(KEY)
     expect(requests()).to.have.length(0)
+  })
+
+  it('never prints a bad stored URL', async () => {
+    fs.writeFileSync(getConfigPath(), JSON.stringify({apiKey: KEY, apiUrl: 'pak_SECRET'}))
+
+    const {error, stderr, stdout} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(`${error?.message}${stderr}${stdout}`).to.not.contain('SECRET')
+    expect(requests()).to.have.length(0)
+  })
+
+  it('treats a stored null URL as none, and uses the default', async () => {
+    fs.writeFileSync(getConfigPath(), JSON.stringify({apiKey: KEY, apiUrl: null}))
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error).to.equal(undefined)
+    expect(requests()).to.have.length(1)
+  })
+
+  it('refuses a stored URL that is not a string with exit 1', async () => {
+    fs.writeFileSync(getConfigPath(), JSON.stringify({apiKey: KEY, apiUrl: 8080}))
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(1)
+    expect(error?.message).to.contain(`The API URL saved in ${getConfigPath()} is not a string.`)
+    expect(requests()).to.have.length(0)
+  })
+
+  it('ignores whitespace around a stored URL', async () => {
+    fs.writeFileSync(getConfigPath(), JSON.stringify({apiKey: KEY, apiUrl: 'https://staging.example.com/ \n'}))
+
+    const {error} = await runCommand(['data-source', 'get', '10'], {root: process.cwd()})
+
+    expect(error).to.equal(undefined)
+    expect(requests().map(r => r.path)).to.deep.equal(['/v2/data-sources/10'])
   })
 
   it('lets --api-url override a bad stored URL', async () => {

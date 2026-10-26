@@ -1,7 +1,8 @@
 import {expect} from 'chai'
 
 import {
-  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError, isApiUrl,
+  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError, describeInvalidApiUrl,
+  describeInvalidStoredApiUrl, isApiUrl, normalizeApiUrl,
 } from '../../src/lib/api-client.js'
 import {mockApi, requests, restoreApi} from '../helpers.js'
 
@@ -350,6 +351,145 @@ describe('isApiUrl', () => {
   it('refuses a scheme other than http and https', () => {
     expect(isApiUrl('ftp://api.databox.com')).to.equal(false)
     expect(isApiUrl('file:///etc/hosts')).to.equal(false)
+  })
+
+  it('refuses a username or password', () => {
+    expect(isApiUrl('https://user@api.databox.com')).to.equal(false)
+    expect(isApiUrl('https://user:secret@api.databox.com')).to.equal(false)
+    expect(isApiUrl('https://:secret@api.databox.com')).to.equal(false)
+  })
+
+  it('refuses a query string', () => {
+    expect(isApiUrl('https://api.databox.com/?token=secret')).to.equal(false)
+  })
+
+  it('refuses a fragment', () => {
+    expect(isApiUrl('https://api.databox.com/#secret')).to.equal(false)
+  })
+
+  it('accepts a base path', () => {
+    expect(isApiUrl('https://gateway.example.com/databox')).to.equal(true)
+    expect(isApiUrl('https://gateway.example.com/databox/')).to.equal(true)
+  })
+
+  it('accepts surrounding whitespace', () => {
+    expect(isApiUrl(' https://api.databox.com\n')).to.equal(true)
+  })
+})
+
+describe('normalizeApiUrl', () => {
+  it('trims surrounding whitespace and drops a trailing slash', () => {
+    expect(normalizeApiUrl('https://api.databox.com ')).to.equal('https://api.databox.com')
+    expect(normalizeApiUrl('https://api.databox.com/ ')).to.equal('https://api.databox.com')
+    expect(normalizeApiUrl(' https://api.databox.com')).to.equal('https://api.databox.com')
+    expect(normalizeApiUrl('https://api.databox.com\n')).to.equal('https://api.databox.com')
+    expect(normalizeApiUrl('\thttps://api.databox.com//\r\n')).to.equal('https://api.databox.com')
+  })
+
+  it('keeps an IPv6 host and port, and lowercases the scheme and host', () => {
+    expect(normalizeApiUrl('HTTP://[::1]:8080/')).to.equal('http://[::1]:8080')
+    expect(normalizeApiUrl('HTTPS://API.Databox.com/Base/')).to.equal('https://api.databox.com/Base')
+  })
+
+  it('keeps a base path and a port', () => {
+    expect(normalizeApiUrl('http://localhost:8080/api/ ')).to.equal('http://localhost:8080/api')
+  })
+
+  it('returns undefined for a value isApiUrl refuses', () => {
+    expect(normalizeApiUrl('api.databox.com')).to.equal(undefined)
+    expect(normalizeApiUrl('https://user:secret@api.databox.com')).to.equal(undefined)
+  })
+})
+
+describe('describeInvalidApiUrl', () => {
+  const lead = '--api-url must be an http:// or https:// base URL with no username, password, query string or fragment, e.g. https://api.databox.com. '
+    + 'The value given (from --api-url or DATABOX_API_URL) '
+
+  it('says a value without a scheme does not start with http:// or https://', () => {
+    expect(describeInvalidApiUrl('api.databox.com')).to.equal(`${lead}does not start with http:// or https://.`)
+    expect(describeInvalidApiUrl('localhost:8080')).to.equal(`${lead}does not start with http:// or https://.`)
+  })
+
+  it('names the scheme it was given, and nothing else of the URL', () => {
+    expect(describeInvalidApiUrl('ftp://user:tok@host.example')).to.equal(`${lead}uses the scheme ftp:, not http: or https:.`)
+  })
+
+  it('says an http(s) value that does not parse is not a valid URL', () => {
+    expect(describeInvalidApiUrl('https://')).to.equal(`${lead}is not a valid URL.`)
+  })
+
+  it('names a username or password, a query string and a fragment', () => {
+    expect(describeInvalidApiUrl('https://user:tok@host.example')).to.equal(`${lead}contains a username or password.`)
+    expect(describeInvalidApiUrl('https://host.example/?key=tok')).to.equal(`${lead}has a query string.`)
+    expect(describeInvalidApiUrl('https://host.example/#tok')).to.equal(`${lead}has a fragment.`)
+  })
+
+  it('never repeats the value, which may be a key pasted into the wrong flag', () => {
+    for (const value of [KEY, 'ftp://user:tok@secret-host.example', 'https://user:tok@secret-host.example/?k=v']) {
+      const message = describeInvalidApiUrl(value)
+      expect(message).to.not.contain('pak_')
+      expect(message).to.not.contain('tok')
+      expect(message).to.not.contain('secret')
+    }
+  })
+})
+
+describe('describeInvalidStoredApiUrl', () => {
+  const lead = 'The API URL saved in /home/u/config.json '
+  const tail = ' Run "databox auth login --api-url https://api.databox.com" to replace it.'
+
+  it('names the config path and the problem, and never the value', () => {
+    const noScheme = describeInvalidStoredApiUrl(KEY, '/home/u/config.json')
+    const credentials = describeInvalidStoredApiUrl('https://user:tok@host.example', '/home/u/config.json')
+
+    expect(noScheme).to.equal(`${lead}does not start with http:// or https://.${tail}`)
+    expect(credentials).to.equal(`${lead}contains a username or password.${tail}`)
+  })
+
+  it('says a value that is not a string is not a string', () => {
+    expect(describeInvalidStoredApiUrl(42, '/home/u/config.json')).to.equal(`${lead}is not a string.${tail}`)
+  })
+})
+
+describe('ApiClient base URL', () => {
+  let urls: string[]
+
+  beforeEach(() => {
+    urls = []
+    mockApi([])
+    global.fetch = (async (input: Request | URL | string) => {
+      urls.push(String(input))
+      return new Response(JSON.stringify({data: {}, requestId: 'r', status: 'success'}), {status: 200})
+    }) as typeof global.fetch
+  })
+
+  afterEach(() => {
+    restoreApi()
+  })
+
+  // Concatenated raw, a trailing space threw a bare TypeError, and "/ " sent the request to /%20/v2/….
+  for (const baseUrl of ['https://api.databox.com ', 'https://api.databox.com/ ', ' https://api.databox.com', 'https://api.databox.com\n']) {
+    it(`sends the request to the right URL for ${JSON.stringify(baseUrl)}`, async () => {
+      await new ApiClient({apiKey: KEY, baseUrl}).get('/v2/datasets', {page: 1})
+
+      expect(urls).to.deep.equal(['https://api.databox.com/v2/datasets?page=1'])
+    })
+  }
+
+  it('keeps a base path', async () => {
+    await new ApiClient({apiKey: KEY, baseUrl: 'https://gateway.example.com/databox/'}).get('/v2/datasets')
+
+    expect(urls).to.deep.equal(['https://gateway.example.com/databox/v2/datasets'])
+  })
+
+  it('uses the default when given none', async () => {
+    await new ApiClient({apiKey: KEY}).get('/v2/datasets')
+
+    expect(urls).to.deep.equal(['https://api.databox.com/v2/datasets'])
+  })
+
+  it('refuses a base URL isApiUrl refuses, without repeating it', () => {
+    expect(() => new ApiClient({apiKey: KEY, baseUrl: KEY})).to.throw(TypeError).with.property('message').that.does.not.contain('pak_')
   })
 })
 

@@ -194,7 +194,7 @@ Every command except `auth login` accepts these:
 | `--verbose` | — | Print each request and response (method, URL, status, duration, request ID) to stderr. The API key is never printed. |
 | `--no-color` | `NO_COLOR` | Disable coloured output. A non-empty `NO_COLOR` does the same. |
 | `--api-key` | `DATABOX_API_KEY` | Use this API key instead of the stored one. |
-| `--api-url` | `DATABOX_API_URL` | Override the API base URL (default `https://api.databox.com`). `auth login` saves the URL it was given to the config file, and later commands keep using it. |
+| `--api-url` | `DATABOX_API_URL` | Override the API base URL (default `https://api.databox.com`). It must be an `http://` or `https://` URL, optionally with a base path, and no username, password, query string or fragment; surrounding whitespace is ignored. A bad value exits 2 before anything is sent. `auth login` saves the URL it was given to the config file, and later commands keep using it. |
 | `--account-id` | `DATABOX_ACCOUNT_ID` | Target an account in your organization (see [Organizations and Accounts](#organizations-and-accounts)). |
 | `-h`, `--help` | — | Show help for a command or topic. |
 
@@ -324,7 +324,7 @@ When the API says when to retry, with a `Retry-After` header, the error adds a `
 | Exit code | Meaning |
 |-----------|---------|
 | `0` | Success. Answering anything but `y` or `yes` to a confirmation prompt, at a terminal or piped, also exits 0 after printing `Aborted.`. |
-| `1` | The API returned an error (4xx or 5xx, including the rate limit, and `forbidden` when your role does not allow the command; see [Permissions](#permissions)). Also: no API key is configured, the stored config file is not valid JSON or holds an API URL that is not `http://` or `https://`, the response was not JSON (usually a wrong `--api-url`), an update command was given no field to change, or `dataset ingest` was run at a terminal with no `--records` or `--file`. |
+| `1` | The API returned an error (4xx or 5xx, including the rate limit, and `forbidden` when your role does not allow the command; see [Permissions](#permissions)). Also: no API key is configured, the stored config file is not valid JSON or holds an API URL that `--api-url` would refuse (this fails `auth login` too, unless it is given `--api-url`), the response was not JSON (usually a wrong `--api-url`), an update command was given no field to change, or `dataset ingest` was run at a terminal with no `--records` or `--file`. |
 | `2` | The request was never sent, or never reached the API: an unknown flag, a value outside a flag's options, a malformed ID, `--api-url` or JSON value, an ingest over the limits, or a network failure, timeout or redirect (the CLI does not follow a redirect: it would resend your API key). Also a command that would prompt when stdin is not a terminal and nothing is piped: a delete, purge or clear without `--force`, or `auth login` without `--api-key` (see [Authentication](#authentication)). |
 | `130` | A prompt (a confirmation, or the API key at `auth login`) was interrupted with Ctrl-C. |
 
