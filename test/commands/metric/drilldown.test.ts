@@ -111,7 +111,7 @@ describe('metric drilldown', () => {
     it('rejects a --source-id that is not the dataset in the metric ID', async () => {
       const {error} = await runCommand(ARGS.map(arg => (arg === '42' ? '43' : arg)), {root: process.cwd()})
       expect(error?.oclif?.exit).to.equal(2)
-      expect(error?.message).to.contain('--source-id must be the dataset in --metric-id (42)')
+      expect(error?.message).to.contain('--source-id must be the source in --metric-id (42)')
       expect(requests()).to.have.lengthOf(0)
     })
 

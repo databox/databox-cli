@@ -3,6 +3,8 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 
+import {describeInvalidStoredApiUrl, normalizeApiUrl} from './api-client.js'
+
 export interface DataboxConfig {
   apiKey?: string
   apiUrl?: string
@@ -32,6 +34,20 @@ export function loadConfig(): DataboxConfig {
     // so it is dropped. Login reads this file too, so it cannot recover it in place.
     throw new Errors.CLIError(`Config file ${file} is not valid JSON. Delete it and run "databox auth login" again.`, {exit: 1})
   }
+}
+
+/**
+ * The stored apiUrl as the canonical base URL, or undefined when none is stored. A hand-edited
+ * `null` counts as none. Anything else normalizeApiUrl() refuses is the stored config at fault, so it
+ * fails with exit 1, like an unreadable config. Shared by BaseCommand and auth login.
+ */
+export function storedApiUrl(config: DataboxConfig): string | undefined {
+  const value: unknown = config.apiUrl
+  if (value === undefined || value === null) return undefined
+
+  const url = typeof value === 'string' ? normalizeApiUrl(value) : undefined
+  if (url === undefined) throw new Errors.CLIError(describeInvalidStoredApiUrl(value, getConfigPath()), {exit: 1})
+  return url
 }
 
 export function saveConfig(config: DataboxConfig): void {

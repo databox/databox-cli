@@ -21,6 +21,7 @@ interface Dataset {
   id: number
   name: string
   timezone: null | string
+  type: string
 }
 
 /** DatasetResponse.cs `DatasetDetail`: only what these tests read. */
@@ -76,6 +77,7 @@ describe('dataset', () => {
     expect(String(dataset.id)).to.equal(datasetId)
     expect(dataset.name).to.equal(datasetName)
     expect(String(dataset.dataSourceId)).to.equal(dataSourceId)
+    expect(dataset.type).to.equal('dataset')
 
     // The DatasetDetail contract: the list item's fields plus the detail-only ones.
     expectField(dataset, 'ingestionSupported', 'boolean')
@@ -129,6 +131,47 @@ describe('dataset', () => {
 
     expect(found!).to.not.have.property('parentDataSourceId')
     expect(found!).to.not.have.property('datasetType')
+    expect(found!.type).to.equal('dataset')
+  })
+
+  it('finds the dataset with --type dataset', async () => {
+    const listed = json<Dataset[]>(
+      await cli(['dataset', 'list', '--type', 'dataset', '--data-source-id', dataSourceId, '--page-size', '50', '--json']),
+    )
+
+    expect(listed.some(item => String(item.id) === datasetId), `dataset ${datasetId} not in the --type dataset listing`).to.equal(true)
+    expect(listed.every(item => item.type === 'dataset')).to.equal(true)
+  })
+
+  it('lists merged datasets with --type mergedDataset, and a Type column', async function () {
+    const listed = json<Dataset[]>(await cliWithRetry(['dataset', 'list', '--type', 'mergedDataset', '--page-size', '20', '--json']))
+    expect(listed).to.be.an('array')
+    if (listed.length === 0) skipWith(this, 'organization has no merged datasets the key can list')
+
+    for (const item of listed) {
+      expect(item.type, `dataset ${item.id}`).to.equal('mergedDataset')
+      expect(item.dataSourceId, `merged dataset ${item.id} has no data source`).to.equal(null)
+    }
+
+    const table = expectOk(await cli(['dataset', 'list', '--type', 'mergedDataset', '--page-size', '20']))
+    expect(table.stdout).to.include('Type')
+    expect(table.stdout).to.include('mergedDataset')
+  })
+
+  // The CLI leaves this rule to the API, which refuses it on dataSourceId.
+  it('shows the API\'s refusal of --type mergedDataset with --data-source-id', async () => {
+    const result = await cli(['dataset', 'list', '--type', 'mergedDataset', '--data-source-id', dataSourceId])
+
+    expectExit(result, 1)
+    expect(errorText(result)).to.include('invalid_input')
+    expect(errorText(result)).to.include('Field: dataSourceId')
+  })
+
+  it('rejects an unknown --type with exit 2 before calling the API', async () => {
+    const result = await cli(['dataset', 'list', '--type', 'dataSource', '--json'])
+
+    expectExit(result, 2)
+    expect(errorText(result)).to.match(/to be one of: dataset, mergedDataset/)
   })
 
   it('sorts the list by a supported field', async () => {
@@ -162,7 +205,7 @@ describe('dataset', () => {
 
     const table = expectOk(await cli(['dataset', 'list', '--page-size', '10']))
 
-    for (const header of ['Data Source', 'Ingestion', 'Status', 'Sync Status', 'Last Activity']) {
+    for (const header of ['Type', 'Data Source', 'Ingestion', 'Status', 'Sync Status', 'Last Activity']) {
       expect(table.stdout).to.include(header)
     }
 
@@ -467,8 +510,14 @@ describe('dataset', () => {
     ).to.equal(true)
   })
 
-  it('purges the dataset', async () => {
-    const result = expectOk(await cli(['dataset', 'purge', datasetId, '--force']))
+  it('purges the dataset', async function () {
+    // A purge can be repeated safely, so a transient upstream failure is retried; one that persists is
+    // the environment's, not the CLI's, and skips with its reason.
+    const result = await cliWithRetry(['dataset', 'purge', datasetId, '--force'])
+    const outage = serviceUnavailable(result)
+    if (outage) skipWith(this, outage)
+
+    expectOk(result)
     expect(result.stdout).to.include(`${datasetId} purged.`)
   })
 

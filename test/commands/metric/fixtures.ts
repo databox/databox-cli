@@ -8,6 +8,7 @@ export {envelope} from '../dataset/fixtures.js'
 
 /** A calculated column's key is machine-generated, which is why the display name is carried beside it. */
 export const metricListItem = {
+  description: 'Order revenue, net of refunds',
   dimensions: [{displayName: 'Country', id: 'country'}, {displayName: 'Order channel', id: 'calc_8f3a'}],
   id: '42|custom_query_1',
   name: 'Revenue',
@@ -24,6 +25,7 @@ export const metricDetail = {
   date: {displayName: 'Created At', id: 'created_at'},
   filters: {conditions: [{field: 'country', operator: 'ANY_OF', values: ['US', 'UK']}], logicalOperator: 'and'},
   isAggregatable: true,
+  logicalOperators: ['and', 'or'],
   measure: {displayName: 'Amount', id: 'amount'},
   type: 'event',
   verificationInfo: {isVerified: true, verifiedAt: '2026-09-01T08:00:00+00:00', verifiedBy: {id: 31, name: 'Ada'}},
@@ -34,10 +36,12 @@ export const integrationMetricDetail = {
   aggregationFunction: null,
   availableGranularities: [],
   date: null,
+  description: null,
   dimensions: [],
   filters: null,
   id: 'GoogleAnalytics4@sessions',
   isAggregatable: true,
+  logicalOperators: ['and', 'or'],
   measure: null,
   name: 'Sessions',
   sourceId: 77,

@@ -13,13 +13,14 @@ export default class MetricUpdate extends BaseCommand<typeof MetricUpdate> {
 
   static description = `Update a custom metric
 
-Only dataset-based custom metrics can be updated. Fields you omit keep their current values. --dimension replaces the whole dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so "logicalOperator" can be changed on its own; "conditions": [] clears them. Prints the updated metric as "metric get" does.`
+Only dataset-based custom metrics can be updated. Fields you omit keep their current values. --description "" clears the description. --dimension replaces the whole dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so "logicalOperator" can be changed on its own; "conditions": [] clears them. Prints the updated metric as "metric get" does.`
 
   static examples = [
     '<%= config.bin %> metric update "500|custom_query_100" --name "New Name"',
     '<%= config.bin %> metric update "500|custom_query_100" --measure \'{"id":"amount","displayName":"Amount"}\' --aggregation-function avg',
     `<%= config.bin %> metric update "500|custom_query_100" --filters '${FILTERS_SHAPE}'`,
     '<%= config.bin %> metric update "500|custom_query_100" --filters \'{"logicalOperator":"or"}\'',
+    '<%= config.bin %> metric update "500|custom_query_100" --description "Order revenue, net of refunds"',
     '<%= config.bin %> metric update "500|custom_query_100" --clear-dimensions',
     '<%= config.bin %> metric update "500|custom_query_100" --filters \'{"conditions":[]}\' --json',
   ]
@@ -32,6 +33,7 @@ Only dataset-based custom metrics can be updated. Fields you omit keep their cur
       exclusive: ['dimension'],
     }),
     date: Flags.string({description: `New date column reference as JSON (${REF_SHAPE})`}),
+    description: Flags.string({description: 'New description for the metric; "" clears it'}),
     dimension: Flags.string({
       description: `Dimension column reference as JSON (${REF_SHAPE}); repeat for several. Replaces the current dimensions`,
       exclusive: ['clear-dimensions'],
@@ -51,6 +53,8 @@ Only dataset-based custom metrics can be updated. Fields you omit keep their cur
 
     const body: Record<string, unknown> = {}
     if (flags.name !== undefined) body.name = flags.name
+    // "" is sent as is: the API clears the description on an empty string.
+    if (flags.description !== undefined) body.description = flags.description
     if (flags['aggregation-function'] !== undefined) body.aggregationFunction = flags['aggregation-function']
     if (flags.measure !== undefined) body.measure = this.parseJsonFlag(flags.measure, 'measure', REF_SHAPE)
     if (flags.date !== undefined) body.date = this.parseJsonFlag(flags.date, 'date', REF_SHAPE)
@@ -67,7 +71,7 @@ Only dataset-based custom metrics can be updated. Fields you omit keep their cur
 
     if (Object.keys(body).length === 0) {
       this.error(
-        'Provide at least one field to update (--name, --measure, --date, --aggregation-function, --dimension, --clear-dimensions or --filters).',
+        'Provide at least one field to update (--name, --description, --measure, --date, --aggregation-function, --dimension, --clear-dimensions or --filters).',
         {exit: 1},
       )
     }

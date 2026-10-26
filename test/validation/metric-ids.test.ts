@@ -23,6 +23,7 @@ import {
 const INVALID = ['.', '..']
 
 const commands: Array<(id: string) => string[]> = [
+  id => ['metric', 'data', '--metric-id', id, '--source-id', '1', '--from', '2026-06-01', '--to', '2026-06-30', '--granularity', 'daily'],
   id => ['metric', 'delete', id],
   id => ['metric', 'get', id],
   id => ['metric', 'lineage', id],

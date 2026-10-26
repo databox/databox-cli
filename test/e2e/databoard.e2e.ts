@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
 import {
-  cli, cliWithRetry, expectField, expectKey, expectOk, json, skipWith,
+  cli, cliWithRetry, errorText, expectField, expectKey, expectOk, json, skipWith,
 } from './helpers/cli.js'
 
 /** DataboardResponse.cs `DataboardListItem`. */
@@ -23,6 +23,10 @@ interface DataboardMetrics {
   datablocks: Array<{metrics: DatablockMetric[]}>
 }
 
+/**
+ * `databoard` is deprecated in favour of `dashboard` (dashboard.e2e.ts), and reads the same
+ * /v2/dashboards routes; these pin that it keeps working, and says so.
+ */
 describe('databoard', () => {
   let databoards: Databoard[]
 
@@ -46,6 +50,15 @@ describe('databoard', () => {
 
     const result = expectOk(await cli(['databoard', 'list', '--page-size', '5']))
     expect(result.stdout).to.include('Name')
+  })
+
+  it('warns that it is deprecated, on stderr, and lists what dashboard list does', async () => {
+    const old = expectOk(await cli(['databoard', 'list', '--page-size', '10', '--json']))
+    expect(errorText(old)).to.include('The "databoard list" command has been deprecated. Use "dashboard list" instead.')
+    expect(old.stdout).to.not.include('deprecated')
+
+    const current = json<Databoard[]>(await cli(['dashboard', 'list', '--page-size', '10', '--json']))
+    expect(json<Databoard[]>(old).map(item => item.id)).to.deep.equal(current.map(item => item.id))
   })
 
   it('returns the metrics on a databoard, as the whole response', async function () {
@@ -86,5 +99,6 @@ describe('databoard', () => {
     }
 
     expect(table.stdout).to.not.include('[object Object]')
+    expect(errorText(table)).to.include('Use "dashboard metrics" instead.')
   })
 })

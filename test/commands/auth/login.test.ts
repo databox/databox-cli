@@ -1,11 +1,20 @@
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 import {getConfigPath} from '../../../src/lib/config.js'
 import {
   cleanupTestConfig, mockApi, pipeStdin, requests, restoreApi, setupEmptyConfig,
 } from '../../helpers.js'
+
+/** Writes a config file as it might be hand-edited, and returns its exact content. */
+function write(config: unknown): string {
+  fs.mkdirSync(path.dirname(getConfigPath()), {recursive: true})
+  const content = JSON.stringify(config)
+  fs.writeFileSync(getConfigPath(), content)
+  return content
+}
 
 const NOTHING_PIPED = 'No API key provided: stdin is not a terminal and nothing was piped. '
   + 'Pass --api-key, pipe the key in, or skip auth login and set DATABOX_API_KEY.'
@@ -72,9 +81,90 @@ describe('auth login', () => {
     const {error} = await runCommand(['auth', 'login', '--api-key', 'my-test-key', '--api-url', 'api.databox.com'], {root: process.cwd()})
 
     expect(error?.oclif?.exit).to.equal(2)
-    expect(error?.message).to.contain('--api-url must be an http:// or https:// URL')
+    expect(error?.message).to.contain('--api-url must be an http:// or https:// base URL with no username, password, query string or fragment')
     expect(requests()).to.have.length(0)
     expect(fs.existsSync(getConfigPath())).to.equal(false)
+  })
+
+  it('never prints a refused --api-url', async () => {
+    mockApi([])
+
+    const {error, stderr, stdout} = await runCommand(['auth', 'login', '--api-key', 'my-test-key', '--api-url', 'pak_SECRET'], {root: process.cwd()})
+
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(`${error?.message}${stderr}${stdout}`).to.not.contain('SECRET')
+    expect(fs.existsSync(getConfigPath())).to.equal(false)
+  })
+
+  for (const apiUrl of ['https://api.databox.com ', 'https://api.databox.com/ ', ' https://api.databox.com', 'https://api.databox.com\n']) {
+    it(`saves --api-url ${JSON.stringify(apiUrl)} trimmed, and validates against it`, async () => {
+      mockApi([{
+        method: 'GET',
+        path: '/v2/auth/validate-key',
+        response: {data: {}, requestId: 'test', status: 'success'},
+      }])
+
+      const {error, stdout} = await runCommand(['auth', 'login', '--api-key', 'my-test-key', '--api-url', apiUrl], {root: process.cwd()})
+
+      expect(error).to.equal(undefined)
+      expect(stdout).to.contain('Authenticated successfully.')
+      expect(requests().map(r => r.path)).to.deep.equal(['/v2/auth/validate-key'])
+      expect(JSON.parse(fs.readFileSync(getConfigPath(), 'utf8')).apiUrl).to.equal('https://api.databox.com')
+    })
+  }
+
+  describe('with a URL already saved', () => {
+    let restore: (() => void) | undefined
+
+    afterEach(() => {
+      restore?.()
+      restore = undefined
+    })
+
+    // Was re-saved with the new key, a warning, and exit 0, leaving every later command failing.
+    // Nothing piped: had the key been read first, this would be the exit-2 "No API key provided".
+    it('refuses a bad stored URL with exit 1 before reading the key, and changes nothing', async () => {
+      const before = write({apiKey: 'old-key', apiUrl: 'pak_SECRET'})
+      restore = pipeStdin('')
+      mockApi([])
+
+      const {error, stderr, stdout} = await runCommand(['auth', 'login'], {root: process.cwd()})
+
+      expect(error?.oclif?.exit).to.equal(1)
+      expect(error?.message).to.equal(`The API URL saved in ${getConfigPath()} does not start with http:// or https://. `
+        + 'Run "databox auth login --api-url https://api.databox.com" to replace it.')
+      expect(`${error?.message}${stderr}${stdout}`).to.not.contain('SECRET')
+      expect(requests()).to.have.length(0)
+      expect(fs.readFileSync(getConfigPath(), 'utf8')).to.equal(before)
+    })
+
+    it('replaces a bad stored URL given --api-url', async () => {
+      write({apiKey: 'old-key', apiUrl: 'api.databox.com'})
+      mockApi([{
+        method: 'GET',
+        path: '/v2/auth/validate-key',
+        response: {data: {}, requestId: 'test', status: 'success'},
+      }])
+
+      const {error} = await runCommand(['auth', 'login', '--api-key', 'my-test-key', '--api-url', 'https://api.databox.com'], {root: process.cwd()})
+
+      expect(error).to.equal(undefined)
+      expect(JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'))).to.deep.equal({apiKey: 'my-test-key', apiUrl: 'https://api.databox.com'})
+    })
+
+    it('treats a stored null URL as none', async () => {
+      write({apiKey: 'old-key', apiUrl: null})
+      mockApi([{
+        method: 'GET',
+        path: '/v2/auth/validate-key',
+        response: {data: {}, requestId: 'test', status: 'success'},
+      }])
+
+      const {error} = await runCommand(['auth', 'login', '--api-key', 'my-test-key'], {root: process.cwd()})
+
+      expect(error).to.equal(undefined)
+      expect(JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'))).to.deep.equal({apiKey: 'my-test-key'})
+    })
   })
 
   describe('when stdin is not a terminal', () => {

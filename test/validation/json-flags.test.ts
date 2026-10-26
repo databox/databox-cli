@@ -37,6 +37,12 @@ const cases: Array<{argv: string[]; flag: string}> = [
   {argv: ['metric', 'update', '42|q', '--filters', BAD], flag: 'filters'},
   {
     argv: [
+      'metric', 'data', '--metric-id', '42|q', '--from', '2026-06-01', '--to', '2026-06-30', '--granularity', 'daily', '--filters', BAD,
+    ],
+    flag: 'filters',
+  },
+  {
+    argv: [
       'metric', 'drilldown', '--metric-id', '42|q', '--source-id', '42',
       '--start-timestamp', '1', '--end-timestamp', '2', '--filters', BAD,
     ],

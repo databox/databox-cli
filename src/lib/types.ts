@@ -93,6 +93,8 @@ export interface DatasetListItem {
   statusInfo: StatusInfo | null
   syncInfo: SyncInfo | null
   timezone: null | string
+  /** `dataset` or `mergedDataset`, as lineage names the node. A merged dataset has a null `dataSourceId`. */
+  type: string
   verificationInfo: VerificationSummary | null
 }
 
@@ -381,6 +383,17 @@ export interface DatasetModification {
   visibility: Record<string, boolean>
 }
 
+/**
+ * DataboardResponse.cs `DataboardListItem`: a row of GET /v2/dashboards, and what PATCH
+ * /v2/dashboards/{id} returns. The API keeps the `Databoard…` schema names for both routes.
+ */
+export interface DataboardListItem {
+  id: number
+  integrationKeys: string[]
+  name: string
+  tags: string[]
+}
+
 /** MetricsResponse.cs `MetricDimension`. */
 export interface MetricDimension {
   displayName: string
@@ -408,6 +421,8 @@ export interface MetricFilterGroup {
 
 /** MetricsResponse.cs `MetricListItem`, a row of GET /v2/metrics and the base of MetricDetail. */
 export interface MetricListItem {
+  /** Null when the metric has none, including one that was cleared. */
+  description: null | string
   dimensions: MetricDimension[]
   id: string
   name: string
@@ -427,6 +442,8 @@ export interface MetricDetail extends Omit<MetricListItem, 'verificationInfo'> {
   date: MetricColumnRef | null
   filters: MetricFilterGroup | null
   isAggregatable: boolean
+  /** The logical operators `metric data --filters` accepts, as the detail spells them ("and", "or"). */
+  logicalOperators: string[]
   measure: MetricColumnRef | null
   type: string
   verificationInfo: VerificationDetail | null

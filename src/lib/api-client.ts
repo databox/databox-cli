@@ -8,6 +8,9 @@ const DEFAULT_TIMEOUT_MS = 30_000
 /** Ingest uploads a payload, so "slow" and "dead" need more room to be told apart. */
 export const UPLOAD_TIMEOUT_MS = 300_000
 
+/** `metric data` may sync the metric first, and the API gives that 150 s; this leaves its 504 room to arrive. */
+export const METRIC_DATA_TIMEOUT_MS = 170_000
+
 export interface ApiClientOptions {
   apiKey: string
   baseUrl?: string
@@ -39,10 +42,13 @@ interface ApiEnvelope<T> {
 /**
  * A request that reached the API and came back 4xx/5xx, or 2xx with a body that is not JSON.
  * `code`, `field` and `type` are the first entry of the envelope's `errors[]`; `errors` keeps them all.
+ * `retryAfter` is the `Retry-After` header in seconds, when the response sent one as a number.
  */
 export class ApiRequestError extends Error {
   readonly code?: string
   readonly field?: string
+  /** Set by ApiClient from the response, so it is not a constructor parameter. */
+  retryAfter?: number
   readonly type?: string
 
   constructor(
@@ -83,6 +89,7 @@ export function describeApiError(error: ApiRequestError): string {
     if (detail.field) lines.push(`  Field: ${detail.field}`)
   }
 
+  if (error.retryAfter !== undefined) lines.push(`  Retry after ${error.retryAfter} s`)
   if (error.requestId) lines.push(`  Request ID: ${error.requestId}`)
   return lines.join('\n')
 }
@@ -112,24 +119,72 @@ export function describeResponse(status: number, durationMs: number, requestId?:
   return lines
 }
 
+const NO_HTTP_SCHEME = 'does not start with http:// or https://'
+
 /**
- * Whether a value can be the API base URL: absolute, over http or https. Anything else fails only
- * once a request is built: `api.databox.com` as a bare "TypeError: Invalid URL", and
- * `localhost:8080`, which parses with the scheme "localhost:", as a connection error that blames
- * the network for a request that never left.
+ * A value as the API base URL: the canonical base (no trailing slash) when it is one, else what is
+ * wrong with it. Anything but an absolute http(s) URL fails only once a request is built:
+ * `api.databox.com` as a bare "TypeError: Invalid URL", and `localhost:8080`, which parses with the
+ * scheme "localhost:", as a connection error that blames the network for a request that never left.
+ * Surrounding whitespace is dropped here, once, for the check and the requests alike.
+ *
+ * The problem is worded so it never repeats the value, which may be a key pasted into the wrong
+ * flag or a URL carrying credentials: of the URL it names only the scheme, and only one written
+ * out as `scheme://`, since in `localhost:8080` the "scheme" is a host.
  */
-export function isApiUrl(value: string): boolean {
+function parseApiUrl(value: string): {problem: string} | {url: string} {
+  const trimmed = value.trim()
+  const hasScheme = /^[a-z][\d+.a-z-]*:\/\//i.test(trimmed)
+
+  let url: URL
   try {
-    const {protocol} = new URL(value)
-    return protocol === 'https:' || protocol === 'http:'
+    url = new URL(trimmed)
   } catch {
-    return false
+    return {problem: hasScheme ? 'is not a valid URL' : NO_HTTP_SCHEME}
   }
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return {problem: hasScheme ? `uses the scheme ${url.protocol}, not http: or https:` : NO_HTTP_SCHEME}
+  }
+
+  // Each would be sent on every request, or dropped from it in a way the user did not ask for.
+  if (url.username || url.password) return {problem: 'contains a username or password'}
+  if (url.search) return {problem: 'has a query string'}
+  if (url.hash) return {problem: 'has a fragment'}
+
+  return {url: `${url.origin}${url.pathname.replace(/\/+$/, '')}`}
 }
 
-/** The exit-2 message for an --api-url (or DATABOX_API_URL) that isApiUrl() refuses. */
+/** The canonical API base URL for a value — trimmed, without a trailing slash — or undefined when it is not a usable base URL (see parseApiUrl). */
+export function normalizeApiUrl(value: string): string | undefined {
+  const parsed = parseApiUrl(value)
+  return 'url' in parsed ? parsed.url : undefined
+}
+
+/** Whether a value can be the API base URL: absolute, over http or https, with no credentials, query or fragment. */
+export function isApiUrl(value: string): boolean {
+  return normalizeApiUrl(value) !== undefined
+}
+
+function apiUrlProblem(value: string): string {
+  const parsed = parseApiUrl(value)
+  return 'problem' in parsed ? parsed.problem : 'is not a usable API URL'
+}
+
+/** The exit-2 message for an --api-url (or DATABOX_API_URL) that normalizeApiUrl() refuses. It never includes the value. */
 export function describeInvalidApiUrl(value: string): string {
-  return `--api-url must be an http:// or https:// URL, e.g. ${DEFAULT_BASE_URL}. Got "${value}" (from --api-url or DATABOX_API_URL).`
+  return `--api-url must be an http:// or https:// base URL with no username, password, query string or fragment, e.g. ${DEFAULT_BASE_URL}. `
+    + `The value given (from --api-url or DATABOX_API_URL) ${apiUrlProblem(value)}.`
+}
+
+/**
+ * The exit-1 message for a stored apiUrl that normalizeApiUrl() refuses, or that is not a string at all.
+ * It names the config file, never the value.
+ */
+export function describeInvalidStoredApiUrl(value: unknown, configPath: string): string {
+  const problem = typeof value === 'string' ? apiUrlProblem(value) : 'is not a string'
+  return `The API URL saved in ${configPath} ${problem}. `
+    + `Run "databox auth login --api-url ${DEFAULT_BASE_URL}" to replace it.`
 }
 
 /** Whether fetch() rejected because of `redirect: 'error'`: Node reports it as a TypeError caused by "unexpected redirect". */
@@ -159,7 +214,11 @@ export class ApiClient {
 
   constructor(options: ApiClientOptions) {
     this.apiKey = options.apiKey
-    this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
+    // Callers check the URL first, with a message for the user; reaching this is a bug, and the
+    // value is left out of the error as it may be a misplaced key.
+    const baseUrl = normalizeApiUrl(options.baseUrl ?? DEFAULT_BASE_URL)
+    if (baseUrl === undefined) throw new TypeError('The API base URL is not an http(s) URL; check it with normalizeApiUrl() first.')
+    this.baseUrl = baseUrl
     this.trace = options.trace
     if (options.version) this.userAgent = `databox-cli/${options.version} (node ${process.version}; ${process.platform})`
   }
@@ -292,7 +351,11 @@ export class ApiClient {
         ? errors.map(e => e.message).join('; ')
         : `API error: ${response.status} ${response.statusText}`
 
-      throw new ApiRequestError(message, response.status, errors, requestId)
+      const error = new ApiRequestError(message, response.status, errors, requestId)
+      // Only the delay-seconds form: the HTTP-date form is not what the API sends.
+      const retryAfter = response.headers.get('retry-after')?.trim()
+      if (retryAfter && /^\d+$/.test(retryAfter)) error.retryAfter = Number(retryAfter)
+      throw error
     }
 
     // 204 and other empty 2xx bodies would make JSON.parse throw.

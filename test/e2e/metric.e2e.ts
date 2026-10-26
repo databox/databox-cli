@@ -15,6 +15,7 @@ import {
 
 /** MetricsResponse.cs `MetricListItem`: only what these tests read. */
 interface Metric {
+  description: null | string
   dimensions: Array<{displayName: string; id: string}>
   id: string
   name: string
@@ -26,6 +27,7 @@ interface Metric {
 interface MetricDetail extends Metric {
   aggregationFunction: null | string
   date: {displayName: string; id: string} | null
+  logicalOperators: string[]
   measure: {displayName: string; id: string} | null
   type: string
 }
@@ -35,6 +37,13 @@ interface Drilldown {
   items: Array<Record<string, unknown>> | null
   pagination: {totalItems: number} | null
   schema: {items: Array<{dataType: string; displayName: string; id: string}>} | null
+}
+
+/** MetricsResponse.cs `MetricDataResult`, with `MetricSyncInfo`. */
+interface MetricData {
+  dataPoints: Array<{date: string; dimensions: Record<string, string>; value: null | number}>
+  metric: {id: string; name: string; sourceId: null | number}
+  syncInfo: {lastSyncedAt: null | string; message: string; status: null | string} | null
 }
 
 /** DatasetResponse.cs `LineageNode`, which metric lineage shares. */
@@ -47,6 +56,15 @@ interface LineageNode {
 const NO_ROWS_YET = 'no drilldown rows yet'
 
 const LINEAGE_TYPES = ['dataSource', 'dataset', 'mergedDataset', 'basicMetric', 'customMetric']
+
+/** metrics.md `syncInfo.status`, as the platform reports it today. */
+const SYNC_STATUSES = ['synced', 'skipped', 'inProgress', 'neverSynced', 'failed']
+
+/**
+ * An environment without POST /v2/metrics/{id}/data answers the unmapped route with a bare 404 or
+ * 405, which carries no error code. The endpoint's own 404 is `not_found`, and fails the test.
+ */
+const ROUTE_NOT_DEPLOYED = /API error: 40[45] /
 
 // Column references are {id, displayName}, the id being the schema column's.
 const DATE_FIELD = JSON.stringify({displayName: 'date', id: 'date'})
@@ -93,6 +111,7 @@ describe('metric', () => {
       expectField(metrics[0], 'name', 'string')
       expectField(metrics[0], 'supportsDrilldown', 'boolean')
       expectKey(metrics[0], 'sourceId')
+      expectKey(metrics[0], 'description')
       expectKey(metrics[0], 'verificationInfo')
       expect(metrics[0].dimensions).to.be.an('array')
       for (const dimension of metrics[0].dimensions) {
@@ -147,6 +166,9 @@ describe('metric', () => {
     expect(metric.aggregationFunction).to.equal('sum')
     expectField(metric, 'type', 'string')
     expectKey(metric, 'filters')
+    // Create takes no description, so a new metric has none.
+    expect(metric.description).to.equal(null)
+    expect(metric.logicalOperators).to.be.an('array')
   })
 
   it('rejects malformed JSON in --measure with exit 2', async () => {
@@ -229,6 +251,26 @@ describe('metric', () => {
 
     const reread = json<MetricDetail>(await cliWithRetry(['metric', 'get', metricId!, '--json']))
     expect(reread.name).to.equal(renamed)
+  })
+
+  // Sets and clears through the real binary, against the live API: "" clears, and reads back as null.
+  it('sets the metric description, then clears it with an empty --description', async function () {
+    if (!metricId) skipWith(this, 'no metric was created')
+
+    const description = e2eName('description')
+    const set = json<MetricDetail>(await cli(['metric', 'update', metricId!, '--description', description, '--json']))
+    expect(set.description).to.equal(description)
+
+    // The detail shows it once the save is processed, usually within seconds; the table spells it out.
+    await retryRead(async () => {
+      const table = expectOk(await cli(['metric', 'get', metricId!]))
+      expect(table.stdout).to.include(`Description: ${description}`)
+    }, {attempts: 6, delayMs: 3000})
+
+    // A cleared description reads back as null, not "". The PATCH response already reports it;
+    // the list and detail follow once the save is processed.
+    const cleared = json<MetricDetail>(await cli(['metric', 'update', metricId!, '--description', '', '--json']))
+    expect(cleared.description).to.equal(null)
   })
 
   it('reports the metric\'s lineage, with its dataset as the parent', async function () {
@@ -346,6 +388,52 @@ describe('metric', () => {
         `every "${column.displayName}" cell is empty: schema ids ${JSON.stringify(schema.map(c => c.id))}, row keys ${JSON.stringify(rowKeys)}`,
       ).to.equal(true)
     }
+  })
+
+  it('loads the metric\'s values with their sync state', async function () {
+    // The first call may sync the metric, which the API allows 150 s; each run gets 200 s, twice at most.
+    this.timeout(420_000)
+    if (!metricId) skipWith(this, 'no metric was created')
+
+    const today = new Date()
+    const monthAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000))
+    const argv = [
+      'metric', 'data',
+      '--metric-id', metricId!,
+      '--from', monthAgo.toISOString().slice(0, 10),
+      '--to', today.toISOString().slice(0, 10),
+      '--granularity', 'daily',
+    ]
+
+    const result = await cliWithRetry([...argv, '--json'], {attempts: 2, timeoutMs: 200_000})
+    if (result.code !== 0 && ROUTE_NOT_DEPLOYED.test(errorText(result))) {
+      skipWith(this, `POST /v2/metrics/{id}/data is not deployed on this environment: ${errorText(result)}`)
+    }
+
+    const outage = serviceUnavailable(result)
+    if (outage) {
+      skipWith(this, `${outage}`)
+    }
+
+    // 504: the sync outlived the API's 150 s. It carries on server-side; a slow environment is not a CLI defect.
+    if (result.code !== 0 && /service_unavailable/.test(errorText(result))) {
+      skipWith(this, `the metric was still syncing when the API gave up: ${errorText(result)}`)
+    }
+
+    // --json is the whole response: the metric, its points, and how current they are.
+    const data = json<MetricData>(result)
+    expect(data.metric.id).to.equal(metricId)
+    expect(data.dataPoints).to.be.an('array')
+    // Null only for a metric that never syncs; a dataset metric carries one.
+    expect(data.syncInfo).to.be.an('object')
+    expect(SYNC_STATUSES, 'syncInfo.status').to.include(data.syncInfo!.status)
+    for (const key of ['message', 'lastSyncedAt']) expectKey(data.syncInfo, key)
+
+    // The table goes to stdout, the sync state to stderr. A second call may report another state
+    // (synced, then skipped), so only its shape is checked.
+    const table = expectOk(await cliWithRetry(argv, {attempts: 2, timeoutMs: 200_000}))
+    expect(table.stdout).to.not.include('Sync:')
+    expect(SYNC_STATUSES, 'status on the Sync: line').to.include(/^Sync: (\w+)/m.exec(table.stderr)?.[1])
   })
 
   it('creates a metric with an explicit aggregation and dimensions', async function () {

@@ -6,9 +6,9 @@ import {
 } from '../../helpers.js'
 import {datasetListItem, envelope} from './fixtures.js'
 
-/** An ingestion dataset and a synced one, so the Ingestion column shows both values. */
+/** An ingestion dataset and a merged one, so the Ingestion and Type columns show both values. */
 const items = [datasetListItem, {
-  ...datasetListItem, id: 124, ingestionSupported: false, name: 'Synced',
+  ...datasetListItem, dataSourceId: null, id: 124, ingestionSupported: false, name: 'Merged', type: 'mergedDataset',
 }]
 
 describe('dataset list', () => {
@@ -46,6 +46,34 @@ describe('dataset list', () => {
     const status = header.indexOf('Status')
     expect(rows.map(row => row[ingestion])).to.deep.equal(['yes', 'no'])
     expect(rows.map(row => row[status])).to.deep.equal(['active', 'active'])
+  })
+
+  it('shows each dataset\'s type, and no data source for a merged one', async () => {
+    const {stdout} = await runCommand(['dataset', 'list'], {root: process.cwd()})
+    const [header, , ...rows] = stdout.trim().split('\n').slice(0, 4).map(line => line.split('│').map(cell => cell.trim()))
+    const type = header.indexOf('Type')
+    const dataSource = header.indexOf('Data Source')
+    expect(rows.map(row => row[type])).to.deep.equal(['dataset', 'mergedDataset'])
+    expect(rows.map(row => row[dataSource])).to.deep.equal(['42', ''])
+  })
+
+  // DatasetController.ListDatasets: `type` is a query parameter. Its pairing with dataSourceId is left to the API.
+  for (const type of ['dataset', 'mergedDataset']) {
+    it(`sends --type ${type} in the query`, async () => {
+      await runCommand(['dataset', 'list', '--type', type], {root: process.cwd()})
+      expect(new URLSearchParams(requests()[0].search).get('type')).to.equal(type)
+    })
+  }
+
+  it('sends no type without --type', async () => {
+    await runCommand(['dataset', 'list'], {root: process.cwd()})
+    expect(new URLSearchParams(requests()[0].search).has('type')).to.equal(false)
+  })
+
+  it('rejects an unknown --type with exit 2 and sends nothing', async () => {
+    const {error} = await runCommand(['dataset', 'list', '--type', 'dataSource'], {root: process.cwd()})
+    expect(error?.oclif?.exit).to.equal(2)
+    expect(requests()).to.have.length(0)
   })
 
   it('outputs a bare array with --json, items passed through whole', async () => {

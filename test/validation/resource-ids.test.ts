@@ -27,6 +27,8 @@ const cases: string[][] = [
   ['connection', 'permissions', 'not-a-number'],
   ['connection', 'set-permissions', 'not-a-number', '--access-level', 'everyone', '--no-shared-with-accounts'],
   ['connection', 'update', 'not-a-number'],
+  ['dashboard', 'metrics', 'not-a-number'],
+  ['dashboard', 'rename', 'not-a-number', '--name', 'x'],
   ['data-source', 'datasets', 'not-a-number'],
   ['data-source', 'delete', 'not-a-number'],
   ['data-source', 'get', 'not-a-number'],

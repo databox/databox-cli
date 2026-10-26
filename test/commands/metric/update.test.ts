@@ -50,6 +50,28 @@ describe('metric update', () => {
     })
   })
 
+  // MetricsRequests.cs UpdateMetricRequest.Description: a string sets it, "" clears it, and leaving it out keeps it.
+  it('sends --description, and a description alone is a valid update', async () => {
+    await runCommand(['metric', 'update', '42|custom_query_1', '--description', '"Net of refunds"'], {root: process.cwd()})
+    expect(lastBody('PATCH', PATH)).to.deep.equal({description: 'Net of refunds'})
+  })
+
+  // runCommand passes a quoted blank through as the empty string, which the API takes as "clear".
+  it('sends --description "" as an empty string, to clear the description', async () => {
+    await runCommand(['metric', 'update', '42|custom_query_1', '--description', '""'], {root: process.cwd()})
+    expect(lastBody('PATCH', PATH)).to.deep.equal({description: ''})
+  })
+
+  it('sends --description beside the other fields', async () => {
+    await runCommand(['metric', 'update', '42|custom_query_1', '--name', 'Updated', '--description', '"Net of refunds"'], {root: process.cwd()})
+    expect(lastBody('PATCH', PATH)).to.deep.equal({description: 'Net of refunds', name: 'Updated'})
+  })
+
+  it('sends a description with line breaks as given', async () => {
+    await runCommand(['metric', 'update', '42|custom_query_1', '--description', '"Line one\nLine two"'], {root: process.cwd()})
+    expect(lastBody('PATCH', PATH)).to.deep.equal({description: 'Line one\nLine two'})
+  })
+
   // An empty list clears the stored conditions; omitting it keeps them.
   it('sends conditions: [] through, to clear the filters', async () => {
     await runCommand(['metric', 'update', '42|custom_query_1', '--filters', '{"conditions":[]}'], {root: process.cwd()})

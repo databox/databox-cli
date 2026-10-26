@@ -5,6 +5,7 @@ import {Row, rowColumns} from '../../lib/dataset-rows.js'
 import {
   Paginated, addSorting, dataPaginationFlags, fetchPaginated, sortFlags,
 } from '../../lib/flags.js'
+import {resolveSourceId} from '../../lib/metric.js'
 import {formatOutput, formatSingle, showPagination} from '../../lib/output.js'
 
 /** MetricsResponse.cs `DrilldownSchemaColumn`. */
@@ -55,7 +56,11 @@ Only dataset-based custom metrics support drilldown; check "Drilldown" in "metri
       this.error('--start-timestamp must be earlier than or equal to --end-timestamp.', {exit: 2})
     }
 
-    const sourceId = this.resolveSourceId()
+    const sourceId = resolveSourceId(
+      this.flags['metric-id'],
+      this.flags['source-id'],
+      '--source-id is required: --metric-id has no dataset before "|". Only dataset-based custom metrics support drilldown.',
+    )
 
     const body: Record<string, unknown> = {
       metricId: this.flags['metric-id'],
@@ -88,26 +93,5 @@ Only dataset-based custom metrics support drilldown; check "Drilldown" in "metri
     formatOutput(rows, rowColumns(schema, rows), this.outputFormat)
 
     showPagination(response.pagination ?? undefined, this.outputFormat)
-  }
-
-  // The API requires sourceId to be the dataset in the metric ID, so a mismatch fails here instead.
-  private resolveSourceId(): number {
-    const prefix = /^(\d+)\|/.exec(this.flags['metric-id'])?.[1]
-    const fromMetricId = prefix === undefined ? undefined : Number(prefix)
-    const given = this.flags['source-id']
-
-    if (given === undefined) {
-      if (fromMetricId === undefined) {
-        this.error('--source-id is required: --metric-id has no dataset before "|". Only dataset-based custom metrics support drilldown.', {exit: 2})
-      }
-
-      return fromMetricId
-    }
-
-    if (fromMetricId !== undefined && given !== fromMetricId) {
-      this.error(`--source-id must be the dataset in --metric-id (${fromMetricId}).`, {exit: 2})
-    }
-
-    return given
   }
 }
