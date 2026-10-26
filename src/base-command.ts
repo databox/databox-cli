@@ -3,9 +3,9 @@ import {
 } from '@oclif/core'
 
 import {
-  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError,
+  ApiClient, ApiConnectionError, ApiRequestError, describeApiError, describeConnectionError, describeInvalidApiUrl, isApiUrl,
 } from './lib/api-client.js'
-import {loadConfig} from './lib/config.js'
+import {getConfigPath, loadConfig} from './lib/config.js'
 import {OUTPUT_FORMATS, OutputFormat, colorEnabled} from './lib/output.js'
 
 export type Flags<T extends typeof Command> = Interfaces.InferredFlags<T['flags'] & typeof BaseCommand['baseFlags']>
@@ -100,6 +100,12 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
     const accountId = this.flags['account-id']
     if (accountId) this.requireNumericId(accountId, '--account-id')
 
+    // A base URL fetch cannot use would otherwise fail only once the request is built: see isApiUrl().
+    const apiUrl = this.flags['api-url']
+    if (apiUrl !== undefined && !isApiUrl(apiUrl)) {
+      this.error(describeInvalidApiUrl(apiUrl), {exit: 2})
+    }
+
     // Every command that extends BaseCommand calls the API, so a missing key or an unreadable
     // config fails here too, not after the prompt. auth login, which runs without a key,
     // extends Command.
@@ -109,9 +115,19 @@ export abstract class BaseCommand<T extends typeof Command = typeof Command> ext
       this.error('Not authenticated. Run "databox auth login" first.', {exit: 1})
     }
 
+    // A URL saved before `auth login` checked it, or edited in by hand. Like an unreadable
+    // config, it is the stored config at fault, so exit 1; the --api-url above overrides it.
+    if (apiUrl === undefined && config.apiUrl !== undefined && !isApiUrl(config.apiUrl)) {
+      this.error(
+        `The API URL saved in ${getConfigPath()} ("${config.apiUrl}") is not an http:// or https:// URL. `
+        + 'Run "databox auth login --api-url https://api.databox.com" to replace it.',
+        {exit: 1},
+      )
+    }
+
     this.apiClient = new ApiClient({
       apiKey,
-      baseUrl: this.flags['api-url'] ?? config.apiUrl,
+      baseUrl: apiUrl ?? config.apiUrl,
       trace: this.flags.verbose ? line => this.logToStderr(line) : undefined,
       version: this.config.version,
     })
