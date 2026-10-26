@@ -1,3 +1,5 @@
+import {Errors} from '@oclif/core'
+
 import {OutputFormat, formatSingle} from './output.js'
 import {MetricColumnRef, MetricDetail, MetricFilterGroup} from './types.js'
 
@@ -9,6 +11,28 @@ export const REF_SHAPE = '{"id":"amount","displayName":"Amount"}'
 
 /** MetricsRequests.cs `MetricFilterSet`, as shown in help and parse errors. */
 export const FILTERS_SHAPE = '{"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","values":["US","UK"]}]}'
+
+/**
+ * The sourceId to send for a metric: the `<n>|` a metric id starts with, or `given`. The API
+ * refuses a sourceId that disagrees with that prefix, so a mismatch fails here, before the
+ * request (exit 2). An id with no prefix (`GoogleAnalytics4@sessions`) needs `given`;
+ * without it, `whenMissing` is the error.
+ */
+export function resolveSourceId(metricId: string, given: number | undefined, whenMissing: string): number {
+  const prefix = /^(\d+)\|/.exec(metricId)?.[1]
+  const fromMetricId = prefix === undefined ? undefined : Number(prefix)
+
+  if (given === undefined) {
+    if (fromMetricId === undefined) throw new Errors.CLIError(whenMissing, {exit: 2})
+    return fromMetricId
+  }
+
+  if (fromMetricId !== undefined && given !== fromMetricId) {
+    throw new Errors.CLIError(`--source-id must be the source in --metric-id (${fromMetricId}).`, {exit: 2})
+  }
+
+  return given
+}
 
 function describeRef(ref: MetricColumnRef | null): string {
   if (!ref) return 'N/A'
@@ -46,6 +70,7 @@ export function printMetricDetail(metric: MetricDetail, format: OutputFormat): v
   const lines: Array<[string, string]> = [
     ['ID', metric.id],
     ['Name', metric.name],
+    ['Description', metric.description ?? 'none'],
     ['Type', metric.type],
     ['Source ID', String(metric.sourceId ?? 'N/A')],
     ['Measure', describeRef(metric.measure)],

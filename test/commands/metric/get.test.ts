@@ -23,6 +23,7 @@ describe('metric get', () => {
   it('spells out a custom-query metric definition', async () => {
     const {stdout} = await runCommand(['metric', 'get', '42|custom_query_1'], {root: process.cwd()})
     expect(stdout).to.include('Name: Revenue')
+    expect(stdout).to.include('Description: Order revenue, net of refunds')
     expect(stdout).to.include('Type: event')
     expect(stdout).to.include('Measure: Amount (amount)')
     expect(stdout).to.include('Date: Created At (created_at)')
@@ -36,6 +37,7 @@ describe('metric get', () => {
   it('shows N/A for the definition of a metric without one', async () => {
     const {stdout} = await runCommand(['metric', 'get', 'GoogleAnalytics4@sessions'], {root: process.cwd()})
     expect(stdout).to.include('Type: unknown')
+    expect(stdout).to.include('Description: none')
     expect(stdout).to.include('Measure: N/A')
     expect(stdout).to.include('Filters: N/A')
     expect(stdout).to.include('Dimensions: none')

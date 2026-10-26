@@ -1,8 +1,8 @@
 # databox-cli
 
-Command-line interface for the [Databox](https://databox.com) API. Manage data sources, datasets and the data in them, custom metrics, databoards, users, your organization and its accounts, connections and billing — from the terminal, from scripts, or through an AI agent. Running it from a script or an agent? Read [Scripts and AI Agents](#scripts-and-ai-agents) first.
+Command-line interface for the [Databox](https://databox.com) API. Manage data sources, datasets and the data in them, custom metrics, dashboards, users, your organization and its accounts, connections and billing — from the terminal, from scripts, or through an AI agent. Running it from a script or an agent? Read [Scripts and AI Agents](#scripts-and-ai-agents) first.
 
-Version 1.0 targets the Databox V2 API. Upgrading from 0.x? The [1.0.0 migration guide](https://github.com/databox/databox-cli/blob/main/CHANGELOG.md) lists every renamed command and flag.
+Since 1.0, the CLI targets the Databox V2 API. Upgrading from 0.x? The [1.0.0 migration guide](https://github.com/databox/databox-cli/blob/main/CHANGELOG.md) lists every renamed command and flag.
 
 ## Installation
 
@@ -25,6 +25,7 @@ A **data source** holds **datasets**. You push rows into a dataset, then build c
 |---|---|---|
 | Datetime values in ingested records | ISO 8601 | `"2026-01-15"`, `"2026-01-15T10:30:00Z"` |
 | `metric drilldown --start-timestamp` / `--end-timestamp` | Unix seconds | `1767225600` (2026-01-01 00:00 UTC). Convert with `date -u -d 2026-01-01 +%s` (Linux) or `date -u -j -f '%F %T' '2026-01-01 00:00:00' +%s` (macOS) |
+| `metric data --from` / `--to` | Date, `YYYY-MM-DD` | `2026-06-30`. Both days are included. |
 | `activity-log list --date-from` / `--date-to` | Date, `YYYY-MM-DD` | `2026-01-31`. A bare date means the start of that day (UTC), so `--date-to 2026-01-31` leaves out most of the 31st; pass `--date-to 2026-02-01` to include it |
 
 ### Finding IDs
@@ -34,12 +35,48 @@ Most commands take the ID of a data source, a dataset or a metric. Every one of 
 | ID | What it is | Where to find it |
 |---|---|---|
 | Data source ID | A number, e.g. `12345`. The container your datasets live in. | `databox data-source list`; `id` from `data-source create`. In the Databox app, open the data source in **Data Manager**: the number in the page URL, `app.databox.com/data-manager/connected/12345/datasets/view`, is its ID. |
-| Dataset ID | A number, e.g. `67890`. Each dataset has its own ID, separate from its data source's. | `databox dataset list --search "Orders"`, or `databox data-source datasets 12345` for one data source's datasets; `id` from `dataset create`. In the Databox app, open the dataset in **Data Manager** and read the number from the URL, as above. |
+| Dataset ID | A number, e.g. `67890`. Each dataset has its own ID, separate from its data source's. | `databox dataset list --search "Orders"`, or `databox data-source datasets 12345` for one data source's datasets; `id` from `dataset create`. Merged datasets are listed with `databox dataset list --type mergedDataset`; they belong to no data source. In the Databox app, open the dataset in **Data Manager** and read the number from the URL, as above. |
 | Metric ID | A string: `<data source ID>\|<metric key>`, e.g. `12345\|custom_query_100`. | `databox metric list --search revenue`; `id` from `metric create`. Quote it in the shell. |
 | Ingestion ID | A UUID. One ingest request, not a dataset. | Returned as `ingestionId` by `dataset ingest`; `databox dataset ingestions DATASETID` lists them. |
+| Dashboard ID | A number, e.g. `54321`. | `databox dashboard list --search "Marketing"`. |
 | Account ID | A number. An account your organization manages, for `--account-id`. | `databox account list`. |
 
 Data source and dataset IDs share one ID space, so a number names exactly one of them: pass a dataset ID to `dataset` commands and a data source ID to `data-source` commands. The dataset GUIDs that 0.x used (`a1b2c3d4-e5f6-…`) are not accepted; look the dataset up by name with `databox dataset list --search`.
+
+### Reading Metric Values
+
+`metric data` returns a metric's values over a date range, one per `--granularity` bucket, for any metric: integration, custom, calculated or pushed. An integration metric's ID names no source, so pass `--source-id` (its `sourceId` in `metric list`).
+
+```bash
+databox metric data --metric-id "67890|custom_query_100" --from 2026-06-01 --to 2026-06-30 --granularity daily
+databox metric data --metric-id "GoogleAnalytics4@sessions" --source-id 12345 \
+  --from 2026-01-01 --to 2026-06-30 --granularity monthly --dimension-id country --json
+```
+
+The platform may sync the metric before reading it, so the first call on a metric that has never synced can take about two minutes. After the table or CSV, a `Sync: <status> — <message>` line on stderr says how current the values are; `--json` returns it as `syncInfo` (`{status, lastSyncedAt, message}`), beside `metric` and `dataPoints`.
+
+| Status | What to do |
+|---|---|
+| `synced` | This call synced the metric. Use the values. |
+| `skipped` | No sync was needed; the values are stored data, current as of `lastSyncedAt`. Use them. Calling again sooner does not sync. |
+| `inProgress` | A sync is running, so values may be missing or stale. Call again in about a minute. |
+| `neverSynced` | The metric has not synced yet, so values may be empty. Call again shortly. |
+| `failed` | The metric's last sync failed; the values are what was stored before. Fix the data source, such as its connection, then call again. |
+| Any other | The values may not be current. |
+
+A `null` value in a bucket means it has no data. `syncInfo` is `null`, and the stderr line reads `Sync: unknown`, for a metric that never syncs, such as a constant.
+
+A `504 service_unavailable` ("The metric is still syncing") means the sync outlived the API's 150 seconds; it carries on, so retry shortly. `metric data` allows 30 calls per account per minute; over it you get `429 rate_limited` with a `Retry after N s` line: wait that long. For a metric on a dataset whose modification is still being applied, see [Errors and Exit Codes](#errors-and-exit-codes).
+
+### Metric Descriptions
+
+`metric get` shows a metric's description, and `metric list --json` and `metric get --json` return it as `description` (`null` when there is none). `metric update METRICID --description "…"` sets it on a dataset-based custom metric, and `--description ""` clears it. `metric create` takes no description: set it with `metric update` afterwards. The `metric update` output shows the change at once; `metric get` and `metric list` can take a few seconds to catch up.
+
+### Dashboards
+
+`dashboard list` lists your dashboards, `dashboard metrics DASHBOARDID` shows the metrics on each of a dashboard's datablocks, with their dimensions, date range and filters, and `dashboard rename DASHBOARDID --name "…"` renames one. An Admin or Editor can rename any dashboard they can see, a User only one they created.
+
+`databoard list` and `databoard metrics` are deprecated: they still work, return the same output as their `dashboard` equivalents, and print a deprecation warning on stderr. They will be removed in a future major version, so switch scripts to `dashboard`.
 
 ## Getting Started
 
@@ -136,6 +173,7 @@ The API applies the Databox app's role rules. Your role (Admin, User, Editor or 
 | `user invite` | Anyone. A non-admin can invite only with the `user` role. |
 | `connection update`, `connection set-permissions` | An admin, or the user who owns the connection |
 | `connection delete` | The user who owns the connection |
+| `dashboard rename` | An Admin or Editor, for any dashboard they can see; a User, for one they created |
 
 Connections follow the app's sharing rules:
 
@@ -166,7 +204,7 @@ One exception: `auth login` takes only `--api-key` (and `--api-url`); `--json` a
 
 ### List Flags
 
-Commands that return a list page by page also take these. `metric dimension-values`, `organization timezones`, `organization countries` and `databoard metrics` return everything at once and take none of them.
+Commands that return a list page by page also take these. `metric dimension-values`, `organization timezones`, `organization countries` and `dashboard metrics` return everything at once and take none of them.
 
 | Flag | Description |
 |------|-------------|
@@ -202,7 +240,8 @@ Several flags take JSON. Quote it in single quotes. Each command's `--help` has 
 | `dataset ingest --records`, `--file`, stdin | A bare array of row objects, keyed by column `id`. `'[{"order_id":"A-1","amount":42}]'` |
 | `metric create` / `update` `--measure`, `--date`, `--dimension` | A column reference. `'{"id":"amount","displayName":"Amount"}'` |
 | `metric create` / `update` `--filters` | One group of conditions, lower-case `logicalOperator`, values as strings. `'{"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","values":["US"]}]}'` |
-| `metric drilldown --filters` | **A different shape**: upper-case, nested `groups`, each condition with a `type`. Copy it from `databoard metrics --json`. `'{"logicalOperator":"AND","groups":[{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}'` |
+| `metric data --filters` | One flat group: `logicalOperator` `AND` or `OR`, each condition with a `type` (`dimension` or `unit`) and a `field`. Operators: `ANY_OF`, `NONE_OF`, `EQ`, `NEQ`, `CONTAINS`, `NOT_CONTAINS`; operators are case-insensitive, so `"and"` as `metric get` shows it works too. `'{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}'` |
+| `metric drilldown --filters` | **A different shape**: upper-case, nested `groups`, each condition with a `type`. Copy it from `dashboard metrics --json`. `'{"logicalOperator":"AND","groups":[{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}'` |
 | `dataset update-modification` / `preview-modification` `--data` | Any of `filters`, `formulas`, `displayNames`, `dataTypes`, `order`, `visibility`. `update-modification` replaces the whole definition, so start from `dataset modifications ID --json`. `'{"formulas":{"totalWithTax":"$amount * 1.2"},"displayNames":{"amount":"Revenue"}}'` |
 | `dataset set-column-metadata --columns` | Array of `{id, description?, conceptType?, synonyms?}`. `'[{"id":"country","conceptType":"dimension","synonyms":["nation"]}]'` |
 | `organization update --settings` | `{dateFormat, numberFormat, firstDayOfWeek, calendar, fiscalYearStart}`. `'{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}'` |
@@ -227,7 +266,7 @@ databox dataset data 67890 --all --output csv > orders.csv
 What `--json` prints:
 
 - **Lists** print a JSON array of the items, each exactly as the API returned it. With `--all`, the array holds every page; without it, only the first (see [List Flags](#list-flags)).
-- **Responses that carry more than a list** print the whole response object: `dataset schema` (`{items, primaryKey}`), `dataset data` (`{items, pagination, schema, lastUpdatedAt}`), `dataset preview-modification` and `metric drilldown` (`{items, schema, pagination}`), `dataset lineage` and `metric lineage` (`{parents, children}`), `metric dimension-values`, `dataset modifications`, `dataset modification-rules` and `databoard metrics`. A command's `--help` says when `--json` returns the whole response. Under `--all`, `dataset data` and `metric drilldown` leave out `pagination`.
+- **Responses that carry more than a list** print the whole response object: `dataset schema` (`{items, primaryKey}`), `dataset data` (`{items, pagination, schema, lastUpdatedAt}`), `dataset preview-modification` and `metric drilldown` (`{items, schema, pagination}`), `metric data` (`{metric, dataPoints, syncInfo}`), `dataset lineage` and `metric lineage` (`{parents, children}`), `metric dimension-values`, `dataset modifications`, `dataset modification-rules` and `dashboard metrics`. A command's `--help` says when `--json` returns the whole response. Under `--all`, `dataset data` and `metric drilldown` leave out `pagination`.
 - **Single resources** print the object the API returned.
 - **`metric create` and `metric update`** print the metric as `metric get` does, in every format.
 - **`set-timezone`, `set-sync-frequency` and `set-verification`** print a one-line confirmation in table mode, and the updated resource with `--json` or `--output csv`. Every other `set-*` command prints what the API returned in every format: the updated resource, or for `dataset set-column-metadata` the dataset's columns.
@@ -246,7 +285,8 @@ Stdout carries only the result. Pagination footers appear in table mode only, an
 | Columns per dataset | 100 |
 | Dataset size | Set per dataset: `maxSize` in `dataset get`. |
 | Rate limit, per API key | 10 requests per second, 10,000 per hour, enforced by Databox's gateway. Over it you get HTTP 429 (exit 1), possibly with no error code: back off and retry, with `--idempotency-key` on writes. |
-| Request timeout | 30 seconds, or 5 minutes for `dataset ingest` (exit 2). |
+| Rate limit, `metric data` | 30 calls per account per minute, on top of the gateway's limit. Over it you get `429 rate_limited` with a `Retry after N s` line (exit 1). |
+| Request timeout | 30 seconds, 170 seconds for `metric data`, or 5 minutes for `dataset ingest` (exit 2). |
 
 With a primary key (`dataset create --primary-key`), ingesting a row whose key already exists overwrites it. Without one, every ingest appends, so sending the same rows twice duplicates them.
 
@@ -271,6 +311,15 @@ Every error shows a Request ID, including a network failure or a timeout, where 
 ```
 
 A timed-out `dataset ingest` may still have been processed: check `databox dataset ingestions DATASETID` before sending it again.
+
+When the API says when to retry, with a `Retry-After` header, the error adds a `Retry after N s` line. It comes with `429 rate_limited` and with `409 modification_in_progress`, which reads and metric commands on a dataset (`dataset data`, `dataset schema`, `metric create`, `metric update`, `metric data`, `metric drilldown` and others) return for a few seconds after a dataset modification is saved, while it is applied. Wait that long and run the same command again; the CLI does not retry by itself. `409 modification_failed` means the modification could not be applied, and retrying will not help: save it again with `dataset update-modification`, or remove it with `dataset clear-modifications`.
+
+```
+ ›   Error: modification_in_progress
+ ›     The dataset's modification is being applied. Retry in a few seconds.
+ ›     Retry after 5 s
+ ›     Request ID: 3c63e510-276f-4541-9c66-8c00161fda82
+```
 
 | Exit code | Meaning |
 |-----------|---------|
@@ -321,7 +370,7 @@ This package includes skills that let AI agents (like [Claude Code](https://clau
 | `databox-organization` | Organization info, usage, settings, timezones |
 | `databox-data-sources` | Data source CRUD, timezone, sync frequency, permissions, purge |
 | `databox-datasets` | Dataset CRUD, schema, data ingestion, metadata, verification, modifications, lineage |
-| `databox-metrics` | Custom metric CRUD, dimension values, drilldown, lineage, usages, verification |
+| `databox-metrics` | Metric values over time, custom metric CRUD, dimension values, drilldown, lineage, usages, verification |
 | `databox-users` | User invites, roles, removal |
 | `databox-accounts` | Managing the accounts in your organization |
 | `databox-connections` | Connection management and permissions |
@@ -374,6 +423,9 @@ Once installed, Claude Code can manage your Databox resources directly — your 
 * [`databox connection permissions CONNECTIONID`](#databox-connection-permissions-connectionid)
 * [`databox connection set-permissions CONNECTIONID`](#databox-connection-set-permissions-connectionid)
 * [`databox connection update CONNECTIONID`](#databox-connection-update-connectionid)
+* [`databox dashboard list`](#databox-dashboard-list)
+* [`databox dashboard metrics DASHBOARDID`](#databox-dashboard-metrics-dashboardid)
+* [`databox dashboard rename DASHBOARDID`](#databox-dashboard-rename-dashboardid)
 * [`databox data-source create`](#databox-data-source-create)
 * [`databox data-source datasets DATASOURCEID`](#databox-data-source-datasets-datasourceid)
 * [`databox data-source delete DATASOURCEID`](#databox-data-source-delete-datasourceid)
@@ -387,7 +439,7 @@ Once installed, Claude Code can manage your Databox resources directly — your 
 * [`databox data-source sync-frequency-options DATASOURCEID`](#databox-data-source-sync-frequency-options-datasourceid)
 * [`databox data-source update DATASOURCEID`](#databox-data-source-update-datasourceid)
 * [`databox databoard list`](#databox-databoard-list)
-* [`databox databoard metrics DATABOARDID`](#databox-databoard-metrics-databoardid)
+* [`databox databoard metrics DASHBOARDID`](#databox-databoard-metrics-dashboardid)
 * [`databox dataset clear-modifications DATASETID`](#databox-dataset-clear-modifications-datasetid)
 * [`databox dataset column-metadata DATASETID`](#databox-dataset-column-metadata-datasetid)
 * [`databox dataset create`](#databox-dataset-create)
@@ -425,6 +477,7 @@ Once installed, Claude Code can manage your Databox resources directly — your 
 * [`databox integration get INTEGRATIONID`](#databox-integration-get-integrationid)
 * [`databox integration list`](#databox-integration-list)
 * [`databox metric create`](#databox-metric-create)
+* [`databox metric data`](#databox-metric-data)
 * [`databox metric delete METRICID`](#databox-metric-delete-metricid)
 * [`databox metric dimension-values`](#databox-metric-dimension-values)
 * [`databox metric drilldown`](#databox-metric-drilldown)
@@ -483,7 +536,7 @@ EXAMPLES
   $ databox account create --name "Acme Inc" --json
 ```
 
-_See code: [src/commands/account/create.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/account/create.ts)_
+_See code: [src/commands/account/create.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/account/create.ts)_
 
 ## `databox account delete ACCOUNTID`
 
@@ -513,7 +566,7 @@ EXAMPLES
   $ databox account delete 12345 --force
 ```
 
-_See code: [src/commands/account/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/account/delete.ts)_
+_See code: [src/commands/account/delete.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/account/delete.ts)_
 
 ## `databox account get ACCOUNTID`
 
@@ -542,7 +595,7 @@ EXAMPLES
   $ databox account get 12345 --json
 ```
 
-_See code: [src/commands/account/get.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/account/get.ts)_
+_See code: [src/commands/account/get.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/account/get.ts)_
 
 ## `databox account list`
 
@@ -580,7 +633,7 @@ EXAMPLES
   $ databox account list --json
 ```
 
-_See code: [src/commands/account/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/account/list.ts)_
+_See code: [src/commands/account/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/account/list.ts)_
 
 ## `databox account update ACCOUNTID`
 
@@ -615,7 +668,7 @@ EXAMPLES
   $ databox account update 12345 --name "New Name" --json
 ```
 
-_See code: [src/commands/account/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/account/update.ts)_
+_See code: [src/commands/account/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/account/update.ts)_
 
 ## `databox activity-log list`
 
@@ -658,7 +711,7 @@ EXAMPLES
   $ databox activity-log list --json
 ```
 
-_See code: [src/commands/activity-log/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/activity-log/list.ts)_
+_See code: [src/commands/activity-log/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/activity-log/list.ts)_
 
 ## `databox auth login`
 
@@ -682,7 +735,7 @@ EXAMPLES
   pass show databox | databox auth login
 ```
 
-_See code: [src/commands/auth/login.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/auth/login.ts)_
+_See code: [src/commands/auth/login.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/auth/login.ts)_
 
 ## `databox auth validate`
 
@@ -708,7 +761,7 @@ EXAMPLES
   $ databox auth validate --json
 ```
 
-_See code: [src/commands/auth/validate.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/auth/validate.ts)_
+_See code: [src/commands/auth/validate.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/auth/validate.ts)_
 
 ## `databox billing info`
 
@@ -734,7 +787,7 @@ EXAMPLES
   $ databox billing info --json
 ```
 
-_See code: [src/commands/billing/info.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/billing/info.ts)_
+_See code: [src/commands/billing/info.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/billing/info.ts)_
 
 ## `databox billing invoices`
 
@@ -764,7 +817,7 @@ EXAMPLES
   $ databox billing invoices --json
 ```
 
-_See code: [src/commands/billing/invoices.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/billing/invoices.ts)_
+_See code: [src/commands/billing/invoices.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/billing/invoices.ts)_
 
 ## `databox connection delete CONNECTIONID`
 
@@ -794,7 +847,7 @@ EXAMPLES
   $ databox connection delete 12345 --force
 ```
 
-_See code: [src/commands/connection/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/connection/delete.ts)_
+_See code: [src/commands/connection/delete.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/connection/delete.ts)_
 
 ## `databox connection get CONNECTIONID`
 
@@ -825,7 +878,7 @@ EXAMPLES
   $ databox connection get 12345 --json
 ```
 
-_See code: [src/commands/connection/get.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/connection/get.ts)_
+_See code: [src/commands/connection/get.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/connection/get.ts)_
 
 ## `databox connection list`
 
@@ -861,7 +914,7 @@ EXAMPLES
   $ databox connection list --json
 ```
 
-_See code: [src/commands/connection/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/connection/list.ts)_
+_See code: [src/commands/connection/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/connection/list.ts)_
 
 ## `databox connection permissions CONNECTIONID`
 
@@ -892,7 +945,7 @@ EXAMPLES
   $ databox connection permissions 12345 --json
 ```
 
-_See code: [src/commands/connection/permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/connection/permissions.ts)_
+_See code: [src/commands/connection/permissions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/connection/permissions.ts)_
 
 ## `databox connection set-permissions CONNECTIONID`
 
@@ -934,7 +987,7 @@ EXAMPLES
   $ databox connection set-permissions 12345 --access-level selectedUsers --access-list 31 --no-shared-with-accounts
 ```
 
-_See code: [src/commands/connection/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/connection/set-permissions.ts)_
+_See code: [src/commands/connection/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/connection/set-permissions.ts)_
 
 ## `databox connection update CONNECTIONID`
 
@@ -964,7 +1017,106 @@ EXAMPLES
   $ databox connection update 12345 --name "New Name" --json
 ```
 
-_See code: [src/commands/connection/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/connection/update.ts)_
+_See code: [src/commands/connection/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/connection/update.ts)_
+
+## `databox dashboard list`
+
+List dashboards
+
+```
+USAGE
+  $ databox dashboard list [--no-color] [--output table|json|csv | --json] [--verbose] [--all | --page <value>]
+    [--page-size <value>] [--search <value>]
+
+FLAGS
+  --all                Fetch every page (100 items per request unless --page-size is given) and print them as one list
+  --json               Output as JSON (shorthand for --output json)
+  --no-color           Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>    [default: table] Output format
+                       <options: table|json|csv>
+  --page=<value>       Page number (0-indexed)
+  --page-size=<value>  Number of items per page (max 100)
+  --search=<value>     Search by dashboard name
+  --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  List dashboards
+
+EXAMPLES
+  $ databox dashboard list
+
+  $ databox dashboard list --search marketing
+
+  $ databox dashboard list --json
+```
+
+_See code: [src/commands/dashboard/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dashboard/list.ts)_
+
+## `databox dashboard metrics DASHBOARDID`
+
+Get the metrics on a dashboard
+
+```
+USAGE
+  $ databox dashboard metrics DASHBOARDID [--no-color] [--output table|json|csv | --json] [--verbose]
+
+ARGUMENTS
+  DASHBOARDID  The dashboard ID
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  Get the metrics on a dashboard
+
+  One row per metric on each datablock; a datablock without metrics gets one row of its own. --json returns the whole
+  response, including each metric's applied filters, which "metric drilldown --filters" accepts as they are.
+
+EXAMPLES
+  $ databox dashboard metrics 12345
+
+  $ databox dashboard metrics 12345 --json
+```
+
+_See code: [src/commands/dashboard/metrics.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dashboard/metrics.ts)_
+
+## `databox dashboard rename DASHBOARDID`
+
+Rename a dashboard
+
+```
+USAGE
+  $ databox dashboard rename DASHBOARDID --name <value> [--no-color] [--output table|json|csv | --json] [--verbose]
+
+ARGUMENTS
+  DASHBOARDID  The dashboard ID to rename
+
+FLAGS
+  --json             Output as JSON (shorthand for --output json)
+  --name=<value>     (required) New name for the dashboard
+  --no-color         Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>  [default: table] Output format
+                     <options: table|json|csv>
+  --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  Rename a dashboard
+
+  The API trims the name and refuses one that is blank, longer than 65 characters, or holds a control character such as
+  a tab or line break. An Admin or Editor can rename any dashboard they can see, a User only one they created. Prints
+  the renamed dashboard as "dashboard list" shows it.
+
+EXAMPLES
+  $ databox dashboard rename 12345 --name "Q4 pipeline"
+
+  $ databox dashboard rename 12345 --name "Q4 pipeline" --json
+```
+
+_See code: [src/commands/dashboard/rename.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dashboard/rename.ts)_
 
 ## `databox data-source create`
 
@@ -1003,7 +1155,7 @@ EXAMPLES
   $ databox data-source create --name "My Data Source" --json
 ```
 
-_See code: [src/commands/data-source/create.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/create.ts)_
+_See code: [src/commands/data-source/create.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/create.ts)_
 
 ## `databox data-source datasets DATASOURCEID`
 
@@ -1045,7 +1197,7 @@ EXAMPLES
   $ databox data-source datasets 12345 --json
 ```
 
-_See code: [src/commands/data-source/datasets.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/datasets.ts)_
+_See code: [src/commands/data-source/datasets.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/datasets.ts)_
 
 ## `databox data-source delete DATASOURCEID`
 
@@ -1077,7 +1229,7 @@ EXAMPLES
   $ databox data-source delete 12345 --force
 ```
 
-_See code: [src/commands/data-source/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/delete.ts)_
+_See code: [src/commands/data-source/delete.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/delete.ts)_
 
 ## `databox data-source get DATASOURCEID`
 
@@ -1106,7 +1258,7 @@ EXAMPLES
   $ databox data-source get 12345 --json
 ```
 
-_See code: [src/commands/data-source/get.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/get.ts)_
+_See code: [src/commands/data-source/get.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/get.ts)_
 
 ## `databox data-source list`
 
@@ -1148,7 +1300,7 @@ EXAMPLES
   $ databox data-source list --page 0 --page-size 10 --json
 ```
 
-_See code: [src/commands/data-source/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/list.ts)_
+_See code: [src/commands/data-source/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/list.ts)_
 
 ## `databox data-source permissions DATASOURCEID`
 
@@ -1177,7 +1329,7 @@ EXAMPLES
   $ databox data-source permissions 12345 --json
 ```
 
-_See code: [src/commands/data-source/permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/permissions.ts)_
+_See code: [src/commands/data-source/permissions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/permissions.ts)_
 
 ## `databox data-source purge DATASOURCEID`
 
@@ -1213,7 +1365,7 @@ EXAMPLES
   $ databox data-source purge 12345 --force
 ```
 
-_See code: [src/commands/data-source/purge.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/purge.ts)_
+_See code: [src/commands/data-source/purge.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/purge.ts)_
 
 ## `databox data-source set-permissions DATASOURCEID`
 
@@ -1254,7 +1406,7 @@ EXAMPLES
   $ databox data-source set-permissions 12345 --access-level private
 ```
 
-_See code: [src/commands/data-source/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/set-permissions.ts)_
+_See code: [src/commands/data-source/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/set-permissions.ts)_
 
 ## `databox data-source set-sync-frequency DATASOURCEID`
 
@@ -1291,7 +1443,7 @@ EXAMPLES
   $ databox data-source set-sync-frequency 12345 --interval 1440 --json
 ```
 
-_See code: [src/commands/data-source/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/set-sync-frequency.ts)_
+_See code: [src/commands/data-source/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/set-sync-frequency.ts)_
 
 ## `databox data-source set-timezone DATASOURCEID`
 
@@ -1328,7 +1480,7 @@ EXAMPLES
   $ databox data-source set-timezone 12345 --timezone "Europe/London" --apply-to-datasets --json
 ```
 
-_See code: [src/commands/data-source/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/set-timezone.ts)_
+_See code: [src/commands/data-source/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/set-timezone.ts)_
 
 ## `databox data-source sync-frequency-options DATASOURCEID`
 
@@ -1357,7 +1509,7 @@ EXAMPLES
   $ databox data-source sync-frequency-options 12345 --json
 ```
 
-_See code: [src/commands/data-source/sync-frequency-options.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/sync-frequency-options.ts)_
+_See code: [src/commands/data-source/sync-frequency-options.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/sync-frequency-options.ts)_
 
 ## `databox data-source update DATASOURCEID`
 
@@ -1389,11 +1541,11 @@ EXAMPLES
   $ databox data-source update 12345 --name "New Name" --json
 ```
 
-_See code: [src/commands/data-source/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/data-source/update.ts)_
+_See code: [src/commands/data-source/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/data-source/update.ts)_
 
 ## `databox databoard list`
 
-List databoards
+List dashboards (deprecated: use "dashboard list")
 
 ```
 USAGE
@@ -1408,32 +1560,30 @@ FLAGS
                        <options: table|json|csv>
   --page=<value>       Page number (0-indexed)
   --page-size=<value>  Number of items per page (max 100)
-  --search=<value>     Search by databoard name
+  --search=<value>     Search by dashboard name
   --verbose            Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  List databoards
+  List dashboards (deprecated: use "dashboard list")
 
 EXAMPLES
   $ databox databoard list
 
-  $ databox databoard list --search marketing
-
-  $ databox databoard list --json
+  $ databox databoard list --search marketing --json
 ```
 
-_See code: [src/commands/databoard/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/databoard/list.ts)_
+_See code: [src/commands/databoard/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/databoard/list.ts)_
 
-## `databox databoard metrics DATABOARDID`
+## `databox databoard metrics DASHBOARDID`
 
-Get the metrics on a databoard
+Get the metrics on a dashboard (deprecated: use "dashboard metrics")
 
 ```
 USAGE
-  $ databox databoard metrics DATABOARDID [--no-color] [--output table|json|csv | --json] [--verbose]
+  $ databox databoard metrics DASHBOARDID [--no-color] [--output table|json|csv | --json] [--verbose]
 
 ARGUMENTS
-  DATABOARDID  The databoard ID
+  DASHBOARDID  The dashboard ID
 
 FLAGS
   --json             Output as JSON (shorthand for --output json)
@@ -1443,10 +1593,7 @@ FLAGS
   --verbose          Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
-  Get the metrics on a databoard
-
-  One row per metric on each datablock; a datablock without metrics gets one row of its own. --json returns the whole
-  response, including each metric's applied filters, which "metric drilldown --filters" accepts as they are.
+  Get the metrics on a dashboard (deprecated: use "dashboard metrics")
 
 EXAMPLES
   $ databox databoard metrics 12345
@@ -1454,7 +1601,7 @@ EXAMPLES
   $ databox databoard metrics 12345 --json
 ```
 
-_See code: [src/commands/databoard/metrics.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/databoard/metrics.ts)_
+_See code: [src/commands/databoard/metrics.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/databoard/metrics.ts)_
 
 ## `databox dataset clear-modifications DATASETID`
 
@@ -1486,7 +1633,7 @@ EXAMPLES
   $ databox dataset clear-modifications 12345 --force
 ```
 
-_See code: [src/commands/dataset/clear-modifications.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/clear-modifications.ts)_
+_See code: [src/commands/dataset/clear-modifications.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/clear-modifications.ts)_
 
 ## `databox dataset column-metadata DATASETID`
 
@@ -1515,7 +1662,7 @@ EXAMPLES
   $ databox dataset column-metadata 12345 --json
 ```
 
-_See code: [src/commands/dataset/column-metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/column-metadata.ts)_
+_See code: [src/commands/dataset/column-metadata.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/column-metadata.ts)_
 
 ## `databox dataset create`
 
@@ -1556,7 +1703,7 @@ EXAMPLES
   $ databox dataset create --name "My Dataset" --data-source-id 123 --json
 ```
 
-_See code: [src/commands/dataset/create.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/create.ts)_
+_See code: [src/commands/dataset/create.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/create.ts)_
 
 ## `databox dataset data DATASETID`
 
@@ -1601,7 +1748,7 @@ EXAMPLES
   $ databox dataset data 12345 --json
 ```
 
-_See code: [src/commands/dataset/data.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/data.ts)_
+_See code: [src/commands/dataset/data.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/data.ts)_
 
 ## `databox dataset delete DATASETID`
 
@@ -1633,7 +1780,7 @@ EXAMPLES
   $ databox dataset delete 12345 --force
 ```
 
-_See code: [src/commands/dataset/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/delete.ts)_
+_See code: [src/commands/dataset/delete.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/delete.ts)_
 
 ## `databox dataset duplicate DATASETID`
 
@@ -1669,7 +1816,7 @@ EXAMPLES
   $ databox dataset duplicate 12345 --json
 ```
 
-_See code: [src/commands/dataset/duplicate.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/duplicate.ts)_
+_See code: [src/commands/dataset/duplicate.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/duplicate.ts)_
 
 ## `databox dataset get DATASETID`
 
@@ -1698,7 +1845,7 @@ EXAMPLES
   $ databox dataset get 12345 --json
 ```
 
-_See code: [src/commands/dataset/get.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/get.ts)_
+_See code: [src/commands/dataset/get.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/get.ts)_
 
 ## `databox dataset ingest DATASETID`
 
@@ -1737,7 +1884,7 @@ EXAMPLES
   $ databox dataset ingest 12345 --records '[{"date":"2024-01-01","value":42}]' --json
 ```
 
-_See code: [src/commands/dataset/ingest.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/ingest.ts)_
+_See code: [src/commands/dataset/ingest.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/ingest.ts)_
 
 ## `databox dataset ingestion DATASETID INGESTIONID`
 
@@ -1767,7 +1914,7 @@ EXAMPLES
   $ databox dataset ingestion 12345 3c63e510-276f-4541-9c66-8c00161fda82 --json
 ```
 
-_See code: [src/commands/dataset/ingestion.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/ingestion.ts)_
+_See code: [src/commands/dataset/ingestion.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/ingestion.ts)_
 
 ## `databox dataset ingestion-statistics DATASETID`
 
@@ -1796,7 +1943,7 @@ EXAMPLES
   $ databox dataset ingestion-statistics 12345 --json
 ```
 
-_See code: [src/commands/dataset/ingestion-statistics.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/ingestion-statistics.ts)_
+_See code: [src/commands/dataset/ingestion-statistics.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/ingestion-statistics.ts)_
 
 ## `databox dataset ingestions DATASETID`
 
@@ -1831,7 +1978,7 @@ EXAMPLES
   $ databox dataset ingestions 12345 --json
 ```
 
-_See code: [src/commands/dataset/ingestions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/ingestions.ts)_
+_See code: [src/commands/dataset/ingestions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/ingestions.ts)_
 
 ## `databox dataset lineage DATASETID`
 
@@ -1864,7 +2011,7 @@ EXAMPLES
   $ databox dataset lineage 12345 --json
 ```
 
-_See code: [src/commands/dataset/lineage.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/lineage.ts)_
+_See code: [src/commands/dataset/lineage.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/lineage.ts)_
 
 ## `databox dataset list`
 
@@ -1874,7 +2021,7 @@ List datasets
 USAGE
   $ databox dataset list [--no-color] [--output table|json|csv | --json] [--verbose] [--data-source-id <value>]
     [--all | --page <value>] [--page-size <value>] [--search <value>] [--sort-by name|createdAt|lastActivityAt]
-    [--sort-order asc|desc]
+    [--sort-order asc|desc] [--type dataset|mergedDataset]
 
 FLAGS
   --all                     Fetch every page (100 items per request unless --page-size is given) and print them as one
@@ -1891,6 +2038,9 @@ FLAGS
                             <options: name|createdAt|lastActivityAt>
   --sort-order=<option>     Sort direction
                             <options: asc|desc>
+  --type=<option>           Which kind to list: dataset (the default) or mergedDataset. A merged dataset has no data
+                            source, so the API refuses this with --data-source-id
+                            <options: dataset|mergedDataset>
   --verbose                 Print each request and response (method, URL, status, duration, request ID) to stderr
 
 DESCRIPTION
@@ -1901,6 +2051,8 @@ EXAMPLES
 
   $ databox dataset list --search "revenue"
 
+  $ databox dataset list --type mergedDataset
+
   $ databox dataset list --sort-by lastActivityAt --sort-order desc
 
   $ databox dataset list --page 0 --page-size 10
@@ -1908,7 +2060,7 @@ EXAMPLES
   $ databox dataset list --json
 ```
 
-_See code: [src/commands/dataset/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/list.ts)_
+_See code: [src/commands/dataset/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/list.ts)_
 
 ## `databox dataset metadata DATASETID`
 
@@ -1937,7 +2089,7 @@ EXAMPLES
   $ databox dataset metadata 12345 --json
 ```
 
-_See code: [src/commands/dataset/metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/metadata.ts)_
+_See code: [src/commands/dataset/metadata.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/metadata.ts)_
 
 ## `databox dataset modification-functions`
 
@@ -1965,7 +2117,7 @@ EXAMPLES
   $ databox dataset modification-functions --json
 ```
 
-_See code: [src/commands/dataset/modification-functions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/modification-functions.ts)_
+_See code: [src/commands/dataset/modification-functions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/modification-functions.ts)_
 
 ## `databox dataset modification-rules`
 
@@ -1995,7 +2147,7 @@ EXAMPLES
   $ databox dataset modification-rules --json
 ```
 
-_See code: [src/commands/dataset/modification-rules.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/modification-rules.ts)_
+_See code: [src/commands/dataset/modification-rules.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/modification-rules.ts)_
 
 ## `databox dataset modifications DATASETID`
 
@@ -2027,7 +2179,7 @@ EXAMPLES
   $ databox dataset modifications 12345 --json
 ```
 
-_See code: [src/commands/dataset/modifications.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/modifications.ts)_
+_See code: [src/commands/dataset/modifications.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/modifications.ts)_
 
 ## `databox dataset permissions DATASETID`
 
@@ -2056,7 +2208,7 @@ EXAMPLES
   $ databox dataset permissions 12345 --json
 ```
 
-_See code: [src/commands/dataset/permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/permissions.ts)_
+_See code: [src/commands/dataset/permissions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/permissions.ts)_
 
 ## `databox dataset preview-modification DATASETID`
 
@@ -2097,7 +2249,7 @@ EXAMPLES
   $ databox dataset preview-modification 12345 --data '{"displayNames":{"amount":"Revenue"}}' --json
 ```
 
-_See code: [src/commands/dataset/preview-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/preview-modification.ts)_
+_See code: [src/commands/dataset/preview-modification.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/preview-modification.ts)_
 
 ## `databox dataset purge DATASETID`
 
@@ -2133,7 +2285,7 @@ EXAMPLES
   $ databox dataset purge 12345 --force
 ```
 
-_See code: [src/commands/dataset/purge.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/purge.ts)_
+_See code: [src/commands/dataset/purge.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/purge.ts)_
 
 ## `databox dataset schema DATASETID`
 
@@ -2165,7 +2317,7 @@ EXAMPLES
   $ databox dataset schema 12345 --json
 ```
 
-_See code: [src/commands/dataset/schema.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/schema.ts)_
+_See code: [src/commands/dataset/schema.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/schema.ts)_
 
 ## `databox dataset set-column-metadata DATASETID`
 
@@ -2203,7 +2355,7 @@ EXAMPLES
   $ databox dataset set-column-metadata 12345 --columns '[{"id":"country","conceptType":"dimension","synonyms":["nation","market"]}]' --json
 ```
 
-_See code: [src/commands/dataset/set-column-metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/set-column-metadata.ts)_
+_See code: [src/commands/dataset/set-column-metadata.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/set-column-metadata.ts)_
 
 ## `databox dataset set-metadata DATASETID`
 
@@ -2241,7 +2393,7 @@ EXAMPLES
   $ databox dataset set-metadata 12345 --default-time-dimension order_date
 ```
 
-_See code: [src/commands/dataset/set-metadata.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/set-metadata.ts)_
+_See code: [src/commands/dataset/set-metadata.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/set-metadata.ts)_
 
 ## `databox dataset set-permissions DATASETID`
 
@@ -2282,7 +2434,7 @@ EXAMPLES
   $ databox dataset set-permissions 12345 --access-level private
 ```
 
-_See code: [src/commands/dataset/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/set-permissions.ts)_
+_See code: [src/commands/dataset/set-permissions.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/set-permissions.ts)_
 
 ## `databox dataset set-sync-frequency DATASETID`
 
@@ -2319,7 +2471,7 @@ EXAMPLES
   $ databox dataset set-sync-frequency 12345 --interval 1440 --json
 ```
 
-_See code: [src/commands/dataset/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/set-sync-frequency.ts)_
+_See code: [src/commands/dataset/set-sync-frequency.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/set-sync-frequency.ts)_
 
 ## `databox dataset set-timezone DATASETID`
 
@@ -2355,7 +2507,7 @@ EXAMPLES
   $ databox dataset set-timezone 12345 --timezone "Europe/London" --json
 ```
 
-_See code: [src/commands/dataset/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/set-timezone.ts)_
+_See code: [src/commands/dataset/set-timezone.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/set-timezone.ts)_
 
 ## `databox dataset set-verification DATASETID`
 
@@ -2392,7 +2544,7 @@ EXAMPLES
   $ databox dataset set-verification 12345 --status unverified --json
 ```
 
-_See code: [src/commands/dataset/set-verification.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/set-verification.ts)_
+_See code: [src/commands/dataset/set-verification.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/set-verification.ts)_
 
 ## `databox dataset sync-frequency-options DATASETID`
 
@@ -2421,7 +2573,7 @@ EXAMPLES
   $ databox dataset sync-frequency-options 12345 --json
 ```
 
-_See code: [src/commands/dataset/sync-frequency-options.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/sync-frequency-options.ts)_
+_See code: [src/commands/dataset/sync-frequency-options.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/sync-frequency-options.ts)_
 
 ## `databox dataset sync-history DATASETID`
 
@@ -2456,7 +2608,7 @@ EXAMPLES
   $ databox dataset sync-history 12345 --json
 ```
 
-_See code: [src/commands/dataset/sync-history.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/sync-history.ts)_
+_See code: [src/commands/dataset/sync-history.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/sync-history.ts)_
 
 ## `databox dataset sync-statistics DATASETID`
 
@@ -2485,7 +2637,7 @@ EXAMPLES
   $ databox dataset sync-statistics 12345 --json
 ```
 
-_See code: [src/commands/dataset/sync-statistics.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/sync-statistics.ts)_
+_See code: [src/commands/dataset/sync-statistics.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/sync-statistics.ts)_
 
 ## `databox dataset update DATASETID`
 
@@ -2517,7 +2669,7 @@ EXAMPLES
   $ databox dataset update 12345 --name "New Name" --json
 ```
 
-_See code: [src/commands/dataset/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/update.ts)_
+_See code: [src/commands/dataset/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/update.ts)_
 
 ## `databox dataset update-modification DATASETID`
 
@@ -2573,7 +2725,7 @@ EXAMPLES
   $ databox dataset update-modification 12345 --data '{"dataTypes":{"amount":{"outputLogicalType":"currency"}},"visibility":{"orderId":false}}' --json
 ```
 
-_See code: [src/commands/dataset/update-modification.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/update-modification.ts)_
+_See code: [src/commands/dataset/update-modification.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/update-modification.ts)_
 
 ## `databox dataset verification DATASETID`
 
@@ -2602,7 +2754,7 @@ EXAMPLES
   $ databox dataset verification 12345 --json
 ```
 
-_See code: [src/commands/dataset/verification.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/dataset/verification.ts)_
+_See code: [src/commands/dataset/verification.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/dataset/verification.ts)_
 
 ## `databox help [COMMAND]`
 
@@ -2651,7 +2803,7 @@ EXAMPLES
   $ databox integration get 101 --json
 ```
 
-_See code: [src/commands/integration/get.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/integration/get.ts)_
+_See code: [src/commands/integration/get.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/integration/get.ts)_
 
 ## `databox integration list`
 
@@ -2688,7 +2840,7 @@ EXAMPLES
   $ databox integration list --json
 ```
 
-_See code: [src/commands/integration/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/integration/list.ts)_
+_See code: [src/commands/integration/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/integration/list.ts)_
 
 ## `databox metric create`
 
@@ -2736,7 +2888,61 @@ EXAMPLES
   $ databox metric create --name "US revenue" --dataset-id 123 --measure '{"id":"amount","displayName":"Amount"}' --date '{"id":"created_at","displayName":"Created At"}' --filters '{"logicalOperator":"and","conditions":[{"field":"country","operator":"ANY_OF","values":["US","UK"]}]}' --json
 ```
 
-_See code: [src/commands/metric/create.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/create.ts)_
+_See code: [src/commands/metric/create.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/create.ts)_
+
+## `databox metric data`
+
+Get a metric's values over a date range
+
+```
+USAGE
+  $ databox metric data --from <value> --granularity daily|weekly|monthly|quarterly|yearly|allTime --metric-id
+    <value> --to <value> [--no-color] [--output table|json|csv | --json] [--verbose] [--dimension-id <value>...]
+    [--filters <value>] [--source-id <value>]
+
+FLAGS
+  --dimension-id=<value>...  Dimension id to break the values down by, from "metric get" (repeat for several)
+  --filters=<value>          Filters as JSON, one group: {logicalOperator: AND|OR, conditions: [{type: dimension|unit,
+                             field, operator, values}]}; operator is ANY_OF, NONE_OF, EQ, NEQ, CONTAINS or NOT_CONTAINS,
+                             and both are case-insensitive. E.g. {"logicalOperator":"AND","conditions":[{"type":"dimensi
+                             on","field":"country","operator":"ANY_OF","values":["US"]}]}
+  --from=<value>             (required) First day, YYYY-MM-DD
+  --granularity=<option>     (required) Bucket size; allTime is one bucket for the whole range
+                             <options: daily|weekly|monthly|quarterly|yearly|allTime>
+  --json                     Output as JSON (shorthand for --output json)
+  --metric-id=<value>        (required) Metric ID
+  --no-color                 Disable coloured output (a non-empty NO_COLOR environment variable does the same)
+  --output=<option>          [default: table] Output format
+                             <options: table|json|csv>
+  --source-id=<value>        The data source or dataset the metric belongs to. Defaults to the part of --metric-id
+                             before "|"; if given, it must match it. Required for a metric id without one
+  --to=<value>               (required) Last day, YYYY-MM-DD, on or after --from
+  --verbose                  Print each request and response (method, URL, status, duration, request ID) to stderr
+
+DESCRIPTION
+  Get a metric's values over a date range
+
+  Works for every kind of metric: integration, custom, calculated and pushed. Each point is one --granularity bucket,
+  dated in the source's timezone; a bucket with no data has an empty value. With --dimension-id there is one row per
+  bucket and dimension value, and a column per dimension.
+
+  The platform may sync the metric before reading it, so the first call on a metric that has never synced can take about
+  two minutes. The table and CSV are followed by a "Sync:" line on stderr saying how current the values are; --json
+  returns the whole response, with "syncInfo". A 504 means the sync is still running: retry shortly. The API allows 30
+  calls per account per minute; over it, wait the "Retry after" seconds.
+
+  --source-id defaults to the part of --metric-id before "|"; a metric without it, such as "GoogleAnalytics4@sessions",
+  needs --source-id (the sourceId shown by "metric list").
+
+EXAMPLES
+  $ databox metric data --metric-id "500|custom_query_100" --from 2026-06-01 --to 2026-06-30 --granularity daily
+
+  $ databox metric data --metric-id "GoogleAnalytics4@sessions" --source-id 42 --from 2026-01-01 --to 2026-06-30 --granularity monthly --dimension-id country
+
+  $ databox metric data --metric-id "500|custom_query_100" --from 2026-01-01 --to 2026-12-31 --granularity allTime --filters '{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}' --json
+```
+
+_See code: [src/commands/metric/data.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/data.ts)_
 
 ## `databox metric delete METRICID`
 
@@ -2766,7 +2972,7 @@ EXAMPLES
   $ databox metric delete "500|custom_query_100" --force
 ```
 
-_See code: [src/commands/metric/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/delete.ts)_
+_See code: [src/commands/metric/delete.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/delete.ts)_
 
 ## `databox metric dimension-values`
 
@@ -2800,7 +3006,7 @@ EXAMPLES
   $ databox metric dimension-values --metric-id "GoogleAnalytics4@sessions" --source-id 42 --dimension-id country --json
 ```
 
-_See code: [src/commands/metric/dimension-values.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/dimension-values.ts)_
+_See code: [src/commands/metric/dimension-values.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/dimension-values.ts)_
 
 ## `databox metric drilldown`
 
@@ -2853,7 +3059,7 @@ EXAMPLES
   $ databox metric drilldown --metric-id "500|custom_query_100" --start-timestamp 1704067200 --end-timestamp 1706745600 --filters '{"logicalOperator":"AND","groups":[{"logicalOperator":"AND","conditions":[{"type":"dimension","field":"country","operator":"ANY_OF","values":["US"]}]}]}' --json
 ```
 
-_See code: [src/commands/metric/drilldown.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/drilldown.ts)_
+_See code: [src/commands/metric/drilldown.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/drilldown.ts)_
 
 ## `databox metric get METRICID`
 
@@ -2885,7 +3091,7 @@ EXAMPLES
   $ databox metric get "GoogleAnalytics4@sessions" --json
 ```
 
-_See code: [src/commands/metric/get.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/get.ts)_
+_See code: [src/commands/metric/get.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/get.ts)_
 
 ## `databox metric lineage METRICID`
 
@@ -2919,7 +3125,7 @@ EXAMPLES
   $ databox metric lineage "500|script_7" --json
 ```
 
-_See code: [src/commands/metric/lineage.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/lineage.ts)_
+_See code: [src/commands/metric/lineage.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/lineage.ts)_
 
 ## `databox metric list`
 
@@ -2955,7 +3161,7 @@ EXAMPLES
   $ databox metric list --json
 ```
 
-_See code: [src/commands/metric/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/list.ts)_
+_See code: [src/commands/metric/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/list.ts)_
 
 ## `databox metric set-verification METRICID`
 
@@ -2991,7 +3197,7 @@ EXAMPLES
   $ databox metric set-verification "500|custom_query_100" --status unverified --json
 ```
 
-_See code: [src/commands/metric/set-verification.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/set-verification.ts)_
+_See code: [src/commands/metric/set-verification.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/set-verification.ts)_
 
 ## `databox metric update METRICID`
 
@@ -3001,7 +3207,7 @@ Update a custom metric
 USAGE
   $ databox metric update METRICID [--no-color] [--output table|json|csv | --json] [--verbose]
     [--aggregation-function sum|avg|min|max|count] [--clear-dimensions | --dimension <value>...] [--date <value>]
-    [--filters <value>] [--measure <value>] [--name <value>]
+    [--description <value>] [--filters <value>] [--measure <value>] [--name <value>]
 
 ARGUMENTS
   METRICID  The metric ID to update
@@ -3011,6 +3217,7 @@ FLAGS
                                    <options: sum|avg|min|max|count>
   --clear-dimensions               Remove every dimension (sends "dimensions": [])
   --date=<value>                   New date column reference as JSON ({"id":"amount","displayName":"Amount"})
+  --description=<value>            New description for the metric; "" clears it
   --dimension=<value>...           Dimension column reference as JSON ({"id":"amount","displayName":"Amount"}); repeat
                                    for several. Replaces the current dimensions
   --filters=<value>                Filters as JSON: {logicalOperator: and|or, conditions: [{field, operator, values}]}.
@@ -3026,10 +3233,10 @@ FLAGS
 DESCRIPTION
   Update a custom metric
 
-  Only dataset-based custom metrics can be updated. Fields you omit keep their current values. --dimension replaces the
-  whole dimension list, and --clear-dimensions removes it. In --filters, omitting "conditions" keeps the stored ones, so
-  "logicalOperator" can be changed on its own; "conditions": [] clears them. Prints the updated metric as "metric get"
-  does.
+  Only dataset-based custom metrics can be updated. Fields you omit keep their current values. --description "" clears
+  the description. --dimension replaces the whole dimension list, and --clear-dimensions removes it. In --filters,
+  omitting "conditions" keeps the stored ones, so "logicalOperator" can be changed on its own; "conditions": [] clears
+  them. Prints the updated metric as "metric get" does.
 
 EXAMPLES
   $ databox metric update "500|custom_query_100" --name "New Name"
@@ -3040,12 +3247,14 @@ EXAMPLES
 
   $ databox metric update "500|custom_query_100" --filters '{"logicalOperator":"or"}'
 
+  $ databox metric update "500|custom_query_100" --description "Order revenue, net of refunds"
+
   $ databox metric update "500|custom_query_100" --clear-dimensions
 
   $ databox metric update "500|custom_query_100" --filters '{"conditions":[]}' --json
 ```
 
-_See code: [src/commands/metric/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/update.ts)_
+_See code: [src/commands/metric/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/update.ts)_
 
 ## `databox metric usages METRICID`
 
@@ -3078,7 +3287,7 @@ EXAMPLES
   $ databox metric usages "500|custom_query_100" --json
 ```
 
-_See code: [src/commands/metric/usages.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/usages.ts)_
+_See code: [src/commands/metric/usages.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/usages.ts)_
 
 ## `databox metric verification METRICID`
 
@@ -3110,7 +3319,7 @@ EXAMPLES
   $ databox metric verification "500|custom_query_100" --json
 ```
 
-_See code: [src/commands/metric/verification.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/metric/verification.ts)_
+_See code: [src/commands/metric/verification.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/metric/verification.ts)_
 
 ## `databox organization countries`
 
@@ -3136,7 +3345,7 @@ EXAMPLES
   $ databox organization countries --json
 ```
 
-_See code: [src/commands/organization/countries.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/organization/countries.ts)_
+_See code: [src/commands/organization/countries.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/organization/countries.ts)_
 
 ## `databox organization info`
 
@@ -3162,7 +3371,7 @@ EXAMPLES
   $ databox organization info --json
 ```
 
-_See code: [src/commands/organization/info.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/organization/info.ts)_
+_See code: [src/commands/organization/info.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/organization/info.ts)_
 
 ## `databox organization metadata-options`
 
@@ -3188,7 +3397,7 @@ EXAMPLES
   $ databox organization metadata-options --json
 ```
 
-_See code: [src/commands/organization/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/organization/metadata-options.ts)_
+_See code: [src/commands/organization/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/organization/metadata-options.ts)_
 
 ## `databox organization timezones`
 
@@ -3214,7 +3423,7 @@ EXAMPLES
   $ databox organization timezones --json
 ```
 
-_See code: [src/commands/organization/timezones.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/organization/timezones.ts)_
+_See code: [src/commands/organization/timezones.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/organization/timezones.ts)_
 
 ## `databox organization update`
 
@@ -3263,7 +3472,7 @@ EXAMPLES
   $ databox organization update --settings '{"calendar":"customFiscal","fiscalYearStart":{"month":4,"day":1}}'
 ```
 
-_See code: [src/commands/organization/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/organization/update.ts)_
+_See code: [src/commands/organization/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/organization/update.ts)_
 
 ## `databox organization usage`
 
@@ -3289,7 +3498,7 @@ EXAMPLES
   $ databox organization usage --json
 ```
 
-_See code: [src/commands/organization/usage.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/organization/usage.ts)_
+_See code: [src/commands/organization/usage.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/organization/usage.ts)_
 
 ## `databox profile info`
 
@@ -3315,7 +3524,7 @@ EXAMPLES
   $ databox profile info --json
 ```
 
-_See code: [src/commands/profile/info.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/profile/info.ts)_
+_See code: [src/commands/profile/info.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/profile/info.ts)_
 
 ## `databox profile metadata-options`
 
@@ -3341,7 +3550,7 @@ EXAMPLES
   $ databox profile metadata-options --json
 ```
 
-_See code: [src/commands/profile/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/profile/metadata-options.ts)_
+_See code: [src/commands/profile/metadata-options.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/profile/metadata-options.ts)_
 
 ## `databox profile update`
 
@@ -3381,7 +3590,7 @@ EXAMPLES
   $ databox profile update --metadata '{"department":"","role":""}'
 ```
 
-_See code: [src/commands/profile/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/profile/update.ts)_
+_See code: [src/commands/profile/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/profile/update.ts)_
 
 ## `databox user delete USERID`
 
@@ -3411,7 +3620,7 @@ EXAMPLES
   $ databox user delete 12345 --force
 ```
 
-_See code: [src/commands/user/delete.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/user/delete.ts)_
+_See code: [src/commands/user/delete.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/user/delete.ts)_
 
 ## `databox user get USERID`
 
@@ -3442,7 +3651,7 @@ EXAMPLES
   $ databox user get 12345 --json
 ```
 
-_See code: [src/commands/user/get.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/user/get.ts)_
+_See code: [src/commands/user/get.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/user/get.ts)_
 
 ## `databox user invite`
 
@@ -3479,7 +3688,7 @@ EXAMPLES
   $ databox user invite --email admin@example.com --role admin --json
 ```
 
-_See code: [src/commands/user/invite.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/user/invite.ts)_
+_See code: [src/commands/user/invite.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/user/invite.ts)_
 
 ## `databox user list`
 
@@ -3523,7 +3732,7 @@ EXAMPLES
   $ databox user list --json
 ```
 
-_See code: [src/commands/user/list.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/user/list.ts)_
+_See code: [src/commands/user/list.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/user/list.ts)_
 
 ## `databox user update USERID`
 
@@ -3558,5 +3767,5 @@ EXAMPLES
   $ databox user update 12345 --name "Jane Doe"
 ```
 
-_See code: [src/commands/user/update.ts](https://github.com/databox/databox-cli/blob/v1.0.1/src/commands/user/update.ts)_
+_See code: [src/commands/user/update.ts](https://github.com/databox/databox-cli/blob/v1.1.0/src/commands/user/update.ts)_
 <!-- commandsstop -->

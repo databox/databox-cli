@@ -1,6 +1,6 @@
 {
   "name": "databox-cli",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "description": "CLI for the Databox public API",
   "author": "Databox",
@@ -46,8 +46,11 @@
       "data-source": {
         "description": "Manage data sources"
       },
+      "dashboard": {
+        "description": "Browse dashboards and their metrics, and rename them"
+      },
       "databoard": {
-        "description": "Browse databoards and their metrics"
+        "description": "Deprecated: use dashboard"
       },
       "dataset": {
         "description": "Manage datasets and ingest data"

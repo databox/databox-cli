@@ -54,6 +54,8 @@ export function cleanupTestConfig(): void {
 
 type MockRoute = {
   body?: Record<string, unknown>
+  /** Response headers beside Content-Type, e.g. Retry-After. */
+  headers?: Record<string, string>
   method: string
   path: string
   response: unknown
@@ -128,7 +130,7 @@ export function mockApi(routes: MockRoute[]): void {
     }
 
     return new Response(JSON.stringify(route.response), {
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', ...route.headers},
       status: route.status ?? 200,
     })
   }) as typeof global.fetch

@@ -60,6 +60,25 @@ describe('ApiClient errors', () => {
     expect(error.message).to.contain('API error: 502')
   })
 
+  it('keeps a Retry-After given in seconds, and ignores the HTTP-date form', async () => {
+    const limited = errorEnvelope([{code: 'rate_limited', message: 'Rate limit exceeded.', type: 'request'}])
+    mockApi([
+      {
+        headers: {'Retry-After': '12'}, method: 'GET', path: '/v2/a', response: limited, status: 429,
+      },
+      {
+        headers: {'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT'}, method: 'GET', path: '/v2/b', response: limited, status: 429,
+      },
+    ])
+
+    const client = new ApiClient({apiKey: KEY})
+    const inSeconds = await caught(client.get('/v2/a')) as ApiRequestError
+    const asDate = await caught(client.get('/v2/b')) as ApiRequestError
+
+    expect(inSeconds.retryAfter).to.equal(12)
+    expect(asDate.retryAfter).to.equal(undefined)
+  })
+
   it('throws ApiConnectionError when the API cannot be reached', async () => {
     mockApi([])
     global.fetch = (async () => {
@@ -350,6 +369,23 @@ describe('describeApiError', () => {
     ])
 
     expect(describeApiError(error)).to.equal('invalid_input\n  a\n  Field: name\n  b\n  Field: timezone')
+  })
+
+  it('adds the Retry-After seconds before the request ID', () => {
+    const error = new ApiRequestError('Rate limit exceeded.', 429, [
+      {code: 'rate_limited', message: 'Rate limit exceeded.', type: 'request'},
+    ], 'req-9')
+    error.retryAfter = 12
+
+    expect(describeApiError(error)).to.equal('rate_limited\n  Rate limit exceeded.\n  Retry after 12 s\n  Request ID: req-9')
+  })
+
+  it('adds the Retry-After seconds to a 409 modification_in_progress', () => {
+    const message = 'The dataset\'s modification is being applied. Retry in a few seconds.'
+    const error = new ApiRequestError(message, 409, [{code: 'modification_in_progress', message, type: 'request'}], 'req-7')
+    error.retryAfter = 5
+
+    expect(describeApiError(error)).to.equal(`modification_in_progress\n  ${message}\n  Retry after 5 s\n  Request ID: req-7`)
   })
 
   it('falls back to the message when there is no code', () => {

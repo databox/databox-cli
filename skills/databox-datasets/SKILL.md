@@ -28,6 +28,7 @@ A refusal is `forbidden` (exit 1) and nothing is changed. Do not retry it: tell 
 |------|---------|
 | List datasets | `databox dataset list` |
 | List a data source's datasets | `databox dataset list --data-source-id ID` |
+| List merged datasets | `databox dataset list --type mergedDataset` |
 | Create dataset | `databox dataset create --name "Name" --data-source-id ID` |
 | Get dataset details | `databox dataset get ID` |
 | View schema and primary key | `databox dataset schema ID` |
@@ -154,6 +155,8 @@ databox dataset preview-modification 67890 --data "$(cat mod.json)"   # up to 20
 databox dataset update-modification 67890 --data "$(cat mod.json)"
 ```
 
+A saved modification is applied in the background, usually within a few seconds. Until it is, `dataset data`, `dataset schema`, `dataset metadata`, `dataset column-metadata`, `dataset set-metadata --default-time-dimension`, `dataset set-column-metadata` and `dataset clear-modifications` answer `409 modification_in_progress` with a `Retry after N s` line: wait that long and run the same command again. `dataset get`, `dataset list` and `dataset modifications` are never refused. If the modification could not be applied, the reads and those `set-` commands answer `409 modification_failed`, and retrying will not help: save it again with `update-modification`, or remove it with `clear-modifications`, which a failed modification does not block.
+
 `dataset modification-rules` lists the filter operators (`type`) and type conversions (`outputLogicalType`) each column type accepts; `dataset modification-functions` lists the functions formulas can use.
 
 ## Permissions
@@ -171,6 +174,7 @@ These commands prompt for confirmation at a terminal. Off a terminal (scripts, a
 
 - All commands support `--json` and `--output csv` for machine-readable output
 - `dataset schema`, `dataset data` and `dataset preview-modification` return the whole response under `--json` (rows or columns under `items`, plus `schema`/`primaryKey`)
+- Every dataset reports its `type`: `dataset` or `mergedDataset`. `dataset list` shows plain datasets unless given `--type mergedDataset`; a merged dataset has no data source, so the API refuses `--type mergedDataset` with `--data-source-id`
 - Dataset IDs are numeric (e.g., `67890`), separate from the data source ID. Find one with `databox dataset list --search NAME` or `databox data-source datasets DATASOURCEID`; in the Databox app it is the number in the Data Manager page URL (`/data-manager/connected/67890/datasets/view`). 0.x GUIDs are rejected.
 - Ingestion IDs are UUIDs returned by the `ingest` command
 - `--interval` on `set-sync-frequency` is in minutes: 1, 15, 60, 240, 360, 480 or 1440; `sync-frequency-options` shows which your plan includes

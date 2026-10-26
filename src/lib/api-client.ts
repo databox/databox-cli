@@ -8,6 +8,9 @@ const DEFAULT_TIMEOUT_MS = 30_000
 /** Ingest uploads a payload, so "slow" and "dead" need more room to be told apart. */
 export const UPLOAD_TIMEOUT_MS = 300_000
 
+/** `metric data` may sync the metric first, and the API gives that 150 s; this leaves its 504 room to arrive. */
+export const METRIC_DATA_TIMEOUT_MS = 170_000
+
 export interface ApiClientOptions {
   apiKey: string
   baseUrl?: string
@@ -39,10 +42,13 @@ interface ApiEnvelope<T> {
 /**
  * A request that reached the API and came back 4xx/5xx, or 2xx with a body that is not JSON.
  * `code`, `field` and `type` are the first entry of the envelope's `errors[]`; `errors` keeps them all.
+ * `retryAfter` is the `Retry-After` header in seconds, when the response sent one as a number.
  */
 export class ApiRequestError extends Error {
   readonly code?: string
   readonly field?: string
+  /** Set by ApiClient from the response, so it is not a constructor parameter. */
+  retryAfter?: number
   readonly type?: string
 
   constructor(
@@ -83,6 +89,7 @@ export function describeApiError(error: ApiRequestError): string {
     if (detail.field) lines.push(`  Field: ${detail.field}`)
   }
 
+  if (error.retryAfter !== undefined) lines.push(`  Retry after ${error.retryAfter} s`)
   if (error.requestId) lines.push(`  Request ID: ${error.requestId}`)
   return lines.join('\n')
 }
@@ -272,7 +279,11 @@ export class ApiClient {
         ? errors.map(e => e.message).join('; ')
         : `API error: ${response.status} ${response.statusText}`
 
-      throw new ApiRequestError(message, response.status, errors, requestId)
+      const error = new ApiRequestError(message, response.status, errors, requestId)
+      // Only the delay-seconds form: the HTTP-date form is not what the API sends.
+      const retryAfter = response.headers.get('retry-after')?.trim()
+      if (retryAfter && /^\d+$/.test(retryAfter)) error.retryAfter = Number(retryAfter)
+      throw error
     }
 
     // 204 and other empty 2xx bodies would make JSON.parse throw.

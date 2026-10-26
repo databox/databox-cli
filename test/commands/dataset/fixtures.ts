@@ -19,6 +19,7 @@ export const datasetListItem = {
     initiatedAt: '2026-09-01T07:59:00+00:00', lastSuccessfulSyncAt: '2026-09-01T08:00:00+00:00', status: 'success', type: 'scheduledUpdate',
   },
   timezone: 'UTC',
+  type: 'dataset',
   verificationInfo: {isVerified: false},
 }
 

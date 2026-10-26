@@ -72,9 +72,9 @@ difference between a test run and a production one.
 ## Undoing changes to shared resources
 
 Almost everything the suites touch is a `cli-e2e-*` fixture they created and delete.
-Three things are not: the **organization**, the signed-in **profile**, and an existing
-**connection** — there is no way to exercise `organization update`, `profile update` or
-`connection update` without changing something real.
+Four things are not: the **organization**, the signed-in **profile**, an existing
+**connection** and an existing **dashboard** — there is no way to exercise `organization update`,
+`profile update`, `connection update` or `dashboard rename` without changing something real.
 
 For those, `withRestore()` writes the undoing command to `.e2e-restore.json`
 **before** the mutation, and removes it only once the value is back:
@@ -111,7 +111,7 @@ same: `npm run test:e2e:cleanup`.
   and an unforced `confirm()` exits 2 at once ("Refusing to prompt: stdin is not a
   terminal and no confirmation was piped") and the command does nothing.
 - Environment-dependent suites skip with `skipWith(this, reason)` rather than failing (an
-  organization that manages no accounts, add-on not enabled, no databoards). It prints the reason; never call a
+  organization that manages no accounts, add-on not enabled, no dashboards). It prints the reason; never call a
   bare `this.skip()`, which is indistinguishable from a pass.
 - Reads that race the API's cache use `retryRead`. Never wrap a create in it — mocha
   `--retries` and `--parallel` are off for the same reason.
@@ -128,8 +128,9 @@ What a user sees, which the unit suite can only assume:
   whose siblings carry data comes through whole: `dataset schema` `{items, primaryKey}`,
   `dataset data` `{items, schema, pagination, lastUpdatedAt}`, `preview-modification`
   `{items, pagination: {totalItems}, schema}`, `metric drilldown` `{items, schema,
-  pagination}`, both `lineage` commands, `dataset modifications`, `databoard metrics`
-  `{datablocks}` and `metric dimension-values` `{dimensionValues}`.
+  pagination}`, both `lineage` commands, `dataset modifications`, `dashboard metrics`
+  `{datablocks}`, `metric dimension-values` `{dimensionValues}` and `metric data`
+  `{metric, dataPoints, syncInfo}`.
 - **Mutations that return the resource print it.** `set-sync-frequency`, `set-timezone` and
   `set-verification` print it under `--json` (or `--output csv`) and a confirmation line in
   table mode. `metric create`/`update` print the metric detail in every mode, and
@@ -205,8 +206,8 @@ The re-sync with ingestion-api v2 found a second round of request-body drift —
 schema `columnId` (now `id`), metric column references `{id, name}` (now
 `{id, displayName}`), modification `filters[]` (now `conditions`), and `sourceId` /
 `dimensionIds` on `metric dimension-values` and `metric drilldown` — plus the removed
-routes behind `dataset add-modification` (use `update-modification`) and `metric data`
-(use `metric drilldown`). The suites use the current names throughout.
+route behind `dataset add-modification` (use `update-modification`). The suites use the
+current names throughout.
 
 ## Findings for the API team
 
